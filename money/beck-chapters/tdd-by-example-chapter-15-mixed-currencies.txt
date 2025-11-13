@@ -1,0 +1,247 @@
+Chapter 15. Mixed Currencies
+$5 + 10 CHF = $10 if rate is 2:1
+$5 + $5 = $10
+Return Money from $5 + $5
+Bank.reduce(Money)
+Reduce Money with conversion
+Reduce(Bank, String)
+Now we are finally ready to add the test that started it all, $5 + 10 CHF:
+public void 
+testMixedAddition() {
+   
+Expression fiveBucks= Money.dollar(5);
+   
+Expression tenFrancs= Money.franc(10);
+   
+Bank bank=
+ new 
+Bank();
+   
+bank.addRate("CHF", "USD", 2);
+   
+Money result= bank.reduce(fiveBucks.plus(tenFrancs), "USD");
+   
+assertEquals(Money.dollar(10), result);
+}
+This is what we'd like to write. Unfortunately, there are a host of compile errors. When we
+were generalizing from 
+Money
+ to 
+Expression
+, we left a lot of loose ends laying around. I was
+worried about them, but I didn't want to disturb you. It's time to disturb you now.
+We won't be able to get the preceding test to compile quickly. We will make the first change
+that will ripple to the next and the next. We have two paths forward. We can make it work
+quickly by writing a more specific test and then generalizing, or we can trust our compiler not
+to let us make mistakes. I'm with you - let's go slow (in practice, I would probably just fix the
+rippling changes one at a time).
+public void 
+testMixedAddition() {
+   
+Money fiveBucks= Money.dollar(5);
+   
+Money tenFrancs= Money.franc(10);
+   
+Bank bank=
+ new 
+Bank();
+   
+bank.addRate("CHF", "USD", 2);
+   
+Money result= bank.reduce(fiveBucks.plus(tenFrancs), "USD");
+   
+assertEquals(Money.dollar(10), result);
+}
+The test doesn't work. We get 15 USD instead of 10 USD. It's as if 
+Sum.reduce()
+ weren't
+reducing the arguments. It isn't:
+Sum
+public 
+Money reduce(Bank bank, String to) {
+   int 
+amount= augend.amount + addend.amount;
+   return new 
+Money(amount, to);
+}
+If we reduce both of the arguments, the test should pass:
+Sum
+public 
+Money reduce(Bank bank, String to) {
+   int 
+amount= augend.reduce(bank, to).amount
+      
++ addend.reduce(bank, to).amount;
+   return new 
+Money(amount, to);
+}
+And it does. Now we can begin pecking away at 
+Money
+s that should be 
+Expression
+s. To avoid
+the ripple effect, we'll start at the edges and work our way back to the test case. For example,
+the augend and addend can now be 
+Expression
+s:
+Sum
+Expression augend;
+Expression addend;
+The arguments to the 
+Sum
+ constructor can also be 
+Expression
+s:
+Sum
+Sum(Expression augend, Expression addend) {
+   this
+.augend= augend;
+   this
+.addend= addend;
+}
+(
+Sum
+ is starting to remind me of 
+Composite
+, but not so much that I want to generalize. The
+moment we want a 
+Sum
+ with other than two parameters, though, I'm ready to transform it.)
+So much for 
+Sum
+ - how about 
+Money
+?
+The argument to 
+plus()
+ can be an 
+Expression
+:
+Money
+Expression plus(Expression addend) {
+   return new 
+Sum(
+this, 
+addend);
+}
+Times()
+ can return an 
+Expression
+:
+Money
+Expression times(
+int 
+multiplier) {
+   return new 
+Money(amount * multiplier, currency);
+}
+This suggests that 
+Expression
+ should include the operations 
+plus()
+ and 
+times()
+. That's all for
+Money
+. We can now change the argument to 
+plus()
+ in our test case:
+public void 
+testMixedAddition() {
+   
+Money fiveBucks= Money.dollar(5);
+   
+Expression tenFrancs= Money.franc(10);
+   
+Bank bank=
+ new 
+Bank();
+   
+bank.addRate("CHF", "USD", 2);
+   
+Money result= bank.reduce(fiveBucks.plus(tenFrancs), "USD");
+   
+assertEquals(Money.dollar(10), result);
+}
+When we change 
+fiveBucks
+ to an 
+Expression
+, we have to make several changes. Fortunately
+we have the compiler's to-do list to keep us focused. First we make the change:
+public void 
+testMixedAddition() {
+   
+Expression fiveBucks= Money.dollar(5);
+   
+Expression tenFrancs= Money.franc(10);
+   
+Bank bank=
+ new 
+Bank();
+   
+bank.addRate("CHF", "USD", 2);
+   
+Money result= bank.reduce(fiveBucks.plus(tenFrancs), "USD");
+   
+assertEquals(Money.dollar(10), result);
+}
+We are politely told that 
+plus()
+ is not defined for 
+Expression
+s. We define it:
+Expression
+Expression plus(Expression addend);
+And then we have to add it to 
+Money
+ and 
+Sum
+. 
+Money
+? Yes, it has to be public in 
+Money
+:
+Money
+public 
+Expression plus(Expression addend) {
+   return new 
+Sum(
+this, 
+addend);
+}
+We'll just stub out the implementation in 
+Sum
+, and add it to our to-do list:
+Sum
+public 
+Expression plus(Expression addend) {
+   return null;
+}
+$5 + 10 CHF = $10 if rate is 2:1
+$5 + $5 = $10
+Return Money from $5 + $5
+Bank.reduce(Money)
+Reduce Money with conversion
+Reduce(Bank, String)
+Sum.plus
+Expression.times
+Now that the program compiles, the tests all run.
+We are ready to finish generalizing 
+Money
+ to 
+Expression
+. But first, to review, we
+Wrote the test we wanted, then backed off to make it achievable in one step
+Generalized (used a more abstract declaration) from the leaves back to the root (the test
+case)
+Followed the compiler when we made a change (
+Expression
+ 
+fiveBucks
+), which caused changes
+to ripple (added 
+plus()
+ to 
+Expression
+, and so on)

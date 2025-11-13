@@ -1,0 +1,147 @@
+Chapter 2. Degenerate Objects
+The general TDD cycle goes as follows.
+1
+. 
+Write a test. Think about how you would like the operation in your mind to appear in your
+code. You are writing a story. Invent the interface you wish you had. Include all of the
+elements in the story that you imagine will be necessary to calculate the right answers.
+2
+. 
+Make it run. Quickly getting that bar to go to green dominates everything else. If a clean,
+simple solution is obvious, then type it in. If the clean, simple solution is obvious but it will
+take you a minute, then make a note of it and get back to the main problem, which is getting
+the bar green in seconds. This shift in aesthetics is hard for some experienced software
+engineers. They only know how to follow the rules of good engineering. Quick green excuses
+all sins. But only for a moment.
+3
+. 
+Make it right. Now that the system is behaving, put the sinful ways of the recent past behind
+you. Step back onto the straight and narrow path of software righteousness. Remove the
+duplication that you have introduced, and get to green quickly.
+The goal is clean code that works (thanks to Ron Jeffries for this pithy summary). Clean code
+that works is out of the reach of even the best programmers some of the time, and out of the
+reach of most programmers (like me) most of the time. Divide and conquer, baby. First we'll
+solve the "that works" part of the problem. Then we'll solve the "clean code" part. This is the
+opposite of architecture-driven development, where you solve "clean code" first, then
+scramble around trying to integrate into the design the things you learn as you solve the "that
+works" problem.
+$5 + 10 CHF = $10 if rate is 2:1
+$5 * 2 = $10
+Make "amount" private
+Dollar side effects?
+Money rounding?
+We got one test to work but in the process noticed something strange: when we perform an
+operation on a 
+Dollar
+, the 
+Dollar
+ changes. I want to be able to write:
+public void 
+testMultiplication() {
+   
+Dollar five=
+ new 
+Dollar(5);
+   
+five.times(2);
+   
+assertEquals(10, five.amount);
+   
+five.times(3);
+   
+assertEquals(15, five.amount);
+}
+I can't imagine a clean way to get this test to work. After the first call to 
+times()
+, five isn't five
+any more, it's really ten. If, however, we return a new object from 
+times()
+, then we can
+multiply our original five bucks all day and never have it change. We are changing the
+interface of 
+Dollar
+ when we make this change, so we have to change the test. That's okay. Our
+guesses about the right interface are no more likely to be perfect than our guesses about the
+right implementation.
+public void 
+testMultiplication() {
+   
+Dollar five=
+ new 
+Dollar(5);
+   
+Dollar product= five.times(2);
+   
+assertEquals(10, product.amount);
+   
+product= five.times(3);
+   
+assertEquals(15, product.amount);
+}
+The new test won't compile until we change the declaration of 
+Dollar.times()
+:
+Dollar
+Dollar times(
+int 
+multiplier) {
+   
+amount *= multiplier;
+   return null;
+}
+Now the test compiles, but it doesn't run. Progress! Making it run requires that we return a
+new 
+Dollar
+ with the correct amount:
+Dollar
+Dollar times(
+int 
+multiplier) {
+   return new 
+Dollar(amount * multiplier);
+}
+$5 + 10 CHF = $10 if rate is 2:1
+$5 * 2 = $10
+Make "amount" private
+Dollar side effects?
+Money rounding?
+In 
+Chapter 1
+, when we made a test work we started with a bogus implementation and
+gradually made it real. Here, we typed in what we thought was the right implementation and
+prayed while the tests ran (short prayers, to be sure, because running the test takes a few
+milliseconds). Because we got lucky and the test ran, we can cross off another item.
+Following are two of the three strategies I know for quickly getting to green:
+Fake It - 
+Return a constant and gradually replace constants with variables until you have the
+real code.
+Use Obvious Implementation - 
+Type in the real implementation.
+When I use TDD in practice, I commonly shift between these two modes of implementation.
+When everything is going smoothly and I know what to type, I put in Obvious Implementation
+after Obvious Implementation (running the tests each time to ensure that what's obvious to
+me is still obvious to the computer). As soon as I get an unexpected red bar, I back up, shift
+to faking implementations, and refactor to the right code. When my confidence returns, I go
+back to Obvious Implementations.
+There is a third style of TDD, Triangulation, which we will demonstrate in 
+Chapter 3
+. However,
+to review, we
+Translated a design objection (side effects) into a test case that failed because of the
+objection
+Got the code to compile quickly with a stub implementation
+Made the test work by typing in what seemed to be the right code
+The translation of a feeling (for example, disgust at side effects) into a test (for example,
+multiply the same 
+Dollar
+ twice) is a common theme of TDD. The longer I do this, the better
+able I am to translate my aesthetic judgments into tests. When I can do this, my design
+discussions become much more interesting. First we can talk about whether the system should
+work like 
+this
+ or like 
+that.
+ Once we decide on the correct behavior, we can talk about the best
+way of achieving that behavior. We can speculate about truth and beauty all we want over
+beers, but while we are programming we can leave airy-fairy discussions behind and talk
+cases.

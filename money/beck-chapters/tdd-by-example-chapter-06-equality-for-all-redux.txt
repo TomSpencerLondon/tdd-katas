@@ -1,0 +1,274 @@
+Chapter 6. Equality for All, Redux
+$5 + 10 CHF = $10 if rate is 2:1
+$5 * 2 = $10
+Make "amount" private
+Dollar side effects?
+Money rounding?
+equals()
+hashCode()
+Equal null
+Equal object
+5 CHF * 2 = 10 CHF
+Dollar/Franc duplication
+Common equals
+Common times
+There is a fabulous sequence in 
+Crossing to Safety
+ in which author Wallace Stegner describes
+a character's workshop. Every item is perfectly in place, the floor is spotless, all is order and
+cleanliness. The character, however, has never made anything. "Preparing has been his life's
+work. He prepares, then he cleans up." (This is also the book whose ending sent me audibly
+blubbering in business class on a trans-Atlantic 747. Read with caution.)
+We avoided this trap in 
+Chapter 5
+. We actually got a new test case working. But we sinned
+mightily in copying and pasting tons of code in order to do it quickly. Now it is time to clean
+up.
+One possibility is to make one of our classes extend the other. I tried it, and it hardly saves
+any code at all. Instead, we are going to find a common superclass for the two classes, as
+shown in 
+Figure 6.1
+. (I tried this already, too, and it works out great, although it will take a
+while.)
+Figure 6.1. A common superclass for two classes
+What if we had a 
+Money
+ class to capture the common equals code? We can start small:
+Money
+class 
+Money
+All of the tests still run - not that we could possibly have broken anything, but it's a good time
+to run the tests anyway. If 
+Dollar
+ extends 
+Money
+, that can't possibly break anything.
+Dollar
+class 
+Dollar
+ extends 
+Money {
+   private int 
+amount;
+}
+Can it? No, the tests still all run. Now we can move the 
+amount
+ instance variable up to
+Money
+:
+Money
+class 
+Money {
+   protected int 
+amount;
+}
+Dollar
+class 
+Dollar
+ extends 
+Money {
+}
+The visibility has to change from private to protected so that the subclass can still see it. (Had
+we wanted to go even slower, we could have declared the field in 
+Money
+ in one step and then
+removed it from 
+Dollar
+ in a second step. I'm feeling bold.)
+Now we can work on getting the 
+equals()
+ code ready to move up. First we change the
+declaration of the temporary variable:
+Dollar
+public boolean 
+equals(Object object) {
+   
+Money dollar= (Dollar) object;
+   return 
+amount == dollar.amount;
+}
+All the tests still run. Now we change the cast:
+Dollar
+public boolean 
+equals(Object object) {
+   
+Money dollar= (Money) object;
+   return 
+amount == dollar.amount;
+}
+To be communicative, we should also change the name of the temporary variable:
+Dollar
+public boolean 
+equals(Object object) {
+   
+Money money= (Money) object;
+   return 
+amount == money. amount;
+}
+Now we can move it from 
+Dollar
+ to 
+Money
+:
+Money
+public boolean 
+equals(Object object) {
+   
+Money money= (Money) object;
+   return 
+amount == money.amount;
+}
+Now we need to eliminate 
+Franc.equals()
+. First we notice that the tests for equality don't
+cover comparing 
+Franc
+s to 
+Franc
+s. Our sins in copying code are catching up with us. Before we
+change the code, we'll write the tests that should have been there in the first place.
+You will often be implementing TDD in code that doesn't have adequate tests (at least for the
+next decade or so). When you don't have enough tests, you are bound to come across
+refactorings that aren't supported by tests. You could make a refactoring mistake and the
+tests would all still run. What do you do?
+Write the tests you wish you had. If you don't, you will eventually break something while
+refactoring. Then you'll get bad feelings about refactoring and stop doing it so much. Then
+your design will deteriorate. You'll be fired. Your dog will leave you. You will stop paying
+attention to your nutrition. Your teeth will go bad. So, to keep your teeth healthy,
+retroactively test before refactoring.
+Fortunately, here the tests are easy to write. We just copy the tests for 
+Dollar
+:
+public void 
+testEquality() {
+   
+assertTrue(
+new 
+Dollar(5).equals(
+new 
+Dollar(5)));
+   
+assertFalse(
+new 
+Dollar(5).equals(
+new 
+Dollar(6)));
+   
+assertTrue(
+new 
+Franc(5).equals(
+new 
+Franc(5)));
+   
+assertFalse(
+new 
+Franc(5).equals(
+new 
+Franc(6)));
+}
+More duplication, two lines more! We'll atone for these sins, too.
+Tests in place, we can have 
+Franc
+ extend 
+Money
+:
+Franc
+class 
+Franc
+ extends 
+Money {
+   private int 
+amount;
+}
+We can delete 
+Franc
+'s field 
+amount
+ in favor of the one in 
+Money
+:
+Franc
+class 
+Franc
+ extends 
+Money {
+}
+Franc.equals()
+ is almost the same as 
+Money.equals()
+. If we make them precisely the same,
+then we can delete the implementation in 
+Franc
+ without changing the meaning of the
+program. First we change the declaration of the temporary variable:
+Franc
+public boolean 
+equals(Object object) {
+   
+Money franc= (Franc) object;
+   return 
+amount == franc.amount;
+}
+Then we change the cast:
+Franc
+public boolean 
+equals(Object object) {
+   
+Money franc= (Money) object;
+   return 
+amount == franc.amount;
+}
+Do we really have to change the name of the temporary variable to match the superclass? I'll
+leave it up to your conscience.
+​
+ Okay, we'll do it:
+Franc
+public boolean 
+equals(Object object) {
+   
+Money money= (Money) object;
+   return 
+amount == money.amount;
+}
+$5 + 10 CHF = $10 if rate is 2:1
+$5 * 2 = $10
+Make "amount" private
+Dollar side effects?
+Money rounding?
+equal
+s()
+hashCode()
+Equal null
+Equal object
+5 CHF * 2 = 10 CHF
+Dollar/Franc duplication
+Common equals
+Common times
+Compare Francs with Dollars
+Now there is no difference between 
+Franc.equals()
+ and 
+Money.equals()
+, so we delete the
+redundant implementation in 
+Franc
+. And run the tests. They run.
+What happens when we compare 
+Franc
+s with 
+Dollar
+s? We'll get to that in 
+Chapter 7
+.
+Reviewing what we did here, we
+Stepwise moved common code from one class (
+Dollar
+) to a superclass (
+Money
+)
+Made a second class (
+Franc
+) a subclass also
+Reconciled two implementations - 
+equals()
+ - before eliminating the redundant one

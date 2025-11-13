@@ -1,0 +1,266 @@
+Chapter 10. Interesting Times
+$5 + 10 CHF = $10 if rate is 2:1
+$5 * 2 = $10
+Make "amount" private
+Dollar side effects?
+Money rounding?
+equals()
+hashCode()
+Equal null
+Equal object
+5 CHF * 2 = 10 CHF
+Dollar/Franc duplication
+Common equals
+Common times
+Compare Francs to Dollars
+Currency?
+Delete testFrancMultiplication?
+When we are done with this chapter, we will have a single class to represent 
+Money
+. The two
+implementations of 
+times()
+ are close, but not identical:
+Franc
+Money times(
+int 
+multiplier) {
+   return 
+Money.franc(amount * multiplier);
+}
+Dollar
+Money times(
+int 
+multiplier) {
+   return 
+Money.dollar(amount * multiplier);
+}
+There's no obvious way to make them identical. Sometimes you have to go backward to go
+forward, a little like solving a Rubik's Cube. What happens if we inline the factory methods? (I
+know, I know, we just called the factory method for the first time just one chapter ago.
+Frustrating, isn't it?)
+Franc
+Money times(
+int 
+multiplier) {
+   return new 
+Franc(amount * multiplier, "CHF");
+}
+Dollar
+Money times(
+int 
+multiplier) {
+   return new 
+Dollar(amount * multiplier, "USD");
+}
+In 
+Franc
+, however, we know that the currency instance variable is always 
+"CHF"
+, so we can
+write:
+Franc
+Money times(
+int 
+multiplier) {
+   return new 
+Franc(amount * multiplier, currency);
+}
+That works. The same trick works in 
+Dollar
+:
+Dollar
+Money times(
+int 
+multiplier) {
+   return new 
+Dollar(amount * multiplier, currency);
+}
+We're almost there. Does it really matter whether we have a 
+Franc
+ or a 
+Money
+? We could
+carefully reason about this given our knowledge of the system, but we have clean code and
+we have tests that give us confidence that the clean code works. Rather than apply minutes of
+suspect reasoning, we can just ask the computer by making the change and running the tests.
+In teaching TDD, I see this situation all the time - excellent software engineers spending 5 to
+10 minutes reasoning about a question that the computer could answer in 15 seconds.
+Without the tests you have no choice, you have to reason. With the tests you can decide
+whether an experiment would answer the question faster. Sometimes you should just ask the
+computer.
+To run our experiment, we change 
+Franc.times()
+ to return a 
+Money
+:
+Franc
+Money times(
+int 
+multiplier) {
+   return new 
+Money(amount * multiplier, currency);
+}
+The compiler tells us that 
+Money
+ must be a concrete class:
+Money
+class 
+Money
+Money times(
+int 
+amount) {
+   return null;
+}
+And we get a red bar. The error message says, "expected:<Money.Franc@31aebf> but was:
+<Money.Money@478a43>". Not as helpful as we perhaps would like. We can define 
+toString()
+to give us a better error message:
+Money
+public 
+String toString() {
+   return 
+amount + " " + currency;
+}
+Whoa! Code without a test? Can you do that? We could certainly have written a test for
+toString()
+ before we coded it. However,
+We are about to see the results on the screen.
+Because 
+toString()
+ is used only for debug output, the risk of it failing is low.
+We already have a red bar, and we'd prefer not to write a test when we have a red bar.
+Exception noted.
+Now the error message says: 
+"expected:<10 CHF> but was:<10 CHF>"
+. That's a little better,
+but still confusing. We have the right data in the answer, but the class is wrong - 
+Money
+instead of 
+Franc
+. The problem is in our implementation of 
+equals()
+:
+Money
+public boolean 
+equals(Object object) {
+   
+Money money = (Money) object;
+   return 
+amount == money.amount
+      
+&& getClass().equals(money.getClass());
+}
+We really should be checking to see that the currencies are the same, not that the classes are
+the same.
+We'd prefer not to write a test when we have a red bar. But we are about to change real
+model code, and we can't change model code without a test. The conservative course is to
+back out the change that caused the red bar so we're back to green. Then we can change the
+test for 
+equals()
+, fix the implementation, and retry the original change.
+This time, we'll be conservative. (Sometimes I plough ahead and write a test on a red, but not
+while the children are awake.)
+Franc
+Money times(
+int 
+multiplier) {
+   return new 
+Franc(amount * multiplier, currency);
+}
+That gets us back to green. The situation that we had was a 
+Franc(10,
+ 
+"CHF"
+)
+ and a
+Money(10,
+ 
+"CHF"
+)
+ that were reported to be not equal, even though we would like them to be
+equal. We can use exactly this for our test:
+public void 
+testDifferentClassEquality() {
+   
+assertTrue(
+new 
+Money(10, "CHF").equals(
+new 
+Franc(10, "CHF")));
+}
+It fails, as expected. The 
+equals()
+ code should compare currencies, not classes:
+Money
+public boolean 
+equals(Object object) {
+   
+Money money = (Money) object;
+   return 
+amount == money.amount
+      
+&& currency().equals(money.currency()
+);
+}
+Now we can return a 
+Money
+ from 
+Franc.times()
+ and still pass the tests:
+Franc
+Money times(
+int 
+multiplier) {
+   return new 
+Money(amount * multiplier, currency);
+}
+Will the same work for 
+Dollar.times()
+?
+Dollar
+Money times(
+int 
+multiplier) {
+   return new 
+Money(amount * multiplier, currency);
+}
+Yes! Now the two implementations are identical, so we can push them up.
+Money
+Money times(
+int 
+multiplier) {
+   return new 
+Money(amount * multiplier, currency);
+}
+$5 + 10 CHF = $10 if rate is 2:1
+$5 * 2 = $10
+Make "amount" private
+Dollar side effects?
+Money rounding?
+equals()
+hashCode()
+Equal null
+Equal object
+5 CHF * 2 = 10 CHF
+Dollar/Franc duplication
+Common equals
+Common times
+Compare Francs to Dollars
+Currency?
+Delete testFrancMultiplication?
+Multiplication in place, we are ready to eliminate the stupid subclasses. To review, we:
+Reconciled two methods - 
+times()
+ - by first inlining the methods they called and then
+replacing constants with variables
+Wrote a 
+toString()
+ without a test just to help us debug
+Tried a change (returning 
+Money
+ instead of 
+Franc
+) and let the tests tell us whether it worked
+Backed out an experiment and wrote another test. Making the test work made the experiment
+work

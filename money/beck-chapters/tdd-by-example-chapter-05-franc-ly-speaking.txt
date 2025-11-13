@@ -1,0 +1,139 @@
+Chapter 5. Franc-ly Speaking
+$5 + 10 CHF = $10 if rate is 2:1
+$5 * 2 = $10
+Make "amount" private
+Dollar side effects?
+Money rounding?
+equals()
+hashCode()
+Equal null
+Equal object
+5 CHF * 2 = 10 CHF
+How are we going to approach the first test, the most interesting test, on that list? It still
+seems to be a big leap. I'm not sure I can write a test that I can implement in one little step.
+A prerequisite seems to be having an object like 
+Dollar
+, but to represent francs. If we can get
+the object 
+Franc
+ to work the way that the object 
+Dollar
+ works now, we'll be closer to being
+able to write and run the mixed addition test.
+We can copy and edit the 
+Dollar
+ test:
+public void 
+testFrancMultiplication() {
+   
+Franc five=
+ new 
+Franc(5);
+   
+assertEquals(
+new 
+Franc(10), five.times(2));
+   
+assertEquals(
+new 
+Franc(15), five.times(3));
+}
+(Aren't you glad we simplified the test in 
+Chapter 4
+? That has made our job here easier. Isn't
+it amazing how often things work out like this in books? I didn't actually plan it that way this
+time, but I won't make promises for the future.)
+What short step will get us to a green bar? Copying the 
+Dollar
+ code and replacing 
+Dollar
+ with
+Franc
+.
+Stop. Hold on. I can hear the aesthetically inclined among you sneering and spitting. Copy-
+and-paste reuse? The death of abstraction? The killer of clean design?
+If you're upset, take a cleansing breath. In through the nose 
+ hold it 1, 2, 3 
+ out through the
+mouth. There. Remember, our cycle has different phases (they go by quickly, often in
+seconds, but they are phases.):
+1
+. 
+Write a test.
+2
+. 
+Make it compile.
+3
+. 
+Run it to see that it fails.
+4
+. 
+Make it run.
+5
+. 
+Remove duplication.
+The different phases have different purposes. They call for different styles of solution,
+different aesthetic viewpoints. The first three phases need to go by quickly, so we get to a
+known state with the new functionality. We can commit any number of sins to get there,
+because speed trumps design, just for that brief moment.
+Now I'm worried. I've given you a license to abandon all the principles of good design. Off you
+go to your teams - "Kent says all that design stuff doesn't matter." Halt. The cycle is not
+complete. A four-legged Aeron chair falls over. The first four steps of the cycle won't work
+without the fifth. Good design at good times. Make it run, make it right.
+There, I feel better. Now I'm sure you won't show anyone except your partner your code until
+you've removed the duplication. Where were we? Ah, yes. Violating all the tenets of good
+design in the interest of speed (penance for our sin will occupy the next several chapters).
+Franc
+class 
+Franc {
+   private int 
+amount;
+   
+Franc(
+int 
+amount) {
+      this.
+amount= amount;
+   
+}
+   
+Franc times(
+int 
+multiplier) {
+      return new 
+Franc(amount * multiplier);
+   
+}
+   public boolean 
+equals(Object object) {
+      
+Franc franc= (Franc) object;
+      return 
+amount == franc.amount;
+   
+}
+}
+$5 + 10 CHF = $10 if rate is 2:1
+$5 * 2 = $10
+Make "amount" private
+Dollar side effects?
+Money rounding?
+equals()
+hashCode()
+Equal null
+Equal object
+5 CHF * 2 = 10 CHF
+Dollar/Franc duplication
+Common equals
+Common times
+Because the step to running code was so short, we were even able to skip the "make it
+compile" step.
+Now we have duplication galore, and we have to eliminate it before writing our next test.
+We'll start by generalizing 
+equals()
+. However, we can cross an item off our to-do list, even
+though we have to add two more. Reviewing, we
+Couldn't tackle a big test, so we invented a small test that represented progress
+Wrote the test by shamelessly duplicating and editing
+Even worse, made the test work by copying and editing model code wholesale
+Promised ourselves we wouldn't go home until the duplication was gone

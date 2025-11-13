@@ -1,0 +1,124 @@
+Chapter 11. The Root of All Evil
+$5 + 10 CHF = $10 if rate is 2:1
+$5 * 2 = $10
+Make "amount" private
+Dollar side effects?
+Money rounding?
+equals()
+hashCode()
+Equal null
+Equal object
+5 CHF * 2 = 10 CHF
+Dollar/Franc duplication
+Common equals
+Common times
+Compare Francs to Dollars
+Currency?
+Delete testFrancMultiplication?
+The two subclasses, 
+Dollar
+ and 
+Franc
+, have only their constructors. But because a constructor
+is not reason enough to have a subclass, we want to delete the subclasses.
+We can replace references to the subclasses with references to the superclass without
+changing the meaning of the code. First 
+Franc
+:
+Franc
+static 
+Money franc(
+int 
+amount){
+   return new 
+Money(amount, "CHF");
+}
+Then 
+Dollar
+:
+Dollar
+static 
+Money dollar(
+int 
+amount) {
+   return new 
+Money(amount, "USD");
+}
+Now there are no references to 
+Dollar
+, so we can delete it. 
+Franc
+, on the other hand, still has
+one reference, in the test we just wrote.
+public void 
+testDifferentClassEquality() {
+   
+assertTrue(
+new 
+Money(10, "CHF").equals(
+new 
+Franc(10, "CHF")));
+}
+Is equality covered well enough elsewhere that we can delete this test? Looking at the other
+equality test,
+public void 
+testEquality() {
+   
+assertTrue(Money.dollar(5).equals(Money.dollar(5)));
+   
+assertFalse(Money.dollar(5).equals(Money.dollar(6)));
+   
+assertTrue(Money.franc(5).equals(Money.franc(5)));
+   
+assertFalse(Money.franc(5).equals(Money.franc(6)));
+   
+assertFalse(Money.franc(5).equals(Money.dollar(5)));
+}
+it looks as though we have the cases for equality well covered - too well covered, actually. We
+can delete the third and fourth assertions because they duplicate the exercise of the first and
+second assertions:
+public void 
+testEquality() {
+   
+assertTrue(Money.dollar(5).equals(Money.dollar(5)));
+   
+assertFalse(Money.dollar(5).equals(Money.dollar(6)));
+   
+assertFalse(Money.franc(5).equals(Money.dollar(5)));
+}
+$5 + 10 CHF = $10 if rate is 2:1
+$5 * 2 = $10
+Make "amount" private
+Dollar side effects?
+Money rounding?
+equals()
+hashCode()
+Equal null
+Equal object
+5 CHF * 2 = 10 CHF
+Dollar/Franc duplication
+Common equals
+Common times
+Compare Francs to Dollars
+Currency?
+Delete testFrancMultiplication?
+The test we wrote forcing us to compare currencies instead of classes makes sense only if
+there are multiple classes. Because we are trying to eliminate the 
+Franc
+ class, a test to ensure
+that the system works if there is a 
+Franc
+ class is a burden, not a help. Away
+testDifferentClassEquality()
+ goes, and 
+Franc
+ goes with it.
+Similarly, there are separate tests for dollar and franc multiplication. Looking at the code, we
+can see that there is no difference in the logic at the moment based on the currency (there
+was a difference when there were two classes). We can delete 
+testFrancMultiplication()
+without losing any confidence in the behavior of the system.
+Single class in place, we are ready to tackle addition. First, to review, we
+Finished gutting subclasses and deleted them
+Eliminated tests that made sense with the old code structure but were redundant with the
+new code structure

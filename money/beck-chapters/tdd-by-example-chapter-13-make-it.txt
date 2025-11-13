@@ -1,0 +1,302 @@
+Chapter 13. Make It
+$5 + 10 CHF = $10 if rate is 2:1
+$5 + $5 = $10
+We can't mark our test for $5 + $5 done until we've removed all of the duplication. We don't
+have code duplication, but we do have data duplication - the $10 in the fake implementation:
+Bank
+Money reduce(Expression source, String to) {
+   return 
+Money.dollar(10);
+}
+is really the same as the $5 + $5 in the test:
+public void 
+testSimpleAddition() {
+   
+Money five= Money.dollar(5);
+   
+Expression sum= five.plus(five);
+   
+Bank bank=
+ new 
+Bank();
+   
+Money reduced= bank.reduce(sum, "USD");
+   
+assertEquals(Money.dollar(10), reduced);
+}
+Before when we've had a fake implementation, it has been obvious how to work backward to
+the real implementation. It simply has been a matter of replacing constants with variables.
+This time, however, it's not obvious to me how to work backward. So, even though it feels a
+little speculative, we'll work forward.
+$5 + 10 CHF = $10 if rate is 2:1
+$5 + $5 = $10
+Return Money from $5 + $5
+First, 
+Money.plus()
+ needs to return a real 
+Expression
+ - a 
+Sum
+, not just a 
+Money
+. (Perhaps
+later we'll optimize the special case of adding two identical currencies, but that's later.)
+The sum of two 
+Money
+s should be a 
+Sum
+:
+public void 
+testPlusReturnsSum() {
+   
+Money five= Money.dollar(5);
+   
+Expression result= five.plus(five);
+   
+Sum sum= (Sum) result;
+   
+assertEquals(five, sum.augend);
+   
+assertEquals(five, sum.addend);
+}
+(Did you know that the first argument to addition is called the 
+augend?
+ I didn't until I was
+writing this. Geek joy.)
+The test above is not one I would expect to live a long time. It is deeply concerned with the
+implementation of our operation, rather than its externally visible behavior. However, if we
+make it work, we expect we've moved one step closer to our goal. To get it to compile, all we
+need is a 
+Sum
+ class with two fields, 
+augend
+ and 
+addend
+:
+Sum
+class 
+Sum {
+   
+Money augend;
+   
+Money addend;
+}
+This gives us a 
+ClassCastException
+, because 
+Money.plus()
+ is returning a 
+Money
+, not a 
+Sum
+:
+Money
+Expression plus(Money addend) {
+   return new 
+Sum(
+this, 
+addend);
+}
+Sum
+ needs a constructor:
+Sum
+Sum(Money augend, Money addend) {
+}
+And 
+Sum
+ needs to be a kind of 
+Expression
+:
+Sum
+class 
+Sum
+ implements 
+Expression
+Now the system compiles again, but the test is still failing, this time because the 
+Sum
+constructor is not setting the fields. (We could fake the implementation by initializing the
+fields, but I said I'd start going faster.)
+Sum
+Sum(Money augend, Money addend) {
+   this
+.augend= augend;
+   this
+.addend= addend;
+}
+Now 
+Bank.reduce()
+ is being passed a 
+Sum
+. If the currencies in the 
+Sum
+ are all the same, and
+the target currency is also the same, then the result should be a 
+Money
+ whose amount is the
+sum of the amounts:
+public void 
+testReduceSum() {
+   
+Expression sum=
+ new 
+Sum(Money.dollar(3), Money.dollar(4));
+   
+Bank bank=
+ new 
+Bank();
+   
+Money result= bank.reduce(sum, "USD");
+   
+assertEquals(Money.dollar(7), result);
+}
+I carefully chose parameters that would break the existing test. When we reduce a 
+Sum
+, the
+result (under these simplified circumstances) should be a 
+Money
+ whose amount is the sum of
+the amounts of the two 
+Money
+s and whose currency is the currency to which we are reducing.
+Bank
+Money reduce(Expression source, String to) {
+   
+Sum sum= (Sum) source;
+   int 
+amount= sum.augend.amount + sum.addend.amount;
+   return new 
+Money(amount, to);
+}
+This is immediately ugly on two counts:
+The cast. This code should work with any 
+Expression
+.
+The public fields, and two levels of references at that.
+Easy enough to fix. First, we can move the body of the method to 
+Sum
+ and get rid of some of
+the visible fields. We are "sure" we will need the 
+Bank
+ as a parameter in the future, but this is
+pure, simple refactoring, so we leave it out. (Actually, just now I put it in because I "knew" I
+would need it - shame, shame on me.)
+Bank
+Money reduce(Expression source, String to) {
+   
+Sum sum= (Sum) source;
+   return 
+sum.reduce(to);
+}
+Sum
+public 
+Money reduce(String to) {
+   int 
+amount= augend.amount + addend.amount;
+   return 
+new Money(amount, to);
+}
+$5 + 10 CHF = $10 if rate is 2:1
+$5 + $5 = $10
+Return Money from $5 + $5
+Bank.reduce(Money)
+(Which brings up the point of how we are going to implement, er 
+ test 
+Bank.reduce()
+ when
+the argument is a 
+Money
+.)
+Let's write that test, since the bar is green and there is nothing else obvious to do with the
+code above:
+public void 
+testReduceMoney() {
+   
+Bank bank=
+ new 
+Bank();
+   
+Money result= bank.reduce(Money.dollar(1), "USD");
+   
+assertEquals(Money.dollar(1), result);
+}
+Bank
+Money reduce(Expression source, String to) {
+   
+if (source instanceof Money) return (Money) source;
+   
+Sum sum= (Sum) source;
+   return 
+sum.reduce(to);
+}
+Ugly, ugly, ugly. However, we now have a green bar, and refactoring is possible. Any time we
+are checking classes explicitly, we should be using polymorphism instead. Because 
+Sum
+implements 
+reduce(String)
+, if 
+Money
+ implemented it, too, we could then add it to the
+Expression
+ interface.
+Bank
+Money reduce(Expression source, String to) {
+   if 
+(source
+ instanceof 
+Money)
+      return 
+(Money) source.reduce(to);
+   
+Sum sum= (Sum) source;
+   return 
+sum.reduce(to);
+}
+Money
+public 
+Money reduce(String to) {
+   return this;
+}
+If we add 
+reduce(String)
+ to the 
+Expression
+ interface,
+Expression
+Money reduce(String to);
+then we can eliminate all those ugly casts and class checks:
+Bank
+Money reduce(Expression source, String to) {
+   return 
+source.reduce(to);
+}
+I'm not entirely happy with the name of the method being the same in 
+Expression
+ and in
+Bank
+, but having different parameter types in each. I've never found a satisfactory general
+solution to this problem in Java. In languages with keyword parameters, communicating the
+difference between 
+Bank.reduce(Expression, String)
+ and 
+Expression.reduce(String)
+ is well
+supported by the language syntax. With positional parameters, it's not so easy to make the
+code speak for us about how the two are different.
+$5 + 10 CHF = $10 if rate is 2:1
+$5 + $5 = $10
+Return Money from $5 + $5
+Bank.reduce(Money)
+Reduce Money with conversion
+Reduce(Bank, String)
+Next we'll actually exchange one currency for another. First, to review, we
+Didn't mark a test as done because the duplication had not been eliminated
+Worked forward instead of backward to realize the implementation
+Wrote a test to force the creation of an object we expected to need later (
+Sum
+)
+Started implementing faster (the 
+Sum
+ constructor)
+Implemented code with casts in one place, then moved the code where it belonged once the
+tests were running
+Introduced polymorphism to eliminate explicit class checking

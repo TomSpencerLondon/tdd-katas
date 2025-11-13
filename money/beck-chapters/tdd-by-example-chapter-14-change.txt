@@ -1,0 +1,242 @@
+Chapter 14. Change
+$5 + 10 CHF = $10 if rate is 2:1
+$5 + $5 = $10
+Return Money from $5 + $5
+Bank.reduce(Money)
+Reduce Money with conversion
+Reduce(Bank, String)
+Change is worth embracing (especially if you have a book out with "embrace change" in the
+title). Here, however, we are thinking about a much simpler form of change - we have two
+francs and we want a dollar. That sounds like a test case already:
+public void 
+testReduceMoneyDifferentCurrency() {
+   
+Bank bank=
+ new 
+Bank();
+   
+bank.addRate("CHF", "USD", 2);
+   
+Money result= bank.reduce(Money.franc(2), "USD");
+   
+assertEquals(Money.dollar(1), result);
+}
+When I convert francs to dollars, I divide by two. (We're still studiously ignoring all of those
+nasty numerical problems.) We can make the bar green in one piece of ugliness:
+Money
+public 
+Money reduce(String to) {
+   
+int rate = (currency.equals("CHF") && to.equals("USD"))
+      
+? 2
+      
+: 1;
+   return new 
+Money(amount / rate, to);
+}
+Now, suddenly, 
+Money
+ knows about exchange rates. Yuck. The 
+Bank
+ should be the only place
+we care about exchange rates. We'll have to pass the 
+Bank
+ as a parameter to
+Expression.reduce()
+. (See? We 
+knew
+ we would need it, and we were right. In the words of the
+grandfather in 
+The Princess Bride
+, "You're very clever
+​
+ .") First the caller:
+Bank
+Money reduce(Expression source, String to) {
+   return 
+source.reduce(
+this, 
+to);
+}
+Then the implementors:
+Expression
+Money reduce(Bank bank, String to);
+Sum
+public 
+Money reduce(Bank bank, String to) {
+   int 
+amount= augend.amount + addend.amount;
+   return new 
+Money(amount, to);
+}
+Money
+public 
+Money reduce(Bank bank, String to) {
+   int 
+rate = (currency.equals("CHF") && to.equals("USD"))
+   
+? 2
+   
+: 1;
+   return new 
+Money(amount / rate, to);
+}
+The methods have to be public because methods in interfaces have to be public (for some
+excellent reason, I'm sure).
+Now we can calculate the rate in the 
+Bank
+:
+Bank
+int 
+rate(String from, String to) {
+   return 
+(from.equals("CHF") && to.equals("USD"))
+   
+? 2
+   
+: 1;
+}
+And ask the 
+bank
+ for the right rate:
+Money
+public 
+Money reduce(Bank bank, String to) {
+   int 
+rate = bank.rate(currency, to);
+   return new 
+Money(amount / rate, to);
+}
+That pesky 2 still appears in both the test and the code. To get rid of it, we need to keep a
+table of rates in the 
+Bank
+ and look up a rate when we need it. We could use a hashtable that
+maps pairs of currencies to rates. Can we use a two-element array containing the two
+currencies as the key? Does 
+Array.equals()
+ check to see if the elements are equal?
+public void 
+testArrayEquals() {
+   
+assertEquals(
+new 
+Object[] {"abc"}, new Object[] {"abc"});
+}
+Nope. The test fails, so we have to create a real object for the key:
+Pair
+private class 
+Pair {
+   
+private String from;
+   
+private String to;
+   
+Pair(String from, String to) {
+   this
+.from= from;
+   this
+.to= to;
+   
+}
+}
+Because we are using 
+Pair
+s as keys, we have to implement 
+equals()
+ and 
+hashCode()
+. I'm not
+going to write tests for these, because we are writing this code in the context of a refactoring.
+If we get to the payoff of the refactoring and all of the tests run, then we expect the code to
+have been exercised. If I were programming with someone who didn't see exactly where we
+were going with this, or if the logic became the least bit complex, I would begin writing
+separate tests.
+Pair
+public boolean 
+equals(Object object) {
+   
+Pair pair= (Pair) object;
+   return 
+from.equals(pair.from) && to.equals(pair.to);
+}
+public int 
+hashCode() {
+   return 
+0;
+}
+0 is a terrible hash value, but it has the advantage of being easy to implement, and it will get
+us running quickly. Currency lookup will look like linear search. Later, when we get lots of
+currencies, we can do a more thorough job with real usage data.
+We need somewhere to store the rates:
+Bank
+private 
+Hashtable rates=
+ new 
+Hashtable();
+We need to set the rate when told:
+Bank
+void 
+addRate(String from, String to,
+ int 
+rate) {
+   
+rates.put(
+new 
+Pair(from, to),
+ new 
+Integer(rate));
+}
+And then we can look up the rate when asked:
+Bank
+int 
+rate(String from, String to) {
+   
+Integer rate= (Integer) rates.get(
+new 
+Pair(from, to));
+   return 
+rate.intValue();
+}
+Wait a minute! We got a red bar. What happened? A little snooping around tells us that if we
+ask for the rate from USD to USD, we expect the value to be 1. Because this was a surprise,
+let's write a test to communicate what we discovered:
+public void 
+testIdentityRate() {
+   
+assertEquals(1,
+ new 
+Bank().rate("USD", "USD"));
+}
+Now we have three errors, but we expect them all to be fixed with one change:
+Bank
+int 
+rate(String from, String to) {
+   if 
+(from.equals(to))
+ return 
+1;
+   
+Integer rate= (Integer) rates.get(
+new 
+Pair(from, to));
+   return 
+rate.intValue();
+}
+Green bar!
+$5 + 10 CHF = $10 if rate is 2:1
+$5 + $5 = $10
+Return Money from $5 + $5
+Bank.reduce(Money)
+Reduce Money with conversion
+Reduce(Bank, String)
+Next we'll implement our last big test, $5 + 10 CHF. Several significant techniques have
+slipped into this chapter. For now, to review, we
+Added a parameter, in seconds, that we expected we would need
+Factored out the data duplication between code and tests
+Wrote a test (
+testArrayEquals
+) to check an assumption about the operation of Java
+Introduced a private helper class without distinct tests of its own
+Made a mistake in a refactoring and chose to forge ahead, writing another test to isolate the
+problem

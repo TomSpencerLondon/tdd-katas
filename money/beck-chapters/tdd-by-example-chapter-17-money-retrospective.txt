@@ -1,0 +1,229 @@
+Chapter 17. Money Retrospective
+Let's take a look back at the money example, both the process we used and the results. We
+will look at:
+What's Next?
+Metaphor - 
+The dramatic effect metaphor has on the structure of the design.
+JUnit Usage - 
+When we ran tests and how we used JUnit.
+Code Metrics - 
+A numerical abstract of the resulting code.
+Process - 
+We say red/green/refactor, but how much work goes into each step?
+Test Quality - 
+How do TDD tests stack up against conventional test metrics?
+What's Next?
+Is the code finished? No. There is that nasty duplication between 
+Sum.plus()
+ and
+Money.plus()
+. If we made 
+Expression
+ a class instead of an interface (not the usual direction,
+as classes more often become interfaces), we would have a natural home for the common
+code.
+I don't believe in "finished." TDD can be used as a way to strive for perfection, but that isn't
+its most effective use. If you have a big system, then the parts that you touch all the time
+should be absolutely rock solid, so you can make daily changes confidently. As you drift out to
+the periphery of the system, to parts that don't change often, the tests can be spottier and the
+design uglier without interfering with your confidence.
+When I've done all of the obvious tasks, I like running a code critic, like SmallLint for
+Smalltalk. Many of the suggestions that come up I already know about, or I disagree with.
+Automated critics don't forget, however, so if I don't delete an obsolete implementation I don't
+have to stress. The critic will point it out.
+Another "what's next?" question is, "What additional tests do I need?" Sometimes you think of
+a test that "shouldn't" work, and it does. Then you need to find out why. Sometimes a test
+that shouldn't work really doesn't, and you can record it as a known limitation or as work to
+be done later.
+Finally, when the list is empty is a good time to review the design. Do the words and concepts
+play together? Is there duplication that is difficult to eliminate given the current design?
+(Lingering duplication is a symptom of latent design.)
+Metaphor
+The biggest surprise for me in coding the money example was how different it came out this
+time. I have programmed money in production at least three times that I can think of. I have
+used it as an example in print another half-dozen times. I have programmed it live on stage
+(relax, it's not as exciting as it sounds) another fifteen times. I coded another three or four
+times preparing for writing (ripping out 
+Part I
+ and rewriting it based on early reviews). Then,
+while I was writing this, I thought of using 
+expression
+ as the metaphor and the design went in
+a completely different direction than before.
+I really didn't expect the metaphor to be so powerful. A metaphor should just be a source of
+names, shouldn't it? Apparently not.
+The metaphor that Ward Cunningham used for "several monies together with potentially
+different currencies" was a vector, like a mathematical vector where the coefficients were
+currencies instead of x
+2
+. I used 
+MoneySum
+ for a while, then 
+MoneyBag
+ (which is nice and
+physical), and finally 
+Wallet
+ (which is more common in most folks' experience). All of these
+metaphors imply that the collection of 
+Money
+s is flat. For example, 
+"2 USD + 5 CHF + 3 USD"
+would result in 
+"5 USD + 5 CHF"
+. Two values with the same currency would be merged.
+The 
+expression
+ metaphor freed me from a bunch of nasty issues about merging duplicated
+currencies. The code came out cleaner and clearer than I've ever seen it before. I'm
+concerned about the performance of expressions, but I'm happy to wait until I see some usage
+statistics before I start optimizing.
+What if I got to rewrite everything I ever wrote 20 times? Would I keep finding insight and
+surprise every time? Is there some way to be more mindful as I program so I can squeeze all
+the insight out of the first three times? The first time?
+JUnit Usage
+I had JUnit keep a log while I was coding the money example. I pressed the Run button
+precisely 125 times. Because I was writing at the same time as I was programming, the
+interval between runs isn't representative, but during the times I was just programming I ran
+the tests about once per minute. Only once in that whole time was I surprised by either
+success or failure, and that was a refactoring done in haste.
+Figure 17.1
+ is a histogram of the time interval between test runs. The large number of long
+intervals is most likely because of the time I spent writing.
+Figure 17.1. Histogram of the time interval between test runs
+Code Metrics
+Table 17.1
+ gives some statistics about the code.
+Table 17.1. Code Metrics
+ 
+Functional
+Test
+Classes
+5
+1
+Functions (
+[1]
+)
+22
+15
+Lines (
+[2]
+)
+91
+89
+Cyclomatic complexity (
+[3]
+)
+1.04
+1
+Lines/function
+4.1 (
+[4]
+)
+5.9 (
+[5]
+)
+[1]
+ Because we haven't implemented the whole API, we can't evaluate the absolute number of functions, or the number of
+functions per class, or the number of lines per class. However, the ratios are instructive. There are roughly as many lines and
+functions in the test and functional code.
+[2]
+ The number of lines of test code can be reduced by extracting common fixtures. The rough correspondence between lines of
+model code and lines of test code will remain, however.
+[3]
+ Cyclomatic complexity is a measure of conventional flow complexity. Test complexity is 1 because there are no branches or
+loops in test code. Functional code complexity is low because of the heavy use of polymorphism as a substitute for explicit
+control flow.
+[4]
+ This includes the function header and trailing brace.
+[5]
+ Lines per function in the tests is inflated because we have not factored out common fixture-building code, as explained in the
+section JUnit Usage (page 83).
+Process
+The TDD cycle is as follows.
+Add a little test.
+Run all tests and fail.
+Make a change.
+Run the tests and succeed.
+Refactor to remove duplication.
+Assuming that writing a test is a single step, how many changes does it take to compile, run,
+and refactor? (By change, I mean changing a method or class definition.) 
+Figure 17.2
+ shows a
+histogram of the number of changes for each of the money tests you have just seen.
+Figure 17.2. Number of changes per refactoring
+I expect that if we gathered data for a large project, the number of changes to compile and
+run would remain fairly small (they could be even smaller if the programming environment
+understood what the tests were trying to tell it - creating stubs automatically, for instance).
+However, (and here's at least a master's thesis) the number of changes per refactoring should
+follow a "fat tail" or leptokurtotic profile, which is like a bell curve but with more extreme
+changes than predicted by a standard bell curve. Many measurements in nature follow this
+profile, such as price changes in the stock market.
+[1]
+[1]
+ Mandelbrot, Benoit, ed. 1997. 
+Fractals and Scaling in Finance
+. New York: Springer-Verlag. ISBN: 0387983635
+Test Quality
+The tests that are a natural by-product of TDD are certainly useful enough to keep running as
+long as the system is running. Don't expect them to replace the other types of testing:
+Performance
+Stress
+Usability
+However, if the defect density of test-driven code is low enough, then the role of professional
+testing will inevitably change from "adult supervision" to something more closely resembling
+an amplifier for the communication between those who generally have a feeling for what the
+system should do and those who will make it do. As a stand-in for a long and interesting
+conversation about the future of professional testing, here are a couple of widely shared
+measurements of the tests written above.
+Statement coverage
+ certainly is not a sufficient measure of test quality, but it is a starting
+place. TDD followed religiously should result in 100 percent statement coverage. JProbe
+(
+www.sitraka.com/software/jprobe
+) reports only one line in one method not covered by the
+test cases - 
+Money.toString()
+, which we added explicitly as a debugging aid, not real model
+code.
+Defect insertion
+ is another way of evaluating test quality. The idea is simple: change the
+meaning of a line of code and a test should break. You can do this manually, or with a tool
+such as Jester (
+jester.sourceforge.net
+). Jester reports only one line it is able to change
+without breaking, 
+Pair.hashCode()
+. We faked the implementation to just return 0. Returning a
+different constant doesn't actually change the meaning of the program (one fake number is as
+good as another), so it isn't really a defect that has been inserted.
+Phlip, one of my reviewers, made a point about test coverage that bears repeating here. A
+gross measure of coverage is the number of tests testing different aspects of a program
+divided by the number of aspects that need testing (the complexity of the logic). One way to
+improve coverage is to write more tests, hence the dramatic difference in the number of tests
+a test-driven developer would write for code and the number of tests a professional tester
+would write. (
+Chapter 32
+) gives details of an example in which I wrote 6 tests and a tester
+wrote 65 tests for the same problem.) However, another way to improve coverage is to take a
+fixed set of tests and simplify the logic of the program. The refactoring step often has this
+effect - conditionals replaced by messages, or by nothing at all. In Phlip's words, "Instead of
+increasing the test coverage to walk all permutations of input (more properly an efficiently
+reduced sample of all possible permutations), we just leave the same tests covering various
+permutations of code as it shrinks."
+One Last Review
+The three items that come up time and again as surprises when teaching TDD are:
+The three approaches to making a test work cleanly - fake it, triangulation, and obvious
+implementation
+Removing duplication between test and code as a way to drive the design
+The ability to control the gap between tests to increase traction when the road gets slippery
+and cruise faster when conditions are clear
+Part II: The xUnit Example
+How, oh how, to talk about the implementation of a tool for test-driven development? Test-
+drive, naturally.
+The xUnit architecture comes out very smoothly in Python, so I'll switch to Python for 
+Part II
+.
+Don't worry, I'll give a little commentary on Python, for those of you who haven't seen it
+before. When you're done you'll have an introduction to Python, you'll be able to write your
+own testing framework, and you'll have seen a trickier example of TDD - three for the price of
+one.

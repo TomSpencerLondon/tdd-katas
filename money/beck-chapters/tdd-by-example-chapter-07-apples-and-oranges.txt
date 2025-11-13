@@ -1,0 +1,108 @@
+Chapter 7. Apples and Oranges
+$5 + 10 CHF = $10 if rate is 2:1
+$5 * 2 = $10
+Make "amount" private
+Dollar side effects?
+Money rounding?
+equals()
+hashCode()
+Equal null
+Equal object
+5 CHF * 2 = 10 CHF
+Dollar/Franc duplication
+Common equals
+Common times
+Compare Francs with Dollars
+The thought struck us at the end of 
+Chapter 6
+: what happens when we compare 
+Franc
+s with
+Dollar
+s? We dutifully turned our dreadful thought into an item on our to-do list. But we just
+can't get it out of our heads. What does happen?
+public void 
+testEquality() {
+   
+assertTrue(
+new 
+Dollar(5).equals(
+new 
+Dollar(5)));
+   
+assertFalse(
+new 
+Dollar(5).equals(
+new 
+Dollar(6)));
+   
+assertTrue(
+new 
+Franc(5).equals(
+new 
+Franc(5)));
+   
+assertFalse(
+new 
+Franc(5).equals(
+new 
+Franc(6)));
+   
+assertFalse(
+new 
+Franc(5).equals(
+new 
+Dollar(5)));
+}
+It fails. 
+Dollar
+s are 
+Franc
+s. Before you Swiss shoppers get all excited, let's try to fix the code.
+The equality code needs to check that it isn't comparing 
+Dollar
+s with 
+Franc
+s. We can do this
+right now by comparing the class of the two objects - two 
+Money
+s are equal only if their
+amounts and classes are equal.
+Money
+public boolean 
+equals(Object object) {
+   
+Money money = (Money) object;
+   return 
+amount == money.amount
+      
+&& getClass().equals(money.getClass());
+}
+Using classes this way in model code is a bit smelly. We would like to use a criterion that
+makes sense in the domain of finance, not in the domain of Java objects. But we don't
+currently have anything like a currency, and this doesn't seem to be sufficient reason to
+introduce one, so this will have to do for the moment.
+$5 + 10 CHF = $10 if rate is 2:1
+$5 * 2 = $10
+Make "amount" private
+Dollar side effects?
+Money rounding?
+equals()
+hashCode()
+Equal null
+Equal object
+5 CHF * 2 = 10 CHF
+Dollar/Franc duplication
+Common equals
+Common times
+Compare Francs to Dollars
+Currency?
+Now we really need to get rid of the common 
+times()
+ code, so we can get to mixed currency
+arithmetic. Before we do, however, we can review our grand accomplishments for this
+chapter. We
+Took an objection that was bothering us and turned it into a test
+Made the test run a reasonable, but not perfect way - 
+getClass()
+Decided not to introduce more design until we had a better motivation

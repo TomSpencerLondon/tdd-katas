@@ -1,0 +1,258 @@
+Chapter 9. Times We're Livin' In
+$5 + 10 CHF = $10 if rate is 2:1
+$5 * 2 = $10
+Make "amount" private
+Dollar side effects?
+Money rounding?
+equals()
+hashCode()
+Equal null
+Equal object
+5 CHF * 2 = 10 CHF
+Dollar/Franc duplication
+Common equals
+Common times
+Compare Francs to Dollars
+Currency?
+Delete testFrancMultiplication?
+What is there on our to-do list that might help us to eliminate those pesky useless subclasses?
+What would happen if we introduced the notion of currency?
+How do we want to implement currencies at the moment? I blew it, again. Before the ruler
+comes out, I'll rephrase: How do we want to test for currencies at the moment? There.
+Knuckles saved, for the moment.
+We may want to have complicated objects representing currencies, with flyweight factories to
+ensure we create no more objects than we really need. But for the moment, strings will do:
+public void 
+testCurrency() {
+   
+assertEquals("USD", Money.dollar(1).currency());
+   
+assertEquals("CHF", Money.franc(1).currency());
+}
+First we declare 
+currency()
+ in 
+Money
+:
+Money
+abstract 
+String currency();
+Then we implement it in both subclasses:
+Franc
+String currency() {
+   return 
+"CHF";
+}
+Dollar
+String currency() {
+   return 
+"USD";
+}
+We want the same implementation to suffice for both classes. We could store the currency in
+an instance variable and just return the variable. (I'll start going a little faster with the
+refactorings in the interest of time. If I go too fast, please tell me to slow down. Oh wait, this
+is a book - perhaps I just won't speed up much.)
+Franc
+private 
+String currency;
+Franc(
+int 
+amount) {
+   this
+.amount = amount;
+   
+currency = "CHF";
+}
+String currency() {
+   
+return currency;
+}
+We can do the same with Dollar:
+Dollar
+private 
+String currency;
+Dollar(
+int 
+amount) {
+   this
+.amount = amount;
+   
+currency = "USD";
+}
+String currency() {
+   
+return currency;
+}
+Now we can push up the declaration of the variable and the implementation of 
+currency()
+,
+because they are identical:
+Money
+protected 
+String currency;
+String currency() {
+   return 
+currency;
+}
+If we move the constant strings 
+"USD"
+ and 
+"CHF"
+ to the static factory methods, then the two
+constructors will be identical and we can create a common implementation.
+First we'll add a parameter to the constructor:
+Franc
+Franc(
+int 
+amount, String currency) {
+   this
+.amount = amount;
+   this
+.currency = "CHF";
+}
+This breaks the two callers of the constructor:
+Money
+static 
+Money franc(
+int 
+amount) {
+   return new 
+Franc(amount,
+ null
+);
+}
+Franc
+Money times(
+int 
+multiplier) {
+   return new 
+Franc(amount * multiplier,
+ null
+);
+}
+Wait a minute! Why is 
+Franc.times()
+ calling the constructor instead of the factory method? Do
+we want to make this change now, or will we wait? The dogmatic answer is that we'll wait, not
+interrupting what we're doing. The answer in my practice is that I will entertain a brief
+interruption, but only a brief one, and I will never interrupt an interruption (Jim Coplien
+taught me this rule). To be realistic, we'll clean up 
+times()
+ before proceeding:
+Franc
+Money times(
+int 
+multiplier) {
+   return 
+Money.franc(amount * multiplier);
+}
+Now the factory method can pass 
+"CHF"
+:
+Money
+static 
+Money franc(
+int 
+amount) {
+   return new 
+Franc(amount, "CHF");
+}
+And finally we can assign the parameter to the instance variable:
+Franc
+Franc(
+int 
+amount, String currency) {
+   this
+.amount = amount;
+   this
+.currency = currency; 
+}
+I'm feeling defensive again about taking such teeny-tiny steps. Am I recommending that you
+actually work this way? No. I'm recommending that you be able to work this way. What I did
+just now was to work in larger steps and make a stupid mistake halfway through. I unwound a
+minute's-worth of changes, shifted to a lower gear, and did it over with little steps. I'm feeling
+better now, so we'll see if we can make the analogous change to 
+Dollar
+ in one swell foop:
+Money
+static 
+Money dollar(
+int 
+amount) {
+   return new 
+Dollar(amount, "USD");
+}
+Dollar
+Dollar(
+int 
+amount, String currency) {
+   this
+.amount = amount;
+   this
+.currency = currency;
+}
+Money times(
+int 
+multiplier) {
+   return 
+Money.dollar(amount * multiplier);
+}
+And it worked first time. Whew!
+This is the kind of tuning you will be doing constantly with TDD. Are the teeny-tiny steps
+feeling restrictive? Take bigger steps. Are you feeling a little unsure? Take smaller steps. TDD
+is a steering process - a little this way, a little that way. There is no right step size, now and
+forever.
+The two constructors are now identical, so we can push up the implementation:
+Money
+Money(
+int 
+amount, String currency) {
+   this
+.amount = amount;
+   this
+.currency = currency;
+}
+Franc
+Franc(
+int 
+amount, String currency) {
+   
+super(amount, currency);
+}
+Dollar
+Dollar(
+int 
+amount, String currency) {
+   
+super(amount, currency);
+}
+$5 + 10 CHF = $10 if rate is 2:1
+$5 * 2 = $10
+Make "amount" private
+Dollar side effects? 
+Money rounding?
+equals()
+hashCode()
+Equal null
+Equal object
+5 CHF * 2 = 10 CHF
+Dollar/Franc duplication
+Common equals
+Common times
+Compare Francs to Dollars
+Currency?
+Delete testFrancMultiplication?
+We're almost ready to push up the implementation of 
+times()
+ and eliminate the subclasses,
+but first, to review, we
+Were a little stuck on big design ideas, so we worked on something small we noticed earlier
+Reconciled the two constructors by moving the variation to the caller (the factory method)
+Interrupted a refactoring for a little twist, using the factory method in 
+times()
+Repeated an analogous refactoring (doing to 
+Dollar
+ what we just did to 
+Franc
+) in one big step
+Pushed up the identical constructors
