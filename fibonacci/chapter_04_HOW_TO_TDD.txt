@@ -1,0 +1,323 @@
+4. HOW TO TDD
+
+TDD | 18 4. HOW TO TDD  
+Summary:  
+ Start with the simplest failing test you can think of  
+ Write the simplest code you can think of to pas s the test 
+quickly  
+ If no need to refactor, move on to the next failing test  
+ Refactor your test code, too!  
+ Parameterized tests are a useful way to consolidate similar  
+test methods  
+ Leave in  duplication  when it makes tests easier to 
+understand  
+ Aim for one te st method for each distinct rule. Use the test 
+name to clearly convey the rule  
+ Tests should read like a specification  
+ Localise dependencies on the objects under test  
+ In TDD, we’re done when we can’t think of any more tests 
+that should  fail 
+ TDD is a process  of design discovery  
+ Tests make changes safer and easier  
+ 
+The best way to explain how to test -drive a software design is with 
+a simple example.  
+We’re going to create  some code that will calculate numbers in the 
+Fibonacci sequence .  
+The Fibonacci sequence s tarts with zero and one, and then all 
+subsequent numbers are the sum of the previous two.  
+i.e. 0, 1, 0+1=1, 1+1=2, 2+1=3, 5, 8, 13, 21 etc  
+CODEMANSHIP | TDD | 19 FAILING TEST #1  
+We’ll start by writing a failing test . (I’m doing it in Java, with the 
+Junit testing framework.)  
+Try to think of the simplest test you could start with – the one that 
+would be easiest to pass.  
+public class FibonacciTests {  
+ 
+ @Test 
+ public void firstNumberInSequenceIsZero() {  
+  assertEquals (0, new Fibonacci().getNumber(0));  
+ } 
+ 
+} 
+Let’s write the simplest  code that will pass the test : 
+public class Fibonacci {  
+ 
+ public int getNumber( int index) { 
+  return 0; 
+ } 
+ 
+} 
+Next, let’s look at the code and see if we need to refactor it to make 
+the next test easier.  
+At this point, it’s hard to see how we could make this code easier 
+to change.  
+So let’s move on to the next failing test.  
+CODEMANSHIP | TDD | 20 FAILING TEST #2  
+public class FibonacciTests {  
+ 
+ @Test 
+ public void firstNumberInSequenceIsZero() {  
+  assertEquals (0, new Fibonacci().getNumber(0));  
+ } 
+  
+ @Test 
+ public void secondNumberInSequenceIsOne() {  
+  assertEquals (1, new Fibonacci().getNumber(1));  
+ } 
+ 
+} 
+Again, we write the simple st code that will pass both  of these tests.  
+public class Fibonacci {  
+ 
+ public int getNumber( int index) { 
+  return index; 
+ } 
+ 
+} 
+Now that we’re back on a green light, it’s time to think about 
+refactoring again.  
+The implementation code looks okay, but there’s some very 
+obvious duplication in the test cod e. (Remember: test code needs 
+to be easy to change, too!)  
+The most direct way we could eliminate this duplication would be 
+to turn  these two very similar test methods into a single 
+parameterized test  covering  both cases.  
+The built -in mechanism in J Unit for  writing parameterized tests is a 
+bit clunky, so I’m going to use JUnitParams  
+(github.com/Pragmatists/JUnitParams ) to make life easier.  
+CODEMANSHIP | TDD | 21 
+@RunWith (JUnitParamsRunner. class) 
+public class FibonacciTests {  
+ 
+ @Test  
+ @Parameters ({"0,0","1,1"}) 
+ public void firstTwoNumbersAreSameAsIndex( int index,  
+int expected) {  
+  assertEquals (expected,  
+new Fibonacci().getNumber(index));  
+ } 
+ 
+} Now, f or another failing test.  
+FAILING TEST #3  
+@RunWith (JUnitParamsRunner. class) 
+public class FibonacciTests {  
+ 
+ @Test  
+ @Parameters ({"0,0","1,1"}) 
+ public void firstTwoNumbersAreSameAsIndex( int index,  
+int expected) {  
+  assertEquals (expected,  
+new Fibonacci().getNumber(index));  
+ } 
+  
+ @Test  
+ public void thirdNumberInSequenceIsOne(){  
+  assertEquals (1, new Fibonacci().getNumber(2));  
+ } 
+ 
+} 
+And then the simplest code to pass all three tests:  
+CODEMANSHIP | TDD | 22 
+public class Fibonacci {  
+ 
+ public int getNumber( int index) { 
+  if(index < 2)  
+   return index; 
+  return 1; 
+ } 
+ 
+} Notice the branch in our implementation code.  There are two 
+distinct rules (or patterns) in our solution: one for the first two 
+numbers, and another for the rest.  
+If our  tests are to serve as specification, it helps enormously if the 
+rules are obvious from reading the test code.  
+So, even though there’s some obvious duplication of test code, in 
+this instance readability is more important . 
+For this reason, I choose not to a dd this third test case to the 
+parameterized test for the first two Fibonacci numbers.  
+This way, we end up with a test method for each rule , and we can 
+use the names of those test methods to clearly communicate the 
+rules.  
+But there ’s another  bit of duplica tion in the test code we should get 
+rid of.  
+Both tests know how to instantiate a Fibonacci  object and invoke 
+the getNumber()  method. If the interface of Fibonacci changes, 
+we’ll need to change multiple tests. Let’s refactor the test code to 
+put that knowl edge in one place.  
+CODEMANSHIP | TDD | 23 
+@RunWith (JUnitParamsRunner. class) 
+public class FibonacciTests {  
+ 
+ @Test 
+ @Parameters ({"0,0","1,1"}) 
+ public void firstTwoNumbersAreSameAsIndex( int index,  
+int expected) {  
+  assertEquals (expected, getFibonacciNumber(index));  
+ } 
+ 
+ @Test 
+ public void thirdNumberInSequenceIsOne(){  
+  assertEquals (1, getFibonacciNumber(2));  
+ } 
+ 
+ private int getFibonacciNumber( int index) { 
+  return new Fibonacci().getNumber(index);  
+ } 
+  
+} We find it’s generally a good idea to limit the knowledge our test 
+code has of the interfaces of the objects being tested.  
+Let’s move on to another failing test.  
+FAILING TEST #4  
+@Test 
+public void fourthNumberInSequenceIsTwo(){  
+ assertEquals (2, getFibonacciNumber(3));  
+} 
+To pass this test, the simplest solution I could think of is:  
+public class Fibonacci {  
+ 
+ public int getNumber( int index) { 
+  if(index < 2)  
+   return index; 
+  return index - 1; 
+ } 
+ 
+} 
+We discovered one rule for the first two numbers, and a second 
+rule for the next two.  
+CODEMANSHIP | TDD | 24 Let’s refactor the test code to reflect that, with another  
+parameterized test.  
+@Test 
+@Parameters ({"2,1", "3,2"}) 
+public void thirdNumberOnIsIndexMinusOne( int index,  
+int expected){  
+ assertEquals (expected, getFibonacciNumber(index));  
+} 
+But we’re not done yet. How do we know that? We know because 
+we can think of more failing test cases .  
+FAILING TEST #5  
+The sixth Fibonacci number has an index of 5 and a value of 5.  
+@Test  
+public void sixthNumberIsFive() {  
+ assertEquals (5, getFibonacciNumber(5));  
+} 
+To pass this test, the simplest change we can make to the 
+implementation is:  
+public class Fibonacci {  
+ 
+ public int getNumber( int index) { 
+  if(index < 2)  
+   return index; 
+  return getNumber(index - 1) + getNumber(index - 2); 
+ } 
+ 
+} 
+The fifth number obeys the same rule as the third and fourth, so 
+that extra test is duplication that doesn’t make the specif ication 
+any easier to understand. Let’s merge it into the parameterized test 
+for third and fourth, and rename the test method to more 
+accurately describe the rule.  
+CODEMANSHIP | TDD | 25 
+@RunWith (JUnitParamsRunner. class) 
+public class FibonacciTests {  
+ 
+ @Test  
+ @Parameters ({"0,0","1,1"}) 
+ public void firstTwoNumbersAreSameAsIndex(  
+int index,  
+int expected) {  
+  assertEquals (expected, getFibonacciNumber(index));  
+ } 
+ 
+ @Test  
+ @Parameters ({"2,1", "3,2", "5,5"}) 
+ public void thirdNumberOnIsSumOfPreviousTwo( int index,  
+int expected){  
+  assertEquals (expected, getFibonacciNumber(index));  
+ } 
+ 
+ private int getFibonacciNumber( int index) {  
+  return new Fibonacci().getNumber(index);  
+ } 
+  
+} To finish up, let’s see if we can think of any more fail ing test cases.  
+FAILING TEST #6  
+What would happen if we asked for the -1th Fibonacci number? 
+We’d expect that to fail, because there is no -1th number.  
+@Test(expected=IllegalArgumentException. class) 
+public void indexMustBePositiveInteger() {  
+ getFibonacciNumber( -1); 
+} 
+To pass this test, we just need to check the parameter value 
+satisfi es the rule, and throw the specified exception if it doesn’t.  
+CODEMANSHIP | TDD | 26 
+public class Fibonacci {  
+ 
+ public int getNumber( int index) { 
+  if(index < 0)  
+   throw new IllegalArgumentException();  
+  if(index <  2)  
+   return index; 
+  return getNumber(index - 1) + getNumber(index - 2); 
+ } 
+ 
+}  
+Our tests now read like a specification for our Fibonacci calculator. 
+Just by looking at the names of the test methods, we can see there 
+are three distinct  rules, and the names clearly convey what those 
+rules are.  
+We discovered  this design by working through a sequence of 
+examples – failing tests – and doing the simplest things we could 
+think of to pass them.  
+The end result is a working Fibonacci calculator, w ith a suite of fast -
+running automated tests that will help us if we need to change the 
+calculator later.  
+WHY GO TO ALL THE TR OUBLE?  
+Now, i magine we deliver this code to our end users, who complain 
+that it’s too slow on higher indexes.  
+This is because our algorithm is recursive, recalculating the same 
+numbers many times.  
+We decide to replace it with an iterative solution that remembers 
+and reuses numbers once they’ve been calculated.  
+CODEMANSHIP | TDD | 27 
+public class Fibonacci {  
+ 
+ public int getNumber( int index) { 
+  if(index < 0)  
+   throw new IllegalArgumentException();  
+   
+  int[] sequence = new int[index+1];  
+   
+  for (int i = 0; i <  sequence. length; i++) { 
+   if(i < 2){ 
+    sequence[i] = i;  
+   }else{ 
+    sequence[i] = sequence[i - 1] + sequence[i -2]; 
+   } 
+  } 
+   
+  return sequence[index];  
+ } 
+} It’s much safer to make this change be cause we have a good set of 
+automated tests that will alert us straight away if we break the 
+software.  
+This is a very important thing to remember about TDD: it may seem 
+like overkill to take such baby steps and write so many tests for such 
+a simple problem . But we’ve learned that by far the greater cost in 
+software development is the cost of changing code later, and for 
+the extra up -front investment of TDD, we get a potentially much 
+larger pay -off. 
+  
+CODEMANSHIP | TDD | 28 EXERCISE #1  
+a. Test -drive some code that will generate a lis t of prime 
+numbers that are less than 1,000  
+b. Test -drive some code that will convert integers from 1 to 
+4,000 into Roman Numerals  
+EXERCISE #2  
+Test -drive some code that will calculate the total net value of items 
+in a shopping cart  represented as a list of un it price and quantity  – 
+e.g., {{10.0, 5} , {25.5, 2}} , with the following discounts applied:  
+1. If total gross value > £100, apply a 5% discount  
+2. If total gross value > £200, apply a 10% discount  
+  
+CODEMANSHIP |
