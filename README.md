@@ -32,13 +32,22 @@ This repository contains multiple coding katas, each implemented using strict TD
 📁 [View Leap Year →](leap_year/)
 
 ### 3. Fibonacci Kata
-**Problem**: Calculate the nth Fibonacci number  
-**Phases**: 4 phases (A-D)  
-**Tests**: 9 passing  
-**Coverage**: 100%  
+**Problem**: Calculate the nth Fibonacci number
+**Phases**: 4 phases (A-D)
+**Tests**: 9 passing
+**Coverage**: 100%
 **Key Learning**: Algorithm emerged from tests, not upfront design
 
 📁 [View Fibonacci →](fibonacci/)
+
+### 4. Stats Calculator Kata
+**Problem**: Calculate statistics (min, max, count, average) for a sequence
+**Phases**: 4 phases (A-D)
+**Tests**: 10 passing
+**Coverage**: 100%
+**Key Learning**: Python built-ins handle complexity, simple is best
+
+📁 [View Stats Calculator →](stats_calculator/)
 
 ## TDD Principles Demonstrated
 
@@ -77,6 +86,14 @@ katas/
 │   ├── presentation materials
 │   └── git history (5 commits)
 │
+├── stats_calculator/    # Stats Calculator kata
+│   ├── src/
+│   ├── README.md
+│   ├── CLAUDE.md        # TDD guide
+│   ├── STATISTICS_EXPLAINED.md  # Mean vs Median vs Mode
+│   ├── presentation materials
+│   └── git history (10 commits)
+│
 └── README.md           # This file
 ```
 
@@ -86,7 +103,7 @@ Each kata has its own virtual environment and dependencies. To run any kata:
 
 ```bash
 # Navigate to the kata directory
-cd fizz_buzz  # or leap_year, or fibonacci
+cd fizz_buzz  # or leap_year, fibonacci, or stats_calculator
 
 # Activate virtual environment
 source venv/bin/activate
@@ -122,6 +139,7 @@ git log -p
 1. **FizzBuzz** - Learn basic TDD flow and rule ordering
 2. **Leap Year** - Practice with conditional logic and edge cases
 3. **Fibonacci** - Experience algorithm discovery through TDD
+4. **Stats Calculator** - Master Python built-ins and simple solutions
 
 ## Presentation Materials
 
@@ -154,6 +172,11 @@ Perfect for:
 - **Efficiency naturally**: Simplest code was also most efficient (O(n), O(1))
 - **Iterative > Recursive**: TDD led us to the optimal solution
 
+### Stats Calculator
+- **Python built-ins**: min(), max(), sum(), len() handle everything
+- **Edge cases for free**: Built-in functions handle negatives, duplicates automatically
+- **Simple is best**: 4 statements of logic, maximum clarity
+
 ## Statistics
 
 | Kata | Tests | Coverage | Commits | Lines of Code |
@@ -161,7 +184,8 @@ Perfect for:
 | FizzBuzz | 10 | 100% | 10+ | ~20 |
 | Leap Year | 13 | 100% | 7 | 8 |
 | Fibonacci | 9 | 100% | 5 | 7 |
-| **Total** | **32** | **100%** | **22+** | **~35** |
+| Stats Calculator | 10 | 100% | 10 | 11 |
+| **Total** | **42** | **100%** | **32+** | **~46** |
 
 ## Technologies Used
 
