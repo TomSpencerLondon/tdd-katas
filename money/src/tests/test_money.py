@@ -32,3 +32,10 @@ def test_franc_multiplication():
     five = Money.franc(5)
     assert Money.franc(10) == five.times(2)
     assert Money.franc(15) == five.times(3)
+
+
+# Chapter 9: Times We're Livin' In
+def test_currency():
+    """Test that currency() returns correct currency codes."""
+    assert "USD" == Money.dollar(1).currency()
+    assert "CHF" == Money.franc(1).currency()
