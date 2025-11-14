@@ -14,7 +14,7 @@ def test_multiplication():
     assert Dollar(15) == five.times(3)
 
 
-# Chapter 3 & 6: Equality for All
+# Chapter 3, 6, 7: Equality for All
 def test_equality():
     """Test that $5 equals $5, and $5 does not equal $6."""
     assert Dollar(5) == Dollar(5)
@@ -22,6 +22,8 @@ def test_equality():
     # Chapter 6: Add Franc equality tests
     assert Franc(5) == Franc(5)
     assert not (Franc(5) == Franc(6))
+    # Chapter 7: Francs should not equal Dollars
+    assert not (Franc(5) == Dollar(5))
 
 
 # Chapter 5: Franc-ly Speaking

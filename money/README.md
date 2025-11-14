@@ -79,11 +79,35 @@ Follow Kent Beck's Red-Green-Refactor cycle:
 4. **Commit**: Document the journey
 5. **Repeat**: Next test from the to-do list
 
-## Quick Start
+## Running Tests
+
+### Basic Test Run
 
 ```bash
-source venv/bin/activate
-ptw  # Watch mode
+# Run all tests
+pytest
+
+# Run with verbose output
+pytest -v
+
+# Run with coverage report
+pytest --cov=src --cov-report=term-missing
+
+# Run specific test file
+pytest src/tests/test_money.py -v
+```
+
+### Watch Mode (Recommended for TDD)
+
+```bash
+# Automatically re-run tests when files change
+ptw
+```
+
+### Using Python directly (without pytest installed)
+
+```bash
+python -m pytest src/tests/test_money.py -v
 ```
 
 Follow [CLAUDE.md](CLAUDE.md) for the step-by-step TDD guide through all 17 chapters.
