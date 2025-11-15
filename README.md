@@ -49,6 +49,22 @@ This repository contains multiple coding katas, each implemented using strict TD
 
 📁 [View Stats Calculator →](stats_calculator/)
 
+### 5. Money Kata (Kent Beck's TDD Classic)
+**Problem**: Build a multi-currency money system with exchange rates
+**Chapters**: 17 chapters from Kent Beck's "TDD by Example"
+**Tests**: 12 passing
+**Coverage**: 93%
+**Key Learning**: Design emerges from tests - Composite pattern, Expression metaphor, polymorphic reduction
+
+**What makes this special**:
+- Follow's Beck's original kata step-by-step
+- Chapter-by-chapter documentation showing design evolution
+- Demonstrates power of metaphor in shaping design
+- Shows how duplication drives abstraction
+- Complete journey from shameless duplication to clean design
+
+📁 [View Money Kata →](money/)
+
 ## TDD Principles Demonstrated
 
 Across all katas, you'll see these principles in action:
@@ -94,6 +110,13 @@ katas/
 │   ├── presentation materials
 │   └── git history (10 commits)
 │
+├── money/               # Money kata (Kent Beck's classic)
+│   ├── src/
+│   ├── beck-chapters/   # Beck's original chapter text
+│   ├── README.md        # Chapter-by-chapter guide
+│   ├── PRESENTATION_SUMMARY.md  # Complete presentation deck
+│   └── git history (17+ commits showing design evolution)
+│
 └── README.md           # This file
 ```
 
@@ -103,7 +126,7 @@ Each kata has its own virtual environment and dependencies. To run any kata:
 
 ```bash
 # Navigate to the kata directory
-cd fizz_buzz  # or leap_year, fibonacci, or stats_calculator
+cd fizz_buzz  # or leap_year, fibonacci, stats_calculator, or money
 
 # Activate virtual environment
 source venv/bin/activate
@@ -140,6 +163,7 @@ git log -p
 2. **Leap Year** - Practice with conditional logic and edge cases
 3. **Fibonacci** - Experience algorithm discovery through TDD
 4. **Stats Calculator** - Master Python built-ins and simple solutions
+5. **Money** - Advanced kata: design patterns, refactoring, metaphor power
 
 ## Presentation Materials
 
@@ -177,6 +201,13 @@ Perfect for:
 - **Edge cases for free**: Built-in functions handle negatives, duplicates automatically
 - **Simple is best**: 4 statements of logic, maximum clarity
 
+### Money (Kent Beck's Classic)
+- **Metaphor shapes design**: Expression metaphor led to cleaner code than 20+ previous attempts
+- **Duplication drives abstraction**: Shameless copy-paste → gradual extraction → clean design
+- **Polymorphism beats conditionals**: No type checking, just polymorphic dispatch
+- **Design emerges**: Composite pattern emerged from tests, not planned upfront
+- **Refactoring with confidence**: Tests enabled deleting entire classes safely
+
 ## Statistics
 
 | Kata | Tests | Coverage | Commits | Lines of Code |
@@ -185,7 +216,8 @@ Perfect for:
 | Leap Year | 13 | 100% | 7 | 8 |
 | Fibonacci | 9 | 100% | 5 | 7 |
 | Stats Calculator | 10 | 100% | 10 | 11 |
-| **Total** | **42** | **100%** | **32+** | **~46** |
+| Money | 12 | 93% | 17+ | ~60 |
+| **Total** | **54** | **~98%** | **49+** | **~106** |
 
 ## Technologies Used
 
