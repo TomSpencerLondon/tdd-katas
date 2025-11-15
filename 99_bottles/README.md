@@ -146,6 +146,34 @@ Only THEN do you refactor, guided by:
 - Code smells (your nose)
 - Flocking rules (your process)
 
+## Chapter-by-Chapter Progress
+
+### **Chapter 2: Test Driving Shameless Green** ⬅️ WE ARE HERE
+
+**Step 1: First Test (Verse 99)**
+- ✅ Created `test/bottles_test.rb` with test for verse 99
+- ✅ Created `lib/bottles.rb` with Bottles class
+- ✅ Followed TDD: Red (no file) → Red (no class) → Red (no method) → Red (wrong return) → Green!
+- ✅ Hardcoded the entire verse 99 lyrics
+- **Shameless!** We just made it pass, not perfect
+
+**Current Implementation:**
+```ruby
+class Bottles
+  def verse(number)
+    "99 bottles of beer on the wall, " +
+    "99 bottles of beer.\n" +
+    "Take one down and pass it around, " +
+    "98 bottles of beer on the wall.\n"
+  end
+end
+```
+
+**Status**: 1 test passing
+**Next**: Add more tests to force generalization
+
+---
+
 ## Technologies
 
 - **Language**: Ruby 2.6+
