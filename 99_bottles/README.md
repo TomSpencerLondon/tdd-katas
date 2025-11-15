@@ -148,29 +148,57 @@ Only THEN do you refactor, guided by:
 
 ## Chapter-by-Chapter Progress
 
-### **Chapter 2: Test Driving Shameless Green** ⬅️ WE ARE HERE
+### **Chapter 2: Test Driving Shameless Green** ✅ COMPLETE!
 
 **Step 1: First Test (Verse 99)**
 - ✅ Created `test/bottles_test.rb` with test for verse 99
 - ✅ Created `lib/bottles.rb` with Bottles class
 - ✅ Followed TDD: Red (no file) → Red (no class) → Red (no method) → Red (wrong return) → Green!
-- ✅ Hardcoded the entire verse 99 lyrics
-- **Shameless!** We just made it pass, not perfect
+- ✅ Hardcoded the entire verse 99 lyrics - **Shameless!**
 
-**Current Implementation:**
+**Step 2: Generalization (Verse 3)**
+- ✅ Added test for verse 3
+- ✅ Used Ruby string interpolation `#{number}` and `#{number-1}`
+- ✅ Both tests passing
+
+**Step 3: Special Cases**
+- ✅ Verse 2: Added ternary for singular "bottle" when count is 1
+- ✅ Verse 1: Special case with "Take it down" and "no more bottles"
+- ✅ Verse 0: Completely different verse - "No more" and "Go to the store"
+
+**Final Shameless Green Implementation:**
 ```ruby
 class Bottles
   def verse(number)
-    "99 bottles of beer on the wall, " +
-    "99 bottles of beer.\n" +
-    "Take one down and pass it around, " +
-    "98 bottles of beer on the wall.\n"
+    if number == 0
+      "No more bottles of beer on the wall, " +
+      "no more bottles of beer.\n" +
+      "Go to the store and buy some more, " +
+      "99 bottles of beer on the wall.\n"
+    elsif number == 1
+      "1 bottle of beer on the wall, " +
+      "1 bottle of beer.\n" +
+      "Take it down and pass it around, " +
+      "no more bottles of beer on the wall.\n"
+    else
+      "#{number} bottles of beer on the wall, " +
+      "#{number} bottles of beer.\n" +
+      "Take one down and pass it around, " +
+      "#{number-1} #{(number-1) == 1 ? 'bottle' : 'bottles'} of beer on the wall.\n"
+    end
   end
 end
 ```
 
-**Status**: 1 test passing
-**Next**: Add more tests to force generalization
+**Code Smells Introduced (Intentionally!):**
+- **Duplication**: "bottles of beer on the wall" repeated many times
+- **Conditionals**: if/elsif/else creates complexity
+- **String duplication**: Similar patterns across all branches
+- **Mixed abstraction levels**: Ternary within string interpolation
+
+**Status**: 5 tests passing (verses 99, 3, 2, 1, 0)
+**Key Learning**: Make it work first! We'll refactor in later chapters.
+**Next**: Chapter 3 - Unearthing Concepts (identifying abstractions to extract)
 
 ---
 
