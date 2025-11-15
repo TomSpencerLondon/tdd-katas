@@ -34,6 +34,10 @@ class Bottles
   end
 
   def pronoun(number)
-    "#{quantity(number)} #{container(number)}"
+    if number == 6
+      "1 six-pack"
+    else
+      "#{quantity(number)} #{container(number)}"
+    end
   end
 end
