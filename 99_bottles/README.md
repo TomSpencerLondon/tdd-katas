@@ -321,7 +321,312 @@ end
 - Flocking Rules remove duplication systematically
 - Abstractions emerge from process, not upfront design
 - Open/Closed Principle makes code extensible
-**Next**: Chapter 4 - Practicing Horizontal Refactoring (or continue polishing Chapter 3)
+
+---
+
+### **Chapter 4: Practicing Horizontal Refactoring** ✅ COMPLETE!
+
+**The Power of Systematic Refactoring**
+
+Continuing with Flocking Rules to eliminate ALL conditionals from `verse()` method.
+
+**Step 1: Introduce successor() - The "What Comes Next" Abstraction**
+- ✅ Discovered deep abstraction: What verse number comes next?
+- ✅ Created `successor(number)` method returning `number - 1` normally, `99` for verse 0
+- ✅ Replaced all `number-1` references with `successor(number)`
+- **Key Insight**: This abstraction wasn't obvious upfront - emerged from systematic refactoring!
+
+**Step 2: Extend action() to Handle Verse 0**
+- ✅ Added verse 0 case to `action()`: "Go to the store and buy some more"
+- ✅ Updated verse 0 to use `action(number)` instead of hardcoded string
+- ✅ Result: Verse 0 and else branch now STRUCTURALLY IDENTICAL!
+
+**Step 3: Final Unification - DELETE THE CONDITIONAL! 🎉**
+- ✅ Noticed only difference: verse 0 capitalizes first pronoun
+- ✅ Made else branch also capitalize first pronoun
+- ✅ **Deleted the entire if/else conditional**
+- ✅ All 8 tests still passing!
+
+**Final verse() Implementation (Chapter 4):**
+```ruby
+def verse(number)
+  "#{pronoun(number).capitalize} of beer on the wall, " +
+  "#{pronoun(number)} of beer.\n" +
+  "#{action(number)}, " +
+  "#{pronoun(successor(number))} of beer on the wall.\n"
+end
+```
+
+**The Journey:**
+- **Chapter 2 Start**: 4 conditional branches (verse 0, 1, 2, else) with massive duplication
+- **Chapter 3 Progress**: 2 conditional branches (verse 0, else) with extracted helpers
+- **Chapter 4 Achievement**: 0 conditional branches - SINGLE implementation handles ALL cases!
+
+**Helper Methods Summary:**
+- `container(number)`: "bottle" vs "bottles"
+- `quantity(number)`: "no more" vs number.to_s
+- `action(number)`: Handles verses 0, 1, and rest differently
+- `pronoun(number)`: Combines quantity+container, handles six-pack
+- `successor(number)`: What verse comes next (0→99, else→number-1)
+
+**What We Learned:**
+- **Horizontal Refactoring**: Make many small changes in one dimension before changing dimension
+- **Flocking Rules Work**: Systematic application reveals hidden abstractions
+- **Faith in Process**: Don't need to know the end design - it emerges from small steps
+- **Polymorphism via Methods**: Methods handle variation, not conditionals
+- **Deep Abstractions**: `successor()` wasn't obvious - emerged from removing duplication
+
+**Current Code State (After Chapter 4):**
+```ruby
+class Bottles
+  def song
+    verses(99, 0)
+  end
+
+  def verses(upper, lower)
+    upper.downto(lower).collect { |i| verse(i) }.join("\n")
+  end
+
+  def verse(number)
+    "#{pronoun(number).capitalize} of beer on the wall, " +
+    "#{pronoun(number)} of beer.\n" +
+    "#{action(number)}, " +
+    "#{pronoun(successor(number))} of beer on the wall.\n"
+  end
+
+  def container(number)
+    number == 1 ? 'bottle' : 'bottles'
+  end
+
+  def quantity(number)
+    number == 0 ? 'no more' : number.to_s
+  end
+
+  def action(number)
+    if number == 0
+      'Go to the store and buy some more'
+    elsif number == 1
+      'Take it down and pass it around'
+    else
+      'Take one down and pass it around'
+    end
+  end
+
+  def pronoun(number)
+    if number == 6
+      "1 six-pack"
+    else
+      "#{quantity(number)} #{container(number)}"
+    end
+  end
+
+  def successor(number)
+    if number == 0
+      99
+    else
+      number - 1
+    end
+  end
+end
+```
+
+**Comparison**:
+- **Lines of code**: ~50 lines (from ~40 in Chapter 2)
+- **verse() conditionals**: 0 (from 4 in Chapter 2!)
+- **Helper methods**: 6 (container, quantity, action, pronoun, successor, verses)
+- **Cyclomatic complexity of verse()**: 1 (no branches!)
+- **Tests passing**: 8/8
+- **Open/Closed**: Can add new requirements by modifying helper methods only
+
+**Status**: 8 tests passing, verse() method has ZERO conditionals!
+**Chapter 4 Complete!** Successfully eliminated all conditionals through systematic horizontal refactoring.
+
+---
+
+### **Chapter 5: Separating Responsibilities** ✅ COMPLETE!
+
+**Curing Primitive Obsession with Extract Class**
+
+Identified the dominant code smell and extracted a new class to represent bottle numbers.
+
+**Code Smell Identified: Primitive Obsession**
+- The "flocked five" methods (`container`, `quantity`, `action`, `pronoun`, `successor`) all:
+  - Take `number` as an argument (representing a **bottle number**, not a verse number)
+  - Have the same shape (conditional testing `number` for equality)
+  - Depend more on the `number` argument than on the class as a whole
+  - Could be considered "private"
+- This is **Primitive Obsession** - using a primitive (Integer) to represent a domain concept (bottle number)
+
+**The Cure: Extract Class**
+- Recipe: Extract the methods that obsess on the primitive into a new class
+- New class name: `BottleNumber` (named after what it **is**, not what it **does**)
+- BottleNumber represents a **number**, not a bottle (it's an idea/abstraction, not a thing)
+
+**Step 1: Create Empty BottleNumber Class**
+- ✅ Created empty `BottleNumber` class
+- ✅ Tests still passing (parsing new code)
+
+**Step 2: Copy Methods to BottleNumber**
+- ✅ Copied all five methods (`container`, `quantity`, `action`, `pronoun`, `successor`) to BottleNumber
+- ✅ Original methods still in Bottles (duplication is temporary)
+- ✅ Tests still passing (parsing duplicated code)
+
+**Step 3: Add attr_reader and initialize**
+- ✅ Added `attr_reader :number` to create number() method
+- ✅ Added `initialize(number)` to set `@number` instance variable
+- ✅ BottleNumber now holds onto the number value
+
+**Step 4: Wire Bottles to Forward to BottleNumber**
+- ✅ Changed each Bottles method to forward to BottleNumber:
+  - `BottleNumber.new(number).quantity(number)` (parse and execute)
+  - Then moved to last line (parse, execute, use result)
+  - Then deleted old implementation
+- ✅ Repeated for all five methods
+- ✅ Tests passing - BottleNumber fully wired in!
+
+**Step 5: Remove Redundant number Arguments**
+- BottleNumber instances **know** their number, so methods don't need arguments
+- **Recipe for removing arguments**:
+  1. Rename parameter to `delete_me=nil` (makes it optional)
+  2. Remove argument from all senders
+  3. Delete the parameter entirely
+- ✅ Applied to `quantity`, `container`, `action`, `pronoun`, `successor`
+- **Caught Issue**: `pronoun` calls `quantity(number)` and `container(number)` internally!
+  - Fixed by updating BottleNumber.pronoun to call `quantity` and `container` without arguments
+  - This is like the book's example with `action` calling `pronoun`
+
+**Step 6: Cache BottleNumber Instances in verse()**
+- ✅ Created `bottle_number = BottleNumber.new(number)` in verse()
+- ✅ Created `next_bottle_number = BottleNumber.new(bottle_number.successor)`
+- ✅ Updated template to send messages to cached objects:
+  - `bottle_number.pronoun.capitalize`
+  - `bottle_number.pronoun`
+  - `bottle_number.action`
+  - `next_bottle_number.pronoun`
+
+**Step 7: Delete Forwarding Methods**
+- ✅ Deleted all five forwarding methods from Bottles
+- ✅ Bottles.verse() now talks directly to BottleNumber objects
+- ✅ Tests still passing!
+
+**Key Insights from Chapter 5**:
+
+**On Object-Oriented Design**:
+- **Conditionals indicate missing objects**: The flocked five took an argument and examined it - deeply non-OO!
+- **Objects should be message senders, not examiners**: Want to send messages to smart objects, not supply behavior for dumb ones
+- **Modeling abstractions**: BottleNumber is an **idea** (a number with bottle-ish behavior), not a **thing** (an actual bottle)
+- **Naming**: Classes are named after what they **are** (BottleNumber), methods after what they **mean**
+
+**On Immutability**:
+- **Immutable objects are easier to reason about**: They never change, so what you see at creation is what you get
+- **Easier to test**: No need to set up complex state changes
+- **Thread safe**: Can't break shared state if it doesn't change
+- **Performance concerns often premature**: Create new objects freely, optimize later if needed
+
+**On Caching**:
+- **Caching is easy, cache invalidation is hard**: Knowing when to update a cache adds complexity
+- **Premature optimization raises costs**: Humans are bad at predicting performance problems
+- **Write simple code first**: Measure performance, then optimize slowest parts
+- **verse() creates 2 BottleNumber instances** (down from 9 if we didn't cache!)
+
+**On Liskov Violations**:
+- **successor still returns a number, not a BottleNumber**: This violates the principle!
+- **Promises broken**: Method named `successor` should return an object with same API as receiver
+- **Temporary shameless code**: Line 12 shows the violation: `BottleNumber.new(bottle_number.successor)`
+- We'll fix this in the next chapter
+
+**Final Code State (After Chapter 5):**
+```ruby
+class Bottles
+  def song
+    verses(99, 0)
+  end
+
+  def verses(upper, lower)
+    upper.downto(lower).collect { |i| verse(i) }.join("\n")
+  end
+
+  def verse(number)
+    bottle_number = BottleNumber.new(number)
+    next_bottle_number = BottleNumber.new(bottle_number.successor)
+
+    "#{bottle_number.pronoun.capitalize} of beer on the wall, " +
+    "#{bottle_number.pronoun} of beer.\n" +
+    "#{bottle_number.action}, " +
+    "#{next_bottle_number.pronoun} of beer on the wall.\n"
+  end
+end
+
+class BottleNumber
+  attr_reader :number
+
+  def initialize(number)
+    @number = number
+  end
+
+  def container
+    number == 1 ? 'bottle' : 'bottles'
+  end
+
+  def quantity
+    number == 0 ? 'no more' : number.to_s
+  end
+
+  def action
+    if number == 0
+      'Go to the store and buy some more'
+    elsif number == 1
+      'Take it down and pass it around'
+    else
+      'Take one down and pass it around'
+    end
+  end
+
+  def pronoun
+    if number == 6
+      "1 six-pack"
+    else
+      "#{quantity} #{container}"
+    end
+  end
+
+  def successor
+    if number == 0
+      99
+    else
+      number - 1
+    end
+  end
+end
+```
+
+**Comparison**:
+- **Classes**: 2 (was 1)
+- **Bottles methods**: 3 (song, verses, verse)
+- **BottleNumber methods**: 6 (container, quantity, action, pronoun, successor, initialize)
+- **Conditionals in verse()**: 0 (still!)
+- **Conditionals total**: 5 (in BottleNumber helper methods)
+- **Responsibilities**: Separated! Bottles knows about verses, BottleNumber knows about bottle numbers
+- **Tests passing**: 8/8
+- **Known issues**: Liskov violation in successor (returns Integer, not BottleNumber)
+
+**What We Achieved**:
+- ✅ Extracted BottleNumber class to cure Primitive Obsession
+- ✅ Bottles is now free of conditionals
+- ✅ Clear separation of responsibilities
+- ✅ verse() method is a clean template sending messages to objects
+- ✅ Immutable BottleNumber objects
+- ✅ Simple caching reduces object creation
+
+**What Still Needs Work**:
+- ❌ successor() returns Integer instead of BottleNumber (Liskov violation)
+- ❌ Still have conditionals (moved to BottleNumber)
+- ❌ No unit tests for BottleNumber (relies on Bottles tests)
+- ❌ Code not yet open to six-pack requirement
+
+**Status**: 8 tests passing, 2 classes with separated responsibilities!
+**Chapter 5 Complete!** Successfully extracted BottleNumber class and cured Primitive Obsession.
+**Next**: Chapter 6 - Achieving Openness (fix Liskov violation, make code open to six-pack)
 
 ---
 
