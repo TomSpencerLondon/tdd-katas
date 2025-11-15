@@ -46,3 +46,32 @@ def test_simple_addition():
     bank = Bank()
     reduced = bank.reduce(sum_expr, "USD")  # Bank reduces Expression to Money
     assert Money.dollar(10) == reduced
+
+
+# Chapter 13: Make It - Test that plus() returns Sum
+def test_plus_returns_sum():
+    """Test that $5 + $5 creates a Sum with augend and addend."""
+    five = Money.dollar(5)
+    result = five.plus(five)
+    sum_obj = result  # Should be a Sum
+    # Sum has two fields: augend (first) and addend (second)
+    assert five == sum_obj.augend
+    assert five == sum_obj.addend
+
+
+# Chapter 13: Test Bank.reduce() with Sum
+def test_reduce_sum():
+    """Test that Bank can reduce a Sum: $3 + $4 = $7."""
+    from src.money import Sum
+    sum_expr = Sum(Money.dollar(3), Money.dollar(4))
+    bank = Bank()
+    result = bank.reduce(sum_expr, "USD")
+    assert Money.dollar(7) == result
+
+
+# Chapter 13: Test Bank.reduce() with Money
+def test_reduce_money():
+    """Test that Bank can reduce plain Money (no conversion needed)."""
+    bank = Bank()
+    result = bank.reduce(Money.dollar(1), "USD")
+    assert Money.dollar(1) == result

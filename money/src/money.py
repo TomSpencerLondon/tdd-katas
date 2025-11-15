@@ -16,6 +16,23 @@ class Expression(ABC):
         pass
 
 
+# ============ Chapter 13: Sum Expression ============
+# Sum represents the addition of two Money amounts (not yet reduced)
+
+class Sum(Expression):
+    """Represents the sum of two Money amounts - an unevaluated expression."""
+
+    def __init__(self, augend, addend):
+        """Create a sum. Augend is the first value, addend is the second."""
+        self.augend = augend  # The first money being added
+        self.addend = addend  # The second money being added
+
+    def reduce(self, bank, to):
+        """Reduce this sum to Money by adding the amounts."""
+        amount = self.augend.amount + self.addend.amount
+        return Money(amount, to)
+
+
 class Money(Expression):
     """Money in different currencies - ONE class to rule them all!"""
 
@@ -27,8 +44,8 @@ class Money(Expression):
         return Money(self.amount * multiplier, self._currency)
 
     def plus(self, addend):
-        """Add two money amounts - returns an Expression (not yet reduced)."""
-        return Money(self.amount + addend.amount, self._currency)
+        """Add two money amounts - returns a Sum Expression (not yet reduced)."""
+        return Sum(self, addend)  # Ch 13: Return Sum, not Money!
 
     def reduce(self, bank, to):
         """Money reduces to itself (if same currency) or converts via bank."""
@@ -60,7 +77,8 @@ class Bank:
 
     def reduce(self, source, to):
         """Reduce an Expression to Money in the target currency."""
-        return Money.dollar(10)  # Ch 12: Fake it first!
+        # Ch 13: Use polymorphism! Let the Expression reduce itself.
+        return source.reduce(self, to)
 
 
 # Dollar and Franc subclasses DELETED! No longer needed.
