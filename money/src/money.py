@@ -15,6 +15,16 @@ class Expression(ABC):
         """Reduce this expression to Money in the given currency."""
         pass
 
+    @abstractmethod
+    def plus(self, addend):
+        """Add another Expression to this one."""
+        pass
+
+    @abstractmethod
+    def times(self, multiplier):
+        """Multiply this Expression by a number."""
+        pass
+
 
 # ============ Chapter 13: Sum Expression ============
 # Sum represents the addition of two Money amounts (not yet reduced)
@@ -34,6 +44,16 @@ class Sum(Expression):
         amount = (self.augend.reduce(bank, to).amount +
                   self.addend.reduce(bank, to).amount)
         return Money(amount, to)
+
+    def plus(self, addend):
+        """Add another Expression to this Sum - returns a new Sum."""
+        # Ch 16: Same logic as Money.plus()!
+        return Sum(self, addend)
+
+    def times(self, multiplier):
+        """Multiply this Sum by a number - returns a new Sum with each part multiplied."""
+        # Ch 16: Multiply each part! (2+3)*5 = 2*5 + 3*5
+        return Sum(self.augend.times(multiplier), self.addend.times(multiplier))
 
 
 class Money(Expression):

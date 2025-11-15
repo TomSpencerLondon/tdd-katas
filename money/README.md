@@ -192,7 +192,7 @@ def reduce(self, bank, to):
 
 **Key Insight**: Passed Bank as parameter to reduce() - we "knew" we'd need it!
 
-### **Chapter 15: Mixed Currencies** ⬅️ WE ARE HERE
+### **Chapter 15: Mixed Currencies**
 **What we did**: THE BIG TEST - `$5 + 10 CHF = $10 USD`
 **Problem Found**: Sum was adding raw amounts before converting!
 ```python
@@ -236,6 +236,51 @@ result = bank.reduce(sum_expr, "USD")  # Money(10, "USD")
 ```
 
 **Key Insight**: Composite pattern + polymorphism = expressions that can nest and evaluate themselves!
+
+### **Chapter 16: Abstraction, Finally** ⬅️ WE ARE HERE
+**What we did**: Completed the Expression interface with `plus()` and `times()`
+**New Tests**:
+- `Sum.plus()` - Can add to a Sum: `($5 + 10 CHF) + $5 = $15`
+- `Sum.times()` - Can multiply a Sum: `($5 + 10 CHF) * 2 = $20`
+
+**Implementation**:
+```python
+# Sum.plus() - Same as Money.plus()!
+def plus(self, addend):
+    return Sum(self, addend)
+
+# Sum.times() - Distribute multiplication over addition
+def times(self, multiplier):
+    return Sum(self.augend.times(multiplier),
+               self.addend.times(multiplier))
+```
+
+**Abstraction Complete**: Added `plus()` and `times()` to Expression interface
+- Both Money and Sum now implement the full Expression protocol
+- Expressions can be combined and transformed uniformly
+- Distributive law: `(a + b) * n = a*n + b*n`
+
+**Code Duplication Noticed**: `Sum.plus()` and `Money.plus()` are identical!
+- Beck suggests making Expression a class instead of interface
+- But we'll leave it for now - "I don't believe in 'finished'"
+- Perfect is the enemy of good enough
+
+**Experiment Attempted**: Return Money when adding same currencies (`$1 + $1`)
+- Would require checking if addend is Money with same currency
+- No clean way to do this without `isinstance` checks
+- Deleted the test - optimization not worth the complexity
+
+**Test/Code Ratio**: Test code is often longer than implementation!
+- 12 tests, ~60 lines of test code
+- 5 classes, ~50 lines of implementation
+- Roughly equal lines of test and production code
+- TDD economic sense: write 2x lines/day OR half the lines for same functionality
+
+**Key Insights**:
+- Not all optimization ideas pan out - be willing to discard experiments
+- Test code is a "Rosetta stone for future generations" - write clearly!
+- TDD produces low cyclomatic complexity (polymorphism instead of conditionals)
+- Equal test/production code is typical in TDD
 
 ## Setup
 

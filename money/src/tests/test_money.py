@@ -101,3 +101,31 @@ def test_mixed_addition():
     bank.add_rate("CHF", "USD", 2)  # 2 CHF = 1 USD
     result = bank.reduce(five_bucks.plus(ten_francs), "USD")
     assert Money.dollar(10) == result  # $5 + (10 CHF / 2) = $10
+
+
+# Chapter 16: Abstraction, Finally - Sum.plus()
+def test_sum_plus_money():
+    """Test that Sum can be added to Money: ($5 + 10 CHF) + $5 = $15."""
+    from src.money import Sum
+    five_bucks = Money.dollar(5)
+    ten_francs = Money.franc(10)
+    bank = Bank()
+    bank.add_rate("CHF", "USD", 2)
+    # Create Sum explicitly, then add more money to it
+    sum_expr = Sum(five_bucks, ten_francs).plus(five_bucks)
+    result = bank.reduce(sum_expr, "USD")
+    assert Money.dollar(15) == result  # ($5 + $5) + $5 = $15
+
+
+# Chapter 16: Sum.times()
+def test_sum_times():
+    """Test that Sum can be multiplied: ($5 + 10 CHF) * 2 = $20."""
+    from src.money import Sum
+    five_bucks = Money.dollar(5)
+    ten_francs = Money.franc(10)
+    bank = Bank()
+    bank.add_rate("CHF", "USD", 2)
+    # Multiply a sum by 2
+    sum_expr = Sum(five_bucks, ten_francs).times(2)
+    result = bank.reduce(sum_expr, "USD")
+    assert Money.dollar(20) == result  # ($5 + $5) * 2 = $20
