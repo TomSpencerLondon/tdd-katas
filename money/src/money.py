@@ -2,7 +2,7 @@
 
 
 class Money:
-    """Money in different currencies - no longer abstract!"""
+    """Money in different currencies - ONE class to rule them all!"""
 
     def __init__(self, amount, currency):
         self.amount = amount
@@ -16,11 +16,11 @@ class Money:
 
     @staticmethod
     def dollar(amount):
-        return Dollar(amount, "USD")
+        return Money(amount, "USD")
 
     @staticmethod
     def franc(amount):
-        return Franc(amount, "CHF")
+        return Money(amount, "CHF")
 
     def __eq__(self, other):
         return self.amount == other.amount and self._currency == other._currency
@@ -29,15 +29,5 @@ class Money:
         return f"{self.amount} {self._currency}"
 
 
-class Dollar(Money):
-    """Represents an amount in dollars."""
-
-    def __init__(self, amount, currency):
-        super().__init__(amount, currency)
-
-
-class Franc(Money):
-    """Represents an amount in francs."""
-
-    def __init__(self, amount, currency):
-        super().__init__(amount, currency)
+# Dollar and Franc subclasses DELETED! No longer needed.
+# The factory methods return Money directly with different currencies.

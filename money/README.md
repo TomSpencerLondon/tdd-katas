@@ -25,27 +25,91 @@ This implementation follows Beck's TDD methodology exactly as presented in his b
 4. **Make it right** - Refactor to remove duplication
 5. **Repeat** - Small steps, one test at a time
 
-## Chapters Implemented
+## Chapter-by-Chapter Journey
 
-Each chapter represents a specific TDD cycle:
+Each chapter demonstrates specific TDD techniques and design insights:
 
-- **Chapter 1**: Multi-Currency Money - Basic multiplication
-- **Chapter 2**: Degenerate Objects - Return new objects, not side effects
-- **Chapter 3**: Equality for All - Implement equals()
-- **Chapter 4**: Privacy - Make amount private
-- **Chapter 5**: Franc-ly Speaking - Duplicate Dollar for Franc
-- **Chapter 6**: Equality for All, Redux - Compare Dollars to Francs
-- **Chapter 7**: Apples and Oranges - Prevent mixed currency comparison
-- **Chapter 8**: Makin' Objects - Introduce factory methods
-- **Chapter 9**: Times We're Livin' In - Extract superclass Money
-- **Chapter 10**: Interesting Times - Implement times() in Money
-- **Chapter 11**: The Root of All Evil - Eliminate subclasses
-- **Chapter 12**: Addition, Finally - Implement addition
-- **Chapter 13**: Make It - Handle mixed currency addition
-- **Chapter 14**: Change - Implement currency conversion
-- **Chapter 15**: Mixed Currencies - Handle complex expressions
-- **Chapter 16**: Abstraction, Finally - Clean up abstractions
-- **Chapter 17**: Money Retrospective - Review and reflect
+### **Chapter 1: Multi-Currency Money**
+**What we did**: Wrote first test for `$5 * 2 = $10`
+**TDD Steps**:
+- Started with hardcoded `amount = 10` (the "sin"!)
+- Made duplication visible: `amount = 5 * 2`
+- Generalized step-by-step to use constructor parameter and multiplier
+**Key Insight**: "Fake it till you make it" - hardcode first, then generalize
+
+### **Chapter 2: Degenerate Objects**
+**What we did**: Eliminated side effects in `times()`
+**Problem**: `five.times(2)` was changing `five` to 10!
+**Solution**: Return new `Dollar` object instead of mutating
+**Test Change**: `product = five.times(2)` instead of checking `five.amount`
+**Key Insight**: Value objects should be immutable
+
+### **Chapter 3: Equality for All**
+**What we did**: Implemented `__eq__` for Dollar
+**TDD Technique**: **Triangulation** - wrote two tests ($5 == $5, $5 != $6) to force generalization
+**Why**: Value objects need equality to compare results
+**Key Insight**: Tests drive out the operations we need
+
+### **Chapter 4: Privacy**
+**What we did**: Used equality in tests instead of accessing `.amount`
+**Before**: `assert product.amount == 10`
+**After**: `assert Dollar(10) == product`
+**Key Insight**: Using the just-developed feature (equality) improves tests and enables encapsulation
+
+### **Chapter 5: Franc-ly Speaking**
+**What we did**: Copy-pasted Dollar to create Franc
+**Beck's Permission**: "Shameless duplication" to get green fast!
+**Code Smell**: Intentional - we'll clean it up soon
+**Key Insight**: Speed to green trumps design... temporarily. The cycle isn't complete without refactoring!
+
+### **Chapter 6: Equality for All, Redux**
+**What we did**: Extracted Money superclass
+**Steps**:
+1. Created empty `Money` class
+2. Made `Dollar` extend `Money`
+3. Pushed up `amount` field
+4. Pushed up `__eq__` method
+5. Did same for `Franc`
+**Key Insight**: Small, safe steps. Run tests after each tiny change.
+
+### **Chapter 7: Apples and Oranges**
+**What we did**: Made Francs not equal Dollars
+**Test Added**: `assert not (Franc(5) == Dollar(5))`
+**Fix**: Changed `__eq__` to compare `__class__` not just amount
+**Beck's Note**: Comparing classes is "smelly" but we don't have currency concept yet
+**Key Insight**: Turned discomfort into a test
+
+### **Chapter 8: Makin' Objects**
+**What we did**: Introduced factory methods `Money.dollar()` and `Money.franc()`
+**Why**: Decouple tests from concrete subclasses
+**Test Change**: `Dollar(5)` → `Money.dollar(5)`
+**Goal**: Prepare to eliminate subclasses entirely
+**Key Insight**: Factory methods give us flexibility to change implementation without breaking tests
+
+### **Chapter 9: Times We're Livin' In**
+**What we did**: Added `currency()` method returning "USD" or "CHF"
+**Steps**:
+1. Added `_currency` instance variable
+2. Set it in constructor: `Money(amount, currency)`
+3. Made factory methods pass currency: `Dollar(amount, "USD")`
+4. Pushed up identical constructors to Money
+**Key Insight**: Move variation to the caller to enable consolidation
+
+### **Chapter 10: Interesting Times**
+**What we did**: Made Money concrete and pushed up `times()`
+**Critical Change**: `__eq__` now compares `_currency` instead of `__class__`
+**Why This Works**:
+- `Dollar(10, "USD")` and `Money(10, "USD")` are now equal!
+- We can return `Money` from `times()` instead of subclass
+**Added**: `__str__` for better test output
+**Key Insight**: Tests tell us if our refactoring works - ask the computer, don't just reason!
+
+### **Chapter 11: The Root of All Evil** ⬅️ WE ARE HERE
+**What we're doing**: Delete Dollar and Franc subclasses entirely!
+**Why Possible**: Subclasses only have constructors now
+**Change**: Factory methods return `Money` directly
+**Tests to Delete**: Redundant tests that no longer add value
+**Key Insight**: As design evolves, some tests become redundant. Delete them!
 
 ## Setup
 
