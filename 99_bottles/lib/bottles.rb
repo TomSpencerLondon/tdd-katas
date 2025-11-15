@@ -9,15 +9,15 @@ class Bottles
 
   def verse(number)
     if number == 0
-      "No more bottles of beer on the wall, " +
-      "no more bottles of beer.\n" +
+      "#{pronoun(0).capitalize} of beer on the wall, " +
+      "#{pronoun(0)} of beer.\n" +
       "Go to the store and buy some more, " +
-      "99 bottles of beer on the wall.\n"
+      "#{pronoun(99)} of beer on the wall.\n"
     else
-      "#{quantity(number)} #{container(number)} of beer on the wall, " +
-      "#{quantity(number)} #{container(number)} of beer.\n" +
+      "#{pronoun(number)} of beer on the wall, " +
+      "#{pronoun(number)} of beer.\n" +
       "#{action(number)}, " +
-      "#{quantity(number-1)} #{container(number-1)} of beer on the wall.\n"
+      "#{pronoun(number-1)} of beer on the wall.\n"
     end
   end
 
@@ -31,5 +31,9 @@ class Bottles
 
   def action(number)
     number == 1 ? 'Take it down and pass it around' : 'Take one down and pass it around'
+  end
+
+  def pronoun(number)
+    "#{quantity(number)} #{container(number)}"
   end
 end
