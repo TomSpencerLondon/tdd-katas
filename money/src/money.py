@@ -48,8 +48,12 @@ class Money(Expression):
         return Sum(self, addend)  # Ch 13: Return Sum, not Money!
 
     def reduce(self, bank, to):
-        """Money reduces to itself (if same currency) or converts via bank."""
-        return Money(self.amount, self._currency)
+        """Money reduces to target currency using Bank's exchange rate."""
+        # Ch 14: Ask the bank for the exchange rate!
+        rate = bank.rate(self._currency, to)
+        # Divide amount by rate to convert
+        # Example: 2 CHF with rate 2 → 2/2 = 1 USD
+        return Money(self.amount / rate, to)
 
     def currency(self):
         return self._currency
@@ -69,16 +73,36 @@ class Money(Expression):
         return f"{self.amount} {self._currency}"
 
 
-# ============ Chapter 12: Bank ============
+# ============ Chapter 12, 14: Bank ============
 # Bank knows exchange rates and can "reduce" Expressions to Money
 
 class Bank:
     """Bank applies exchange rates to reduce Expressions to Money."""
 
+    def __init__(self):
+        """Initialize the bank with an empty rate table."""
+        self._rates = {}  # Dictionary to store exchange rates
+
     def reduce(self, source, to):
         """Reduce an Expression to Money in the target currency."""
         # Ch 13: Use polymorphism! Let the Expression reduce itself.
         return source.reduce(self, to)
+
+    def add_rate(self, from_currency, to_currency, rate):
+        """Add an exchange rate. Example: CHF to USD at rate 2 means 2 CHF = 1 USD."""
+        # Ch 14: Store rates in a dictionary using (from, to) as key
+        key = (from_currency, to_currency)  # Python tuple as dict key
+        self._rates[key] = rate
+
+    def rate(self, from_currency, to_currency):
+        """Get the exchange rate from one currency to another."""
+        # Ch 14: Special case - converting to same currency always has rate 1
+        if from_currency == to_currency:
+            return 1
+
+        # Look up the rate in our table
+        key = (from_currency, to_currency)
+        return self._rates.get(key, 1)
 
 
 # Dollar and Franc subclasses DELETED! No longer needed.

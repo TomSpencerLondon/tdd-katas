@@ -75,3 +75,18 @@ def test_reduce_money():
     bank = Bank()
     result = bank.reduce(Money.dollar(1), "USD")
     assert Money.dollar(1) == result
+
+
+# Chapter 14: Change - Currency conversion!
+def test_reduce_money_different_currency():
+    """Test that Bank converts currencies: 2 CHF = 1 USD (rate 2:1)."""
+    bank = Bank()
+    bank.add_rate("CHF", "USD", 2)  # Set the exchange rate
+    result = bank.reduce(Money.franc(2), "USD")
+    assert Money.dollar(1) == result  # 2 CHF / 2 = 1 USD
+
+
+# Chapter 14: Identity rate test
+def test_identity_rate():
+    """Test that converting USD to USD has rate of 1."""
+    assert 1 == Bank().rate("USD", "USD")
