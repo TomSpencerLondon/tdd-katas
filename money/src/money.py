@@ -1,7 +1,22 @@
 """Money kata implementation - Following Kent Beck's TDD by Example."""
 
+from abc import ABC, abstractmethod
 
-class Money:
+
+# ============ Chapter 12: Expression Pattern ============
+# Expression = anything that represents money (Money, Sum, etc.)
+# Think: (2 + 3) is an expression, so is ($5 + 10 CHF)
+
+class Expression(ABC):
+    """Interface for any money-like value that can be reduced to a currency."""
+
+    @abstractmethod
+    def reduce(self, bank, to):
+        """Reduce this expression to Money in the given currency."""
+        pass
+
+
+class Money(Expression):
     """Money in different currencies - ONE class to rule them all!"""
 
     def __init__(self, amount, currency):
@@ -10,6 +25,14 @@ class Money:
 
     def times(self, multiplier):
         return Money(self.amount * multiplier, self._currency)
+
+    def plus(self, addend):
+        """Add two money amounts - returns an Expression (not yet reduced)."""
+        return Money(self.amount + addend.amount, self._currency)
+
+    def reduce(self, bank, to):
+        """Money reduces to itself (if same currency) or converts via bank."""
+        return Money(self.amount, self._currency)
 
     def currency(self):
         return self._currency
@@ -27,6 +50,17 @@ class Money:
 
     def __str__(self):
         return f"{self.amount} {self._currency}"
+
+
+# ============ Chapter 12: Bank ============
+# Bank knows exchange rates and can "reduce" Expressions to Money
+
+class Bank:
+    """Bank applies exchange rates to reduce Expressions to Money."""
+
+    def reduce(self, source, to):
+        """Reduce an Expression to Money in the target currency."""
+        return Money.dollar(10)  # Ch 12: Fake it first!
 
 
 # Dollar and Franc subclasses DELETED! No longer needed.

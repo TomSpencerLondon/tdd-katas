@@ -3,7 +3,7 @@
 Chapter by chapter implementation following the book exactly.
 """
 
-from src.money import Money
+from src.money import Money, Bank
 
 
 # Chapter 1-4, 8: Multi-Currency Money & Value Objects
@@ -36,3 +36,13 @@ def test_currency():
 # It tested the exact same times() logic as test_multiplication,
 # just with CHF instead of USD. Now that there's only one Money class,
 # this test is redundant and adds no value.
+
+
+# Chapter 12: Addition, Finally
+def test_simple_addition():
+    """Test $5 + $5 = $10 using Expression and Bank."""
+    five = Money.dollar(5)
+    sum_expr = five.plus(five)  # Returns an Expression
+    bank = Bank()
+    reduced = bank.reduce(sum_expr, "USD")  # Bank reduces Expression to Money
+    assert Money.dollar(10) == reduced
