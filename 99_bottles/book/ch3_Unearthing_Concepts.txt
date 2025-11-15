@@ -1,0 +1,826 @@
+Page 513. Unearthing Concepts
+The Shameless Green solution values understandabili ty, straight-forwardness and efficiency,
+with little regard for changeability. It contains d uplication, and is unapologetic about leaning in
+the procedural direction. It’s fast, and cheap, and  may be good enough, at least until something
+changes.
+However, in the real world, requirements do change, and when that happens, the standards for
+code rise.
+This chapter defines a new requirement, which trigg ers a deeper look at the structure of the
+code. It then introduces a few straightforward rule s to allow you to systematically and
+incrementally improve code, without fear of getting  lost or introducing bugs. The rules are
+simple, but they allow complex behavior to emerge. By the end of this chapter, you’ll have begun
+to unearth concepts that are currently hidden in th e code.
+3.1. Listening to Change
+Code is expensive. Writing it costs time or money. It therefore behooves you to be as efficient as
+possible. The most cost-effective code is as good a s necessary, but no better.
+However, programming is an art, and programmers lov e elegant code. The conundrum is that
+once an initial, more prosaic, solution exists, the  problem is solved, and the choice of whether to
+deliver it as is, or to improve upon it at this mom ent, must be weighed carefully.
+If the problem is solved, and you choose to refacto r now rather than later, you pay the
+opportunity cost[9] of not being able to work on other  problems. Spending time "improving" code
+based purely on aesthetics may not be the best use of your precious time.
+A good way to know that you’re using limited time w isely is to be driven by changes in
+requirements. The arrival of a new requirement tell s you two things, one very specific, the other
+more general.
+Specifically, a new requirement tells you exactly h ow the code should change. Waiting for this
+requirement avoids the need to speculate about the future. The requirement reveals exactly how
+you should have initially arranged the code.
+More generally, the need for change imposes higher standards on the affected code. Code that
+never changes obviously doesn’t need to be very cha ngeable, but once a new requirement
+arrives, the bar is raised. Code that needs to be c hanged must be changeable. Thus, a new
+requirement for the 99 Bottles problem will drive y ou to improve the code.
+Here’s that new requirement: users have requested t hat you alter the 99 Bottles code to output "1
+six-pack" in each place where it currently says "6 bottles."
+Here’s a reminder of the current state of the code.
+3.1. Listening to Change
+Page 52Listing 3.1: Shameless Green
+ 1 class  Bottles
+ 2   def song
+ 3     verses( 99,0)
+ 4   end
+ 5 
+ 6   def verses (upper, lower)
+ 7     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+ 8   end
+ 9 
+10   def verse (number)
+11     case  number
+12     when  0
+13       "No more bottles of beer on the wall, "  +
+14       "no more bottles of beer. \n" +
+15       "Go to the store and buy some more, "  +
+16       "99 bottles of beer on the wall. \n"
+17     when  1
+18       "1 bottle of beer on the wall, "  +
+19       "1 bottle of beer. \n" +
+20       "Take it down and pass it around, "  +
+21       "no more bottles of beer on the wall. \n"
+22     when  2
+23       "2 bottles of beer on the wall, "  +
+24       "2 bottles of beer. \n" +
+25       "Take one down and pass it around, "  +
+26       "1 bottle of beer on the wall. \n"
+27     else
+28       "#{number } bottles of beer on the wall, "  +
+29       "#{number } bottles of beer. \n" +
+30       "Take one down and pass it around, "  +
+31       "#{number -1} bottles of beer on the wall. \n"
+32     end
+33   end
+34 end
+In the same way that Shameless Green makes no guess es about the future, you should refrain
+from making up requirements. Notice the request is not to "replace every multiple of 6 with n
+six-pack(s)" nor does it mention special handling f or "cases" of beer. The requirement is simply
+to output "1 six-pack" where it currently says "6 b ottles." Knowledge of the domain may prompt
+you to query your customer about these other possib ilities, and past experience may
+occasionally lead you to infer a requirement other than the one specified. But generally it’s best
+to clarify requirements, and then write the minimum  necessary code.
+Despite the fact that you should rarely infer new r equirements, it’s true that things that change,
+do. Now that someone has asked for a change, you ha ve license to improve this code. The code
+arrangement that was acceptable for Shameless Green  is not necessarily best for enabling
+change.
+Conditionals are the bane of OO. Shameless Green co ntains a case  statement, and within its
+branches, much duplication. While this was acceptab le in the initial solution, consider the result
+if you continue down the conditional path. The foll owing example illustrates the problem by
+amending the existing code to meet the "six-pack" r equirement.
+Listing 3.2: Compounding Conditional Sins
+3.2. Starting With the Open/Closed Principle
+Page 53 1 def verse (number)
+ 2   case  number
+ 3   when  0
+ 4     "No more bottles of beer on the wall, "  +
+ 5     # ...
+ 6   when  1
+ 7     "1 bottle of beer on the wall, "  +
+ 8     # ...
+ 9   when  2
+10     "2 bottles of beer on the wall, "  +
+11     # ...
+12   when  6
+13     "1 six-pack of beer on the wall, "  +
+14     "1 six-pack of beer. \n" +
+15     "Take one down and pass it around, "  +
+16     "5 bottles of beer on the wall. \n"
+17   when  7
+18     "7 bottles of beer on the wall, "  +
+19     "7 bottles of beer. \n" +
+20     "Take one down and pass it around, "  +
+21     "1 six-pack of beer on the wall. \n"
+22   else
+23     "#{number } bottles of beer on the wall, "  +
+24     # ...
+25   end
+26 end
+The verse  case  statement initially contained four branches, and i n the code above the number
+of branches has ballooned to six. This is unaccepta ble. Conditionals breed, and now that this one
+has started reproducing, you must do something to s top it.
+3.2. Starting With the Open/Closed Principle
+The decision about whether to refactor in the first  place should be determined by whether your
+code is already "open" to the new requirement.
+"Open" is short for "Open/Closed," which in turn is  short for "open for extension and closed for
+modification." The "O" in open supplies the "O" in the acronym "SOLID" (see sidebar). Code is
+open to a new requirement when you can meet that ne w requirement without changing existing
+code.
+SOLID Design Principles
+The SOLID acronym was coined by Michael Feathers an d popularized by Robert Martin.
+Each letter stands for a well-known principle in ob ject-oriented design. Here’s a formal
+definition of each one:
+S - Single Responsibility
+The methods in a class should be cohesive around a single purpose.
+O - Open-Closed
+Objects should be open for extension, but closed fo r modification.
+3.2. Starting With the Open/Closed Principle
+Page 54L - Liskov Substitution
+Subclasses should be substitutable for their superc lasses.
+I - Interface Segregation
+Objects should not be forced to depend on methods t hey don’t use.
+D - Dependency Inversion
+Depend on abstractions, not on concretions.
+If you find the above definitions less than enlight ening, don’t despair. As principles are
+referenced in this book, plain language explanation s (like the one below) will follow.
+The "open" principle says that you should not confl ate the process of moving code around, of
+refactoring, with the act of adding new features. Y ou should instead separate these two
+operations. When faced with a new requirement, firs t rearrange the existing code such that it’s
+open to the new feature, and once that’s complete, then add the new code.
+The current Bottles  class is not open to the "six-packs" requirement b ecause adding new verse
+variants requires editing the conditional. Therefor e, when faced with this new requirement,
+your first task is to refactor the existing code in to a shape such that you can then  implement the
+new requirement by merely adding code. Unfortunatel y, it is quite likely that you do not know
+how to do this, and so are at a loss about how to a pproach the problem.
+Fortunately, you do not have to know everything in order to choose the right place to start. When
+faced with this situation, be guided by the followi ng flowchart.
+3.3. Recognizing Code Smells
+Page 55
+Figure 3.1: Open Closed Flowchart
+As per the above flowchart, first ask yourself if t he existing code is already open to the new
+requirement. If so, your job is simply to write the  new code.
+If not, next ask if you know how to alter the exist ing code to make it open to the new
+requirement. This case is also straightforward. If so, make the alteration, and then write the new
+code.
+However, the sad truth is that the answer to both o f those questions is often "no." The existing
+code isn’t open to the new requirement, and you hav e no idea how to make it so. At this point
+"code smells" come to the rescue. If you can identi fy smells in code, you isolate flaws and correct
+them one by one.
+3.3. Recognizing Code Smells
+3.4. Identifying the Best Point of Attack
+Page 56Most code is imperfect. Its flaws are many, and so thoroughly entangled that it is impossible to
+correct all of them at once. If you’ve ever tackled  a bit of code, making change after change
+without managing to complete the task, and eventual ly rolling everything back, you know this
+problem.
+The trick to successfully improving code that conta ins many flaws is to isolate and correct them
+one at a time. In his Refactoring  book, Martin Fowler identifies and names many comm on flaws,
+and provides refactoring recipes to fix them. Chapt er 3 (which was co-written by Kent Beck, who
+coined the term) calls the flaws "code smells." Tha nks to Fowler’s book, if you can identify a smell
+within code, you can look up the curative refactori ng, and apply that refactoring to remove the
+flaw.
+If you’re wondering if you need to go read Fowler’s  book right now, the answer is, “not
+necessarily.” Fowler’s principles are introduced an d demonstrated here. However, this book
+explores only a few of the many refactoring recipes  with which you would be well-served to be
+familiar. Fowler’s book is an excellent investment.  Also, if you prefer your examples in Ruby, you
+may be interested in Jay Fields' version  of the book.
+If asked to list a few code smells, you might sugge st "duplication," or "classes that are too big,"
+and it is indeed true that Duplicated Code  and Large Class  are two of the smells listed in Martin
+Fowler’s Refactoring book. It’s fairly obvious how to remove these common smells (abstract
+away the duplication, or divide one class into seve ral), and so it may appear that smells are a
+general, hand-wavy kind of thing.
+However, there are many other code smells with whic h you may not be as familiar. You can
+probably guess the definition of Divergent Change , but can you define Feature Envy ? Can you
+recognize and specify the curative refactorings for  Primitive Obsession , Inappropriate Intimacy ,
+or Shotgun Surgery ?
+A complete exploration of every code smell is beyon d the scope of this book, especially since Mr.
+Fowler has covered the topic so thoroughly. However , the refactorings undertaken here will be
+driven and guided by smells, so the task at hand is  to identify the smells in the current Bottles
+class. The easiest way to unearth these smells is t o make a list of the things you dislike about the
+code.
+3.4. Identifying the Best Point of Attack
+The current 99 Bottles code is not "open" to the si x-pack requirement. If you are unclear about
+how to make it open (which is often the case), the way forward is to start removing code smells.
+If the smells aren’t immediately obvious, start by making a list of the things you find
+objectionable.
+Consider the verse  method (repeated below).
+Listing 3.3: Shameless Verse
+ 1 def verse (number)
+ 2   case  number
+ 3   when  0
+3.5. Refactoring Systematically
+Page 57
+““ 4     "No more bottles of beer on the wall, "  +
+ 5     "no more bottles of beer. \n" +
+ 6     "Go to the store and buy some more, "  +
+ 7     "99 bottles of beer on the wall. \n"
+ 8   when  1
+ 9     "1 bottle of beer on the wall, "  +
+10     "1 bottle of beer. \n" +
+11     "Take it down and pass it around, "  +
+12     "no more bottles of beer on the wall. \n"
+13   when  2
+14     "2 bottles of beer on the wall, "  +
+15     "2 bottles of beer. \n" +
+16     "Take one down and pass it around, "  +
+17     "1 bottle of beer on the wall. \n"
+18   else
+19     "#{number } bottles of beer on the wall, "  +
+20     "#{number } bottles of beer. \n" +
+21     "Take one down and pass it around, "  +
+22     "#{number -1} bottles of beer on the wall. \n"
+23   end
+24 end
+This method contains a case statement (the Switch Statements  smell) whose branches contain
+many duplicated strings ( Duplicated Code ). Of these two smells, Duplicated Code  is the most
+straightforward and so will be tackled first.
+Therefore, the current task is to refactor the verse  method to remove the duplication, in hope
+and expectation that the resulting code will be mor e open to the six-pack requirement.
+Before undertaking this refactoring, it must be adm itted that there is no direct  connection
+between removing the duplication, and succeeding in  making the code open to the six-pack
+requirement. That, however, is the beauty of this t echnique. You don’t have to know how to solve
+the whole problem in advance. The plan is to nibble  away, one code smell at a time, in faith that
+the path to openness will be revealed.
+3.5. Refactoring Systematically
+Having bandied the word around repeatedly, it’s hig h time for a formal definition of
+"refactoring." According to Fowler:
+Refactoring is the process of changing a software system i n such a way that it
+does not alter the external behavior of the code yet improves its internal
+structure.
+— Martin Fowler
+Refactoring
+In short, refactoring alters the arrangement of cod e without changing its behavior. Recall that
+new requirements should be implemented in two steps . First, you rearrange existing code so that
+it becomes open to the new requirement. Next, you w rite new code to meet that requirement.
+The first of these steps is refactoring.
+Note that safe refactoring relies upon tests. If yo u truly are rearranging code without changing
+behavior, at every step along the way the existing tests should continue to pass. Tests are a safety
+3.6. Following the Flocking Rules
+Page 58blanket that justifies confidence in the new arrang ement of code. If they begin to fail, one of two
+things must be true. Either a) you’ve inadvertently  broken the code, or b) the existing tests are
+flawed.
+If tests fail because you’ve broken the code, the c ure is simple. Undo the last change, make a
+better one and proceed merrily along your way.
+However, if you rearrange code without changing behavior  and tests begin to fail, then the tests
+themselves are flawed. Tests that make assertions a bout how  things are done, rather than what
+actually happens, are the prime contributors to thi s predicament. For example, a test that makes
+assertions about how a method is implemented will o bviously break if you change that method’s
+implementation, even if its output is unchanged. Wh en in this situation, there’s no alternative
+other than to improve the tests before embarking up on a refactoring.
+Tests are the wall at your back. Successful refacto rings lean on green. Therefore, you should
+never change tests during a refactoring. If your te sts are flawed such that they interfere with
+refactoring, improve them first, and then refactor.
+3.6. Following the Flocking Rules
+Recall that the current task is to remove duplicati on from the case statement of the verse
+method.
+The case statement has four branches, each of which contain s a verse template. The templates
+represent distinct verse variants. These variants o bviously differ, but in some not-yet-identified,
+more-abstract way, they are also alike.
+Considered from a higher viewpoint, each variant is  merely a verse in the song; in that sense
+they are all the same. Underlying each concrete var iant is a generalized verse abstraction. If you
+could find this abstraction, you could use it to re duce the four-branch case statement to a single
+line of code.
+The good news is that you don’t have to be able to see the abstraction in advance. You can find it
+by iteratively applying a small set of simple rules . These rules are known as "Flocking Rules", and
+are as follows:
+Flocking Rules
+1. Select the things that are most alike.
+2. Find the smallest difference between them.
+3. Make the simplest change that will remove that di fference.
+Changes to code can be subdivided into four distinc t steps:
+1. parse the new code
+2. parse and execute it
+3.6. Following the Flocking Rules
+Page 593. parse, execute and use its result
+4. delete unused code
+These steps will be explained in greater detail lat er, but for now think of the parse step as
+confirming that the syntax is valid, the parse/exec ute step as proving that the code runs without
+blowing up, and the parse/execute/use step as ensur ing that it returns the correct result.
+Making small changes means you get very precise err or messages when something goes wrong,
+so it’s useful to know how to work at this level of  granularity. As you gain experience, you’ll
+begin to take larger steps, but if you take a big s tep and encounter an error, you should revert
+the change and make a smaller one.
+As you’re following the flocking rules:
+For now, change only one line at a time.
+Run the tests after every change.
+If the tests fail, undo and make a better change.
+Why "Flocking "?
+Birds flock, fish school, and insects swarm. A floc k’s behavior can appear so synchronized
+and complex that it gives the impression of being c entrally coordinated. Nothing could be
+further from the truth. The group’s behavior is the  result of a continuous series of small
+decisions being made by each participating individu al. These decisions are guided by three
+simple rules.
+1. Alignment - Steer towards the average heading of neighbors
+2. Separation - Don’t get too close to a neighbor
+3. Cohesion - Steer towards the average position of the flock
+Thus, complex behavior emerges from the repeated ap plication of simple rules. In the
+same way that the rules in this sidebar allow birds  to flock, the "Flocking Rules" for code
+allow abstractions to appear.
+3.7.1. Focusing on Difference
+Page 60
+Flock of Starlings Acting As A Swarm, John Holmes, CC BY-SA 2.0
+To see a beautiful example of flocking in action, w atch Steven Strogatz’s The Science of
+Sync  TED talk.
+3.7. Converging on Abstractions
+The Flocking Rules are so atomic, and so general, t hat they may not yet inspire confidence. The
+remainder of this chapter will use them to unearth abstractions in the verse  method, after
+which you may find the process more convincing.
+3.7.1. Focusing on Di erence
+While it’s true that there are problems for which t he solution is obvious, those of any interesting
+size aren’t tractable to instant understanding. The y’re too big or have too many parts.
+When examining complicated problems, the eye is fir st drawn towards sameness. However,
+despite the fact that sameness is easier to identif y, difference is more useful because it has more
+meaning. DRYing out sameness has some  value, but DRYing out difference has more.
+Erich Gamma, Richard Helm, Ralph Johnson and John V lissides are commonly referred to as the
+"Gang of Four," in reference to their joint authors hip of Design Patterns: Elements of Reusable
+Object-Oriented Software . This influential book describes twenty-three patt erns or solutions to
+common OO programming problems and it explains this  process thusly:
+The focus here is encapsulating the concept that varies,  a theme of many design
+3.7.1. Focusing on Difference
+Page 61
+““patterns.
+Difference holds the key to understanding. If two c oncrete examples represent the same
+abstraction and they contain a difference, that dif ference must represent a smaller abstraction
+within the larger one. If you can name the differen ce, you’ve identified that smaller abstraction.
+The good news is that a systematic application of t he rules of refactoring converts difference to
+sameness, decomposing a problem into its constituen t parts. The even better news is that this
+happens automatically. You don’t have to identify t he underlying abstractions in advance of
+refactoring. If you merely write the code dictated by the rules, the abstractions will follow.
+The habit of believing that you understand the abst raction, and of jumping to an invented
+solution, is deeply ingrained. Programmers study a problem, decide on a solution, and then
+implement it. Solutions are crafted by intention.
+If this describes your entire past experience, you may find the following code surprising. It takes
+many small, iterative steps, and results in a solut ion that is discovered  by refactoring.
+To reduce the verse  case statement to a single line of code, the rules say to first identify the
+things that are most alike. This means that you sho uld select the two branches that are most
+alike, and focus on making them identical.
+Here again is a reminder of the case statement:
+Listing 3.4: Verse Method Conditional
+ 1 case  number
+ 2 when  0
+ 3   "No more bottles of beer on the wall, "  +
+ 4   "no more bottles of beer. \n" +
+ 5   "Go to the store and buy some more, "  +
+ 6   "99 bottles of beer on the wall. \n"
+ 7 when  1
+ 8   "1 bottle of beer on the wall, "  +
+ 9   "1 bottle of beer. \n" +
+10   "Take it down and pass it around, "  +
+11   "no more bottles of beer on the wall. \n"
+12 when  2
+13   "2 bottles of beer on the wall, "  +
+14   "2 bottles of beer. \n" +
+15   "Take one down and pass it around, "  +
+16   "1 bottle of beer on the wall. \n"
+17 else
+18   "#{number } bottles of beer on the wall, "  +
+19   "#{number } bottles of beer. \n" +
+20   "Take one down and pass it around, "  +
+21   "#{number -1} bottles of beer on the wall. \n"
+22 end
+Notice that although verse 2 contains hardcoded num bers for 2 and 1, it could just as correctly
+say number  and number-1 , as in the else  branch. This part looks different, but is logicall y the
+same. It may help to recall that verse 2 has but on e test, which asserts that the final line says “1
+3.7.2. Simplifying Hard Problems
+Page 62bottle” instead of “1 bottles.” The only real diffe rence between the 2 and else  cases is the word
+“bottle” versus the word “bottles.” Therefore, thes e are the lines that are most alike.
+3.7.2. Simplifying Hard Problems
+Having found the strings that are most alike, the n ext task is to make them identical. It’s
+important to focus on this specific goal without su ccumbing to the temptations of tangents.
+Think of the process of turning these two lines int o one as being on a horizontal path.[10] While
+walking this path, if something catches your eye in  another part of the code (perhaps in the 0 or
+1 cases), you may be tempted to veer off in a vertic al direction. However, if you begin making
+changes to other parts of the code before you compl etely combine the 2 and else  cases, you step
+off a well-trod path into a woods so dark and sinis ter that you might never return. While it can
+be useful to interleave horizontal and vertical wor k, it’s best to finish the current journey when
+the terminus of the horizontal path is in sight.
+Have a look at the code below, and decide what to d o next.
+Listing 3.5: 2 and Default Case
+ 1 when  2
+ 2   "2 bottles of beer on the wall, "  +
+ 3   "2 bottles of beer. \n" +
+ 4   "Take one down and pass it around, "  +
+ 5   "1 bottle of beer on the wall. \n"
+ 6 else
+ 7   "#{number } bottles of beer on the wall, "  +
+ 8   "#{number } bottles of beer. \n" +
+ 9   "Take one down and pass it around, "  +
+10   "#{number -1} bottles of beer on the wall. \n"
+11 end
+Recall that these lines were chosen because the onl y real difference between them is using
+"bottle" versus "bottles" in the final phrase. The other apparent differences are actually
+similarities. The 2 and 1 in the 2 case can be replaced by #{number}  and #{number-1}
+respectively, which means that these parts are logi cally identical.
+The change needed to resolve the differences betwee n the numbers is obvious. That part of the
+problem feels solved. It’s boring. The "bottle/bott les" difference, however, is much more
+interesting. It requires more thought.
+Programmers love hard problems. Many times the risk iest and most difficult bit of a larger
+problem feels the most interesting. It’s no wonder that many programmers gravitate towards
+starting a problem at its most confusing part.
+However, it just so happens that solving easy probl ems, through a magical alchemy of code,
+sometimes transmutes hard problems into easy ones. It is common to find that hard problems
+are hard only because the easy ones have not yet be en solved.
+Therefore, don’t discount the value of solving easy  problems. With that in mind, the first step
+towards making these lines identical is to resolve the very first difference. Scanning left to right,
+the very first character of the 2 case could be replaced by #{number} . Proceeding on, the next 2
+3.7.3. Naming Concepts
+Page 63can similarly be replaced. Scanning further still, the 1 can become #{number-1} . The result is
+shown below:
+Listing 3.6: Replace Hard Coded Number
+ 1 when  2
+ 2   "#{number } bottles of beer on the wall, "  +
+ 3   "#{number } bottles of beer. \n" +
+ 4   "Take one down and pass it around, "  +
+ 5   "#{number -1} bottle of beer on the wall. \n"
+ 6 else
+ 7   "#{number } bottles of beer on the wall, "  +
+ 8   "#{number } bottles of beer. \n" +
+ 9   "Take one down and pass it around, "  +
+10   "#{number -1} bottles of beer on the wall. \n"
+11 end
+After making the above change (and running the test s between each, of course), the remaining
+difference is "bottle/bottles" on the last line:
+Listing 3.7: One Difference Remains
+1 when  2
+2   # ...
+3   "#{number -1} bottle of beer on the wall. \n"
+4 else
+5   # ...
+6   "#{number -1} bottles of beer on the wall. \n"
+7 end
+This is the first interesting difference. Now you m ust decide what this difference means .
+3.7.3. Naming Concepts
+Previous sections state that if all verses are the same in some fundamental way, then an
+underlying verse abstraction must exist. The goal o f the current refactoring is to find a way to
+express that more abstract verse.
+If an underlying verse abstraction exists, then thi s small difference between verse 2 and verses
+3-99 must represent a smaller abstraction within th at larger one. To make these two lines the
+same, you must name this concept, create a method n amed after the concept, and replace the
+two differences with a common message send. Therefo re, it’s time to decide what the words
+"bottle" and "bottles" represent in the context of the song.
+You may recall from the Concretely Abstract  section of Chapter 1 that "bottle" is not underlyi ng
+the concept. If you call the method "bottle" you ar e naming it after its current implementation,
+and you’ve already seen how that can go badly wrong .
+Also, despite that fact that these two words differ  in that one is singular and one is plural, the
+underlying concept is not "pluralization." Within t he context of the song, "bottle/bottles" does not
+represent pluralization.
+There are two pieces of information that can help i n the struggle for a name. One is a general
+rule and the other is the new requirement.
+3.7.3. Naming Concepts
+Page 64First, the new requirement. Recall that the impetus  for this refactoring was the need to say "six-
+pack" instead of "bottle/bottles" when there are 6 bottles. The string "six-pack" is one more
+concrete example of the underlying abstraction. Thi s suggests that if you name the method
+"bottle," you will regret this decision in short or der.
+The general rule is that the name of a thing should  be one level of abstraction higher than the
+thing itself. The strings "bottle/bottles/six-pack"  are instances of some category, and the task is to
+name that category using language of the domain.
+One way to identify the category is to imagine the concrete examples as rows and columns in a
+spreadsheet.[11] The following table illustrates this idea. This ta ble contains three rows, one for
+each concrete example. Each row has two columns. Th e first column contains a number of
+bottles, and the next, the word used with that numb er in the song.
+Table 3.1: Bottles Column Header
+Number xxx?
+1 bottle
+6 six-pack
+n bottles
+Column 1 above contains numbers, so "Number" makes sense as a column header. The header
+"Number" is a level of abstraction higher than the concrete examples. "1," "6," and "n" are
+numbers.
+The second column has entries for bottle, six-pack,  and bottles. Bottle is an entity in this as-yet
+unnamed category, rather than the category itself.
+It might seem as if "Unit" would be a good header. Although it’s true that every example is some
+kind of unit, there are two problems with this name . First, it’s too abstract. Unit is not one level of
+abstraction higher than the examples—it’s many. The re are plenty of good naming alternatives
+on the continuum between "bottle" and "unit." Next,  unit is not in the language of the domain.
+The name you choose will be the name you use in con versations with your customers. Naming
+things after domain concepts improves communication  between you and the folks who pay the
+bills. Only good can come of this.
+When you’re struggling to find a good name but have  only a few concrete instances to guide you,
+it can be illuminating to imagine other things that  would also be in the same category.[12] For
+example, if the song were about wine, the wine migh t come in a carafe. Juice sometimes comes
+in small boxes. Soft drinks often come in cans.
+If you were to ask your users, "What kind of thing is a bottle?," they wouldn’t reply "It’s a unit."
+Instead they might call it the container . In the context of "99 Bottles," container is a go od name
+for this concept. Container is meaningful, understa ndable, and unambiguous.
+3.7.4. Making Methodical Transformations
+Page 65Having named the concept, it’s time to write code t o remove the difference.
+3.7.4. Making Methodical Transformations
+Now that you’ve decided to create a container  method, it’s time to alter the code. It’s tempting
+to make all of the necessary changes in one fell sw oop. Doing so requires adding a new method
+and invoking it in two places. Here’s the new metho d:
+Listing 3.8: Guess Entire Container
+1 def container (number)
+2   if number == 1
+3     "bottle"
+4   else
+5     "bottles"
+6   end
+7 end
+This method must be invoked from both branches of t he verse  case statement. Here is the code:
+Listing 3.9: Code to Invoke Container
+"#{number -1} #{container(number -1)} of beer on the wall. \n"
+But wait. Notice that the above change adds seven n ew lines of code, changes two existing ones,
+and alters code in three separate places. Any of th ese changes could introduce errors, which you
+would then be obliged to understand and correct. Th is small example stands in for the much
+bigger real-life problem where, in the process of i mplementing a new feature, you add many
+lines of code, change many others, and then run the  tests, only to be confronted by an ocean of
+red.
+Real world problems are big. Real code has bugs. Re al tests are often tightly coupled to current
+implementations. If you simultaneously change many things and something breaks, you’re
+forced to understand everything in order to fix any thing. You could end up chasing after red,
+with increasing desperation, before eventually disc arding all of the changes and beginning
+anew.
+Making a slew of simultaneous changes is not refact oring—it’s re hack toring. It would be much
+better to make a series of tiny changes and run the  tests after each. If the tests fail, you know the
+exact change that caused the failure, and can undo back to green and make a better change. If
+the tests pass, you know that the current code work s, even if the refactoring is only partially
+complete.
+Formal refactoring confers two additional benefits.  First, because no change breaks the tests, the
+code can be deployed to production at any intermedi ate point. This allows you to avoid
+accumulating a large set of changes and suffering t hrough a painful merge. Next, code that runs
+properly even in the midst of a long refactoring in creases the bus factor . This contributes to a
+higher likelihood of project success even if you, p ersonally, were to meet an untimely end.
+Adding the container  method by re factoring means taking a series of small steps. As a
+reminder, here again are the Flocking Rules and cor ollaries:
+3.7.4. Making Methodical Transformations
+Page 66Flocking Rules
+1. Select the things that are most alike.
+2. Find the smallest difference between them.
+3. Make the simplest change to remove that differenc e:
+a. parse the new code
+b. parse and execute it
+c. parse, execute and use its result
+d. delete unused code
+As you’re following the rules:
+In general, change only one line at a time.
+Run the tests after every change.
+If you go red, undo and make a better change.
+You’ve already followed rule 1 (you chose the 2 and else  cases) and rule 2 (you’ve worked your
+way across to the "bottle/bottles" difference). Now  you’re on rule 3, ready to remove this
+difference. As you intend to change only one line a t a time, you’ll of necessity have to make small
+changes iteratively.
+The first step is to create an empty container  method.
+Listing 3.10: Empty Container Method
+1 def container
+2 end
+Now run the tests.
+If this admonition comes as a surprise, consider th at having green tests at this point provides a
+very useful piece of feedback. Even though the container  method is not yet being invoked,
+green tests at this point prove that the code you j ust wrote is syntactically correct. This means
+you are following rule 3a, which calls for separati ng parse  from execute .
+Now that you have written this admittedly not very exciting container  method, the next step is
+to make the smallest change that will advance the c ode in the intended direction. Here’s a
+reminder of the target line:
+Listing 3.11: One Difference Remains Redux
+1 when  2
+2   # ...
+3   "#{number -1} bottle of beer on the wall. \n"
+4 else
+5   # ...
+6   "#{number -1} bottles of beer on the wall. \n"
+7 end
+3.7.4. Making Methodical Transformations
+Page 67The current container  method returns nil. It will eventually be called from two places. The  2
+case wants the return to be "bottle," and the else  case, "bottles." The next incremental change is
+to alter the method to make it usable for just one of those callers. Therefore, you must now
+choose which value to return first.
+The default case is often a good place to start, an d there’s no reason not to do so here. In that
+spirit, change container  to return bottles , like so:
+Listing 3.12: Sparse Container Method
+1 def container
+2   "bottles"
+3 end
+From now on, it goes without saying that you should  run the tests after every change.
+Now that container  returns a usable value, alter the else  branch to send the message in place
+of the word "bottles," as on line 9 below:
+Listing 3.13: Sparse Container Used in Default Branch
+ 1 def verse (number)
+ 2   case  number
+ 3     # ...
+ 4   when  2
+ 5     # ...
+ 6     "#{number -1} bottle of beer on the wall. \n"
+ 7   else
+ 8     # ...
+ 9     "#{number -1} #{container } of beer on the wall. \n"
+10   end
+11 end
+12 
+13 def container
+14   "bottles"
+15 end
+So far, so good, but consider the next step. To be usable in both the 2 and else  cases, container
+must eventually return the correct choice between bottle  or bottles . The decision between
+them is based on the value of number , which container  does not yet know. Therefore,
+container  must be changed to take an argument.
+Just as container  doesn’t currently take an argument (line 13 above), its invoker doesn’t
+currently send  one (line 9). Now you face a conundrum. The goal i s to make changes on one line
+at a time, but this situation seems to require that  you change both the sender and the receiver
+simultaneously.
+To illustrate the problem, consider what happens if  you make either of these changes without the
+other. You could add the argument to the method def inition first, like so:
+def container (number)
+In this case, the message send fails because it doe sn’t yet send the argument:
+3.7.5. Refactoring Gradually
+Page 68ArgumentError: wrong number of arguments (0 for 1)
+If you reverse the order of the changes, and send t he argument first, as so:
+"#{number -1} #{container(number -1)} of beer on the wall. \n"
+Then the opposite failure occurs, that is, an argum ent is passed where none is expected.
+ArgumentError: wrong number of arguments (1 for 0)
+This problem, needing to add a required argument, a rises regularly in the real world. But instead
+of one sender and one receiver, as in this case, re al applications might have 10 or 100 or 1000
+senders. It might be impossible to fix everything a t once, so it’s handy to know the technique for
+working around this problem in an incremental manne r.
+3.7.5. Refactoring Gradually
+In his book Refactoring to Patterns , Joshua Kerievsky talks about "Gradual Cutover Ref actoring,"
+a strategy for keeping the code in a releasable sta te by gradually switching over a small number
+of pieces at a time. This type of refactoring can b e done alongside other development work
+without affecting the release schedule. If you adop t this strategy, your colleagues and your
+customers will appreciate your commitment to keepin g the code deployable.
+This strategy means you ought not to change everyth ing at once. Therefore, to do a gradual
+cutover refactoring, you have to figure out how to allow some senders to pass the new argument
+while others remain unchanged. The trick here, as y ou may already have guessed, is to begin by
+adding an optional  argument that supplies its own default, as shown b elow:
+Listing 3.14: Container With Defaulted Argument
+1 def container (number =:FIXME )
+2   "bottles"
+3 end
+The above code takes an argument that gets named number , which it defaults to the symbol
+:FIXME . You may have expected the default to be nil, or at the very least, a numeric value, but
+in this case it makes sense to set it to something that’s usefully wrong. This default is a temporary
+shim whose purpose is to enable a step-by-step refa ctoring. Once the refactor is complete, the
+default should  be removed. Setting it to a value like :FIXME  will help you remember to do this
+clean-up.
+Now that the container  method accepts an argument, consider the next step . You could either:
+alter container  to check the value of number  and return "bottle" or "bottles," meaning
+change the receiver, or
+alter the else  branch to add the number  argument to container  message, meaning
+change the sender.
+The refactoring rules prohibit you from making both  of these changes at once, so you must
+choose one or the other.
+3.7.5. Refactoring Gradually
+Page 69Because the container  method does not yet reference number , changing the else  branch to
+pass this argument changes almost nothing about the  code. Instead of passing the argument, the
+better choice is to expand the code in container  to use number  to decide which of "bottle" or
+"bottles" to return, as follows:
+Listing 3.15: Container With Conditional
+1 def container (number =:FIXME )
+2   if number == 1
+3     "bottle"
+4   else
+5     "bottles"
+6   end
+7 end
+There are several things to note about the above st rategy.
+First, notice that adding the conditional was very clearly a multi-line change. This may appear to
+break the "make changes on only one line" rule, but  in this case, the change is obeying the spirit
+of the law while slightly ignoring its letter. This  conditional could have been expressed in ternary
+form, as:
+number == 1 ? "bottle"  : "bottles"
+which would certainly have been a one-line change. The multiline if form above is preferred in
+this refactoring for reasons that will become clear  in later chapters. For now, just think of these
+two forms as both obeying the "one line" rule.
+Next, remember that this method is being invoked fr om only one place (the else  branch of the
+case statement in verse ), and that as yet no argument is being passed. Thi s means that the
+number  argument in container  gets set to :FIXME , which routes execution to the false
+branch. The new code in the true branch is not yet being executed, although it gets parsed when
+the tests run.
+The act of adding a new branch to the conditional w hile executing only the previously existing
+code is a mini-example of the Open/Closed Principle . You can think of this change as making the
+container  method open to a new requirement—enabling it to oc casionally return the word
+"bottle." This splits the change into several small  steps, which makes it easier to debug any
+errors.
+The next tiny step is to change the sender to actua lly pass the new argument. Because
+container  is being invoked from the fourth phrase of the son g, the value of the argument is
+number-1 , as shown on line 9 below:
+Listing 3.16: Passing an Argument to Container
+ 1 def verse (number)
+ 2   case  number
+ 3     # ...
+ 4   when  2
+ 5     # ...
+ 6     "#{number -1} bottle of beer on the wall. \n"
+ 7   else
+3.7.5. Refactoring Gradually
+Page 70 8     # ...
+ 9     "#{number -1} #{container(number -1)} of beer on the wall. \n"
+10   end
+11 end
+12 
+13 def container (number =:FIXME )
+14   if number == 1
+15     "bottle"
+16   else
+17     "bottles"
+18   end
+19 end
+The above step might seem so tiny as to seem pointl ess to isolate, but there’s a real difference
+between executing the false  branch because of the :FIXME  default, and being routed there
+because of the value of the number  argument. In the first case, you know that if you go to the
+false  branch  the tests pass, and in the second, you know that the argument being passed takes
+you to the false  branch . Both of these things must work or the tests will break. Changing code at
+this level of granularity makes it easier to handle  unexpected failures.
+The next step is to change the 2 branch so that it also invokes the container method, as shown on
+line 8 below:
+Listing 3.17: 2 and Default Cases Identical
+ 1 def verse (number)
+ 2   case  number
+ 3     # ...
+ 4   when  2
+ 5     "#{number } bottles of beer on the wall, "  +
+ 6     "#{number } bottles of beer. \n" +
+ 7     "Take one down and pass it around, "  +
+ 8     "#{number -1} #{container(number -1)} of beer on the wall. \n"
+ 9   else
+10     "#{number } bottles of beer on the wall, "  +
+11     "#{number } bottles of beer. \n" +
+12     "Take one down and pass it around, "  +
+13     "#{number -1} #{container(number -1)} of beer on the wall. \n"
+14   end
+15 end
+16 
+17 def container (number =:FIXME )
+18   if number == 1
+19     "bottle"
+20   else
+21     "bottles"
+22   end
+23 end
+The above change has two consequences. First, all o f the code in container  is now being
+executed. Next, the code in the 2 and else  branches of the verse  case  statement are now
+identical.
+Two tasks remain to complete this entire horizontal  refactoring. First, as all senders of
+container  now pass number , the :FIXME  default has served its purpose and can be removed.
+Next, the 2 case is now obsolete, and so it also can be delete d. The following example shows the
+resulting code:
+3.7.5. Refactoring Gradually
+Page 71Listing 3.18: 2 Subsumed Into Default Case
+ 1 def verse (number)
+ 2   case  number
+ 3   when  0
+ 4     "No more bottles of beer on the wall, "  +
+ 5     "no more bottles of beer. \n" +
+ 6     "Go to the store and buy some more, "  +
+ 7     "99 bottles of beer on the wall. \n"
+ 8   when  1
+ 9     "1 bottle of beer on the wall, "  +
+10     "1 bottle of beer. \n" +
+11     "Take it down and pass it around, "  +
+12     "no more bottles of beer on the wall. \n"
+13   else
+14     "#{number } bottles of beer on the wall, "  +
+15     "#{number } bottles of beer. \n" +
+16     "Take one down and pass it around, "  +
+17     "#{number -1} #{container(number -1)} of beer on the wall. \n"
+18   end
+19 end
+20 
+21 def container (number)
+22   if number == 1
+23     "bottle"
+24   else
+25     "bottles"
+26   end
+27 end
+That horizontal refactoring required a fair amount of explanation. Here’s a reminder of the key
+actions:
+1. identified verse  2 and else  as the most similar cases
+2. worked from left to right
+3. changed verse  2 case to replace hard coded 2 with #{number}  (twice)
+4. changed verse  2 case to replace hard coded 1 with #{number-1}
+5. identified "bottle" and "bottles" as the next dif ference
+6. chose container  for the name of the concept represented by this di fference
+7. created empty container  method
+8. changed container  to return "bottles"
+9. changed verse  else  case to send container  in place of "bottles"
+10. changed container  to take number  argument with default :FIXME
+11. added conditional logic to container  to return "bottle" or "bottles" based on number
+12. changed verse  else  case to pass number-1  to container
+13. changed verse  2 case to send container(number-1)  in place of "bottle"
+14. deleted verse  2 case
+15. deleted container  :FIXME  number  argument default
+3.8. Summary
+Page 72Of these 15 steps, 12 involve changes to code. The tests run after every change, so it is trivial to
+fix newly-introduced flaws.
+The lengthy description above may have led you to f ear that working in this fashion would be
+unbearably slow. Take another look. As you can see,  there’s not much code, and with practice,
+writing it becomes very fast. The small amount of t ime lost to making incremental changes is
+more than recouped by avoiding lengthy and frustrat ing debugging sessions. This style of coding
+is not only fast, it’s also stress-free.
+This first refactoring was deliberately performed u sing the smallest possible steps. Once you
+learn to work at this level of granularity, you can  later combine steps if circumstances allow. Let
+red be your guide. If you take a giant step and the  tests begin to fail, undo and fall back to
+making smaller changes.
+There are plenty of hard problems in programming, b ut this isn’t one of them. Real refactoring is
+comfortingly predictable, and saves brainpower for more thought-provoking challenges.
+3.8. Summary
+When faced with the need to change code, very often  the hardest decision is where to start. This
+chapter suggested that you be guided by the Open-Cl osed Principle, and so separate most
+changes into two broad steps. First, refactor the e xisting code to be open to the new requirement,
+next, add the new code.
+Sometimes the first step, refactoring to openness, requires such a large leap that it is not obvious
+how to achieve it. In that case, be guided by code smells. Improve code by identifying and
+removing smells, and have faith that as the code im proves, a path to openness will appear.
+Making existing code open to a new requirement ofte n requires identifying and naming
+abstractions. The Flocking Rules concentrate on tur ning difference into sameness, and thus are
+useful tools for unearthing abstractions.
+This chapter introduced the six-pack requirement, a nd in the search for openness, identified the
+duplication of code in the verse  method as the first point of attack. It then dedic ated a good
+portion of the chapter to the task of making the else  and 2 cases identical. However, now that
+you’ve learned how to use the flocking rules to ide ntify abstractions, resolving the differences in
+the 1 and 0 cases will go much faster. So, on to Chapter 4, an d more extracting of abstractions.
+4.1. Replacing Difference With Sameness

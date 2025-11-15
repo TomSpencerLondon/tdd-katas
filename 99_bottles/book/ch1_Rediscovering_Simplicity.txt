@@ -1,0 +1,842 @@
+Page 11. Rediscovering Simplicity
+When you were new to programming you wrote simple c ode. Although you may not have
+appreciated it at the time, this was a great streng th. Since then, you’ve learned new skills, tackled
+harder problems, and produced increasingly complex solutions. Experience has taught you that
+most code will someday change, and you’ve begun to craft it in anticipation of that day.
+Complexity seems both natural and inevitable.
+Where you once optimized code for understandability , you now focus on its changeability . Your
+code is less concrete  but more abstract —you’ve made it initially harder to understand in h opes
+that it will ultimately be easier to maintain.
+This is the basic promise of Object-Oriented Design  (OOD): that if you’re willing to accept
+increases in the complexity of your code along some  dimensions, you’ll be rewarded with
+decreases in complexity along others . OOD doesn’t claim to be free; it merely asserts t hat its
+benefits outweigh its costs.
+Design decisions inevitably involve trade-offs. The re’s always a cost. For example, if you’ve
+duplicated a bit of code in many places, the Don’t Repeat Yourself  (DRY) principle tells you to
+extract the duplication into a single common method  and then invoke this new method in place
+of the old code. DRY is a great idea, but that does n’t mean it’s free. The price you pay for DRYing
+out code is that the invoker of the new method no l onger knows the result, only the message it
+should send. If you’re willing to pay this price, t hat is, you are willing to be ignorant of the actua l
+behavior, the reward you reap is that when the beha vior changes, you need alter your code in
+only one place. The argument that OOD makes is that  this bargain will save you money.
+Did you divide one large class into many small ones ? You can now reuse the new classes
+independently of one another, but it’s no longer ob vious how they fit together for the original
+case. Have you injected a dependency instead of har d-coding the class name of a collaborator?
+The receiver can now freely depend on new and previ ously unforeseen objects, but it must
+remain ignorant of their actual class.
+The examples above change code by increasing its le vel of abstraction. DRYing out code inserts a
+level of indirection between the place that uses be havior and the place that defines it. Breaking
+one large class into many forces the creation of so mething new to embody the relationship
+between the pieces. Injecting a dependency transfor ms the receiver into something that depends
+on an abstract role rather than a concrete class.
+Each of these design choices has costs, and it only  makes sense to pay these costs if you also
+accrue some offsetting benefits. Design is thus abo ut picking the right abstractions. If you choose
+well, your code will be expressive, understandable and flexible, and everyone will love both it
+and you. However, if you get the abstractions wrong , your code will be convoluted, confusing,
+and costly, and your programming peers will hate yo u.
+Unfortunately, abstractions are hard, and even with  the best of intentions, it’s easy to get them
+wrong. Well-meaning programmers tend to over-antici pate abstractions, inferring them
+1.1.1. Incomprehensibly Concise
+Page 2
+prematurely from incomplete information. Early abst ractions are often not quite right, and
+therefore they create a catch-22.[1] You can’t create the right abstraction until you f ully
+understand the code, but the existence of the wrong  abstraction may prevent you from ever
+doing so. This suggests that you should not reach  for abstractions, but instead, you should resist
+them until they absolutely insist upon being create d.
+This book is about finding the right abstraction. T his first chapter starts by peeling away the fog of
+complexity and defining what it means to write simp le code.
+1.1. Simplifying Code
+The code you write should meet two often-contradict ory goals. It must remain concrete enough to
+be understood while simultaneously being abstract e nough to allow for change.
+Imagine a continuum with "most concrete" at one end  and "most abstract" at
+the other. Code at the concrete end might be expres sed as a single long
+procedure full of if statements. Code at the abstract end might consist  of many
+classes, each with one method containing a single l ine of code.
+The best solution for most problems lies not at the  extremes of this continuum,
+but somewhere in the middle. There’s a sweet spot t hat represents the perfect
+compromise between comprehension and changeability,  and it’s your job as a
+programmer to find it.
+This section discusses four different solutions to the "99 Bottles of Beer" problem. These solutions
+vary in complexity and thus illustrate different po ints along this continuum.
+You must now make a decision. As you were forewarne d in the preface, the best way to learn
+from this book is to work the exercises yourself. I f you continue reading before solving the
+problem in your own way, your ideas will be contami nated by the code that follows. Therefore, if
+you plan to work along, go do the 99 Bottles exercise  now. When you’re finished, you’ll be ready
+to examine the following four solutions.
+1.1.1. Incomprehensibly Concise
+Here’s the first of four different solutions to the  "99 Bottles" song.
+Listing 1.1: Incomprehensibly Concise
+ 1 class  Bottles
+ 2   def song
+ 3     verses( 99, 0)
+ 4   end
+ 5 
+ 6   def verses (hi, lo)
+ 7     hi .downto(lo) .map { |n| verse(n) } .join( "\n")
+ 8   end
+ 9 
+10   def verse (n)
+11     "#{n == 0 ? 'No more'  : n } bottle #{'s' if n != 1}" +
+12     " of beer on the wall, "  +
+13     "#{n == 0 ? 'no more'  : n } bottle #{'s' if n != 1} of beer. \n" +
+14     "#{n > 0  ? "Take #{n > 1 ? 'one'  : 'it' } down and pass it around"
+1.1.1. Incomprehensibly Concise
+Page 315               : "Go to the store and buy some more" }, " +
+16     "#{n-1 < 0 ? 99 : n -1 == 0 ? 'no more'  : n -1} bottle #{'s' if n-1 != 1}"+
+17     " of beer on the wall. \n"
+18   end
+19 end
+This first solution embeds a great deal of logic in to the verse string. The code above performs a
+neat trick. It manages to be concise to the point o f incomprehensibility while simultaneously
+retaining loads of duplication. This code is hard t o understand because it is inconsistent and
+duplicative, and because it contains hidden concept s that it does not name.
+Consistency
+The style of the conditionals is inconsistent. Most  use the ternary  form, as on line 11:
+n == 0 ? 'No more'  : n
+Other statements are made conditional by adding a t railing if. Line 11 again provides an
+example:
+'s' if n != 1
+Finally, there’s the ternary within a ternary on li ne 16, which is best left without comment:
+n-1 < 0 ? 99 : n -1 == 0 ? 'no more'  : n -1
+Every time the style of the conditionals changes, t he reader has to press a mental reset button and
+start thinking anew. Inconsistent styling makes cod e harder for humans to parse; it raises costs
+without providing benefits.
+Duplication
+The code duplicates both data and logic. Having mul tiple copies of the strings "of beer" and "on
+the wall" isn’t great, but at least string  duplication is easy to see and understand. Logic, however,
+is harder to comprehend than data, and duplicated l ogic is doubly so. Of course, if you want to
+achieve maximum confusion, you can interpolate dupl icated logic inside  strings, as does the
+verse  method above.
+For example, "bottle" pluralization is done in thre e places. The code to do this is identical in two o f
+the places, on lines 11 and 13:
+'s' if n != 1
+But later, on line 16, the pluralization logic is s ubtly different. Suddenly it’s not n that matters, but
+n-1:
+'s' if n-1 != 1
+Duplication of logic suggests that there are concep ts hidden in the code that are not yet visible
+because they haven’t been isolated and named. The n eed to sometimes say "bottle" and other
+times say "bottles" means something , and the need to sometimes use n and other times use n-1
+1.1.1. Incomprehensibly Concise
+Page 4means something else . The code gives no clue about what these meanings might be; you’re left to
+figure this out for yourself.
+Names
+The most obvious point to be made about the names i n the verse  method of Listing 1.1:
+Incomprehensibly Concise  is that there aren’t any. The verse string contain s embedded logic.
+Each bit of logic serves some purpose, and it is up  to you to construct a mental map of what these
+purposes might be.
+This code would be easier to understand if it did n ot place that burden upon you, the intrepid
+reader. The logic that’s hidden inside the verse st ring should be dispersed into methods , and
+verse  should fill itself with values by sending messages .
+Terminology: Method and Sending Messages
+In generic OO terminology, a "method" is defined on  an object, and contains behavior. In the
+previous example, the Bottles  class defines a method named song.
+You "send a message" to an object to invoke behavio r. In the aforementioned example, the
+song method sends the verses  message to the implicit receiver self.
+Therefore, methods are defined, and messages are se nt.
+You may find yourself programming in languages wher e folks routinely employ other terms
+for these ideas. For example, it might be more comm on to hear "function" rather than
+method, or "call" instead of send.
+While the terms method  and function  are generally interchangeable (at least when refer ring
+to instance methods on objects), the words send  and call imply slightly different things.
+Understanding this difference is important for your  OO mindset.
+Referring to the act of invoking behavior as "calli ng" a method or function suggests (albeit
+mildly) that you know what that called code does. A lternately, describing this act as
+"sending a message" leaves a bit more mental space between the sender’s intention and the
+receiver’s implementation. This virtual gap encoura ges you to create message senders that
+are willfully ignorant of implementation details, a nd fosters independence between senders
+and receivers. This independence is a core feature of maintainable object-oriented code.
+Thus, while all of this terminology is suitable in some situations, this book generally prefers
+"send a message" to "call a method/function", and y ou’ll see this idea phrased that way
+throughout.
+Creating a method requires identifying the code you ’d like to extract and deciding on a method
+name. This, in turn, requires naming the concept, a nd naming things is just plain hard. In the case
+above, it’s especially hard. This code not only con tains many hidden concepts, but those concepts
+1.1.1. Incomprehensibly Concise
+Page 5are mixed together, conflated, such that their indi vidual natures are obscured. Combining many
+ideas into a small section of code makes it difficu lt to isolate and name any single concept.
+When you first write a piece of code, you obviously  know what it does. Therefore, during initial
+development, the price you pay for poor names is re latively low. However, code is read many
+more times than it is written, and its ultimate cos t is often very high and paid by someone else.
+Writing code is like writing a book; your efforts a re for other  readers. Although the struggle for
+good names is painful, it is worth the effort if yo u wish your work to survive to be read. Code
+clarity is built upon names.
+Problems with consistency, duplication, and naming conspire to make the code in Listing 1.1:
+Incomprehensibly Concise  likely to be costly.
+Note that the above assertion is, at this point, an  unsupported opinion. The best way to judge code
+would be to compare its value  to its cost, but unfortunately it’s hard to get good data. Jud gments
+about code are therefore commonly reduced to indivi dual opinion, and humans are not always in
+accord. There’s no perfect solution to this problem , but the Judging Code  section, later in this
+chapter, suggests ways to acquire empirical data ab out the goodness of code.
+Independent of all judgment about how well a bit of  code is arranged, code is also charged with
+doing what it’s supposed to do now  as well as being easy to alter so that it can do m ore later .
+While it’s difficult to get exact figures for value  and cost, asking the following questions will give
+you insight into the potential expense of a bit of code:
+1. How difficult was it to write?
+2. How hard is it to understand?
+3. How expensive will it be to change?
+The past ("was it") is a memory, the future ("will it be") is imaginary, but the present ("is it") is true
+right now. The very act of looking at a piece of co de declares that you wish to understand it at this
+moment . Questions 1 and 3 above may or may not concern yo u, but question 2 always applies.
+Code is easy to understand when it clearly reflects  the problem it’s solving, and thus openly
+exposes that problem’s domain. If Listing 1.1: Incomprehensibly Concise  openly exposed the "99
+Bottles" domain, a brief glance at the code would a nswer these questions:
+1. How many verse variants are there?
+2. Which verses are most alike? In what way?
+3. Which verses are most different, and in what way?
+4. What is the rule to determine which verse comes nex t?
+These questions reflect core concepts of the proble m, yet none of their answers are apparent in
+this solution. The number of variants, the differen ce between the variants, and the algorithm for
+looping are distressingly obscure. This code does n ot reflect its domain, and therefore you can
+infer that it was difficult to write and will be a challenge to change. If you had to characterize the
+1.1.2. Speculatively General
+Page 6goal of the writer of Listing 1.1: Incomprehensibly Concise , you might suggest that their highest
+priority was brevity. Brevity may be the soul of wi t, but it quickly becomes tedious in code.
+Incomprehensible conciseness is clearly not the bes t solution for the "99 Bottles" problem. It’s
+time to examine one that’s more verbose.
+1.1.2. Speculatively General
+This next solution errs in a different direction. I t does many things well but can’t resist indulging
+in unnecessary complexity. Have a look at the code below:
+Listing 1.2: Speculatively General
+ 1 class  Bottles
+ 2   NoMore  = lambda  do |verse |
+ 3     "No more bottles of beer on the wall, "  +
+ 4     "no more bottles of beer. \n" +
+ 5     "Go to the store and buy some more, "  +
+ 6     "99 bottles of beer on the wall. \n"
+ 7   end
+ 8 
+ 9   LastOne  = lambda  do |verse |
+10     "1 bottle of beer on the wall, "  +
+11     "1 bottle of beer. \n" +
+12     "Take it down and pass it around, "  +
+13     "no more bottles of beer on the wall. \n"
+14   end
+15 
+16   Penultimate  = lambda  do |verse |
+17     "2 bottles of beer on the wall, "  +
+18     "2 bottles of beer. \n" +
+19     "Take one down and pass it around, "  +
+20     "1 bottle of beer on the wall. \n"
+21   end
+22 
+23   Default  = lambda  do |verse |
+24     "#{verse .number } bottles of beer on the wall, "  +
+25     "#{verse .number } bottles of beer. \n" +
+26     "Take one down and pass it around, "  +
+27     "#{verse .number - 1} bottles of beer on the wall. \n"
+28   end
+29 
+30   def song
+31     verses( 99, 0)
+32   end
+33 
+34   def verses (finish, start)
+35     (finish) .downto(start) .map { |verse_number |
+36       verse(verse_number) } .join( "\n")
+37   end
+38 
+39   def verse (number)
+40     verse_for(number) .text
+41   end
+42 
+43   def verse_for (number)
+44     case  number
+45     when  0 then  Verse .new(number, &NoMore )
+46     when  1 then  Verse .new(number, &LastOne )
+47     when  2 then  Verse .new(number, &Penultimate )
+48     else         Verse .new(number, &Default )
+49     end
+1.1.2. Speculatively General
+Page 750   end
+51 end
+52 
+53 class  Verse
+54   attr_reader  :number
+55   def initialize (number, &lyrics)
+56     @number  = number
+57     @lyrics  = lyrics
+58   end
+59 
+60   def text
+61     @lyrics .call self
+62   end
+63 end
+If you find this code less than clear, you’re not a lone. It’s confusing enough to warrant an
+explanation, but because the explanation naturally reflects the code, it’s confusing in its own
+right. Don’t worry if the following paragraphs mudd le things further. Their purpose is to help you
+appreciate the complexity rather than understand th e details.
+The code above first defines four lambdas (lines 2,  9, 16, and 23) and saves them as constants
+(NoMore , LastOne , Penultimate , and Default ). Notice that each lambda takes argument verse
+but only Default  actually refers to it. The code then defines the song  and verses  methods. Next
+comes the verse  method, which passes the current verse number to verse_for  and sends text
+to the result (line 40). This is the line of code t hat returns the correct string for a verse of the s ong.
+Things get more interesting in verse_for , but before pondering that method, look ahead to t he
+Verse  class on line 53. Verse  instances are initialized with two arguments, number  and &lyrics ,
+and they respond to two messages, number  and text . The number  method simply returns the
+verse number that was passed to initialize . The text  method is more complicated; it sends
+call  to lyrics , passing self  as an argument.
+If you now return to verse_for  and examine lines 45-48, you can see that when ins tances of
+Verse  are created, the number  argument is a verse number and the &lyrics  argument is one of
+the lambdas. The verse_for  method gets invoked for every verse of the song, a nd therefore, one
+hundred instances of Verse  will be created, each containing a verse number an d the lambda that
+corresponds to that number.
+To summarize, sending verse(number)  to an instance of Bottles  invokes
+verse_for(number) , which uses the value of number  to select the correct lambda on which to
+create and return an instance of Verse . The verse  method then sends text  to the returned
+Verse , which in turn sends call  to the lambda, passing self  as an argument. This invokes the
+lambda, which may or may not actually use the argum ent that was passed. Regardless, executing
+the lambda returns a string that contains the lyric s for one verse of the song.
+You can be forgiven if you suspect that this is und uly complicated. It is. However, it’s curious that
+despite this complexity, Listing 1.2: Speculatively General  does a much better job than Listing 1.1:
+Incomprehensibly Concise  of answering the domain questions:
+1. How many verse variants are there?
+There are four verse variants (they start on lines 2, 9, 16 and 23 above).
+1.1.2. Speculatively General
+Page 82. Which verses are most alike? In what way?
+Verses 3-99 are most alike (as evidenced by the fac t that all are produced by the Default
+variant).
+3. Which verses are most different? In what way?
+Verses 0, 1 and 2 are clearly different from 3-99, although it’s not obvious in what way.
+4. What is the rule to determine which verse should be  sung next?
+Buried deep within the NoMore  lambda is a hard-coded "99," which might cause one  to
+infer that verse 99 follows verse 0.
+This solution’s answers to the first three question s above are quite an improvement over those of
+Listing 1.1: Incomprehensibly Concise . However, all is not perfect; it still does poorly  on the
+value/cost questions:
+1. How difficult was it to write?
+There’s far more code here than is needed to pass t he tests. This unnecessary code took
+time to write.
+2. How hard is it to understand?
+The many levels of indirection are confusing. Their  existence implies necessity, but you
+could study this code for a long time without disce rning why they are needed.
+3. How expensive will it be to change?
+The mere fact that indirection exists suggests that  it’s important. You may feel compelled to
+understand its purpose before making changes.
+As you can see from these answers, this solution do es a good job of exposing core concepts, but
+does a bad job of being worth its cost. This good j ob/bad job divide reflects a fundamental fissure
+in the code.
+Aside from the song  and verses  methods, the code does two basic things. First, it  defines
+templates for each kind of verse (lines 2-28), and second, it chooses the appropriate template for a
+specific verse number and renders that verse’s lyri cs (lines 39-63).
+Notice that the verse templates contain all of the information needed to answer the domain
+questions. There are four templates, and therefore,  there must be four verse variants. The
+Default  template handles verses 3 through 99, so these ver ses are clearly most alike. Verses 0, 1,
+and 2 have their own special templates, so each mus t be unique. The four templates (if you ignore
+the fact that they’re stored in lambdas) are very s traightforward, which makes answering the
+domain questions easy.
+But it’s not the templates that are costly; it’s th e code that chooses a template and renders the
+lyrics for a verse. This choosing/rendering code is  overly complicated, and while complexity is not
+forbidden, it is required to pay its own way. In this case, complex ity does not.
+Instead of 1) defining a lambda to hold a template,  2) creating a new object to hold the lambda,
+and 3) invoking the lambda with self  as an argument, the code could merely have put eac h of
+the four templates into a method and then used the case  statement on lines 45-48 to invoke the
+1.1.3. Concretely Abstract
+Page 9correct one. Neither the lambdas nor the Verse  class are needed, and the route between them is
+a series of pointless jumps through needless hoops.
+Given the obvious superiority of this alternative i mplementation, how on earth did the "calling a
+lambda" variant come about? At this remove,[2] it’s difficult to be certain of the motivation, bu t
+the code gives the impression that its author feare d that the logic for selecting or invoking a
+template would someday need to change, and so added  levels of indirection in a misguided
+attempt to protect against that day.
+They did not succeed. Relative to the alternative, Listing 1.2: Speculatively General  is harder to
+understand without being easier to change. The addi tional complexity does not pay off. The
+author may have acted with the best of intentions, but somewhere along the way, their
+commitment to the plan overcame good sense.
+Programmers love clever code. It’s like a neat card  trick that uses sleight of hand and misdirection
+to make magic. Writing it, or suddenly understandin g it, supplies a little burst of appreciative
+pleasure. However, this very pleasure distracts the  eye and seduces the mind, and allows
+cleverness to worm its way into inappropriate place s.
+You must resist being clever for its own sake. If y ou are capable of conceiving and implementing
+a solution as complex as Listing 1.2: Speculatively General , it is incumbent upon you to accept the
+harder  task and write simpler code.
+Neither Listing 1.2: Speculatively General  nor Listing 1.1: Incomprehensibly Concise  is the best
+solution for "99 Bottles". Perhaps, as was true for  porridge, the third solution will be just right.[3]
+1.1.3. Concretely Abstract
+This solution valiantly attempts to name the concep ts in the domain. Here’s the code:
+Listing 1.3: Concretely Abstract
+ 1 class  Bottles
+ 2   def song
+ 3     verses( 99, 0)
+ 4   end
+ 5 
+ 6   def verses (bottles_at_start, bottles_at_end)
+ 7     bottles_at_start .downto(bottles_at_end) .map do |bottles |
+ 8       verse(bottles)
+ 9     end.join( "\n")
+10   end
+11 
+12   def verse (bottles)
+13     Round .new(bottles) .to_s
+14   end
+15 end
+16 
+17 class  Round
+18   attr_reader  :bottles
+19   def initialize (bottles)
+20     @bottles  = bottles
+21   end
+22 
+23   def to_s
+1.1.3. Concretely Abstract
+Page 1024     challenge + response
+25   end
+26 
+27   def challenge
+28     bottles_of_beer .capitalize + " " + on_wall + ", "  +
+29     bottles_of_beer + ".\n"
+30   end
+31 
+32   def response
+33     go_to_the_store_or_take_one_down + ", "  +
+34     bottles_of_beer + " " + on_wall + ".\n"
+35   end
+36 
+37   def bottles_of_beer
+38     "#{anglicized_bottle_count } #{pluralized_bottle_form } of #{beer }"
+39   end
+40 
+41   def beer
+42     "beer"
+43   end
+44 
+45   def on_wall
+46     "on the wall"
+47   end
+48 
+49   def pluralized_bottle_form
+50     last_beer? ? "bottle"  : "bottles"
+51   end
+52 
+53   def anglicized_bottle_count
+54     all_out? ? "no more"  : bottles .to_s
+55   end
+56 
+57   def go_to_the_store_or_take_one_down
+58     if all_out?
+59       @bottles  = 99
+60       buy_new_beer
+61     else
+62       lyrics = drink_beer
+63       @bottles  -= 1
+64       lyrics
+65     end
+66   end
+67 
+68   def buy_new_beer
+69     "Go to the store and buy some more"
+70   end
+71 
+72   def drink_beer
+73     "Take #{it_or_one } down and pass it around"
+74   end
+75 
+76   def it_or_one
+77     last_beer? ? "it"  : "one"
+78   end
+79 
+80   def all_out?
+81     bottles .zero?
+82   end
+83 
+84   def last_beer?
+85     bottles == 1
+86   end
+87 end
+1.1.3. Concretely Abstract
+Page 11This solution is characterized by having many small  methods. This is normally a good thing, but
+somehow in this case it’s gone badly wrong. Have a look at how this solution does on the domain
+questions:
+1. How many verse variants are there?
+It’s almost impossible to tell.
+2. Which verses are most alike? In what way?
+Ditto.
+3. Which verses are most different? In what way?
+Ditto.
+4. What is the rule to determine which verse should be  sung next?
+Ditto.
+It fares no better on the value/cost questions.
+1. How difficult was it to write?
+Difficult. This clearly took a fair amount of thoug ht and time.
+2. How hard is it to understand?
+The individual methods are easy to understand, but despite this, it’s tough to get a sense of
+the entire song. The parts don’t seem to add up to the whole.
+3. How expensive will it be to change?
+While changing the code inside any individual metho d is cheap, in many cases, one simple
+change will cascade and force many other changes.
+It’s obvious that the author of this code was commi tted to doing the right thing, and that they
+carefully followed the Red, Green, Refactor  style of writing code. The various strings that ma ke up
+the song are never repeated—it looks as though thes e strings were refactored into separate
+methods at the first sign of duplication.
+The code is DRY, and DRYing out code should  reduce costs. DRY promises that if you put a chunk
+of code into a method and then invoke that method i nstead of duplicating the code, you will save
+money later if the behavior of that chunk changes. Recognize, though, that DRYing out code is not
+free. It adds a level of indirection, and layers of  indirection make the details  of what’s happening
+harder to understand. DRY makes sense when it reduc es the cost of change more than it increases
+the cost of understanding the code.
+The Don’t Repeat Yourself principle, like all princ iples of object-oriented design, is completely
+true. However, despite that fact that the code abov e is DRY, there are many ways in which it’s
+expensive to change.
+One of many possible examples is the beer  method on line 41. This method returns the string
+"beer," which occurs nowhere else in the code. To c hange the drink to "Kool-Aid," you need only
+change line 42 to return "Kool-Aid" instead of "bee r." As this one small change is all that’s needed
+to meet the "Kool-Aid" requirement, on the surface,  DRY has fulfilled its promise. However, step
+back a minute and consider the resulting method:
+1.1.3. Concretely Abstract
+Page 12def beer  
+  "Kool-Aid"
+end
+Or ponder some of the other method names:
+def bottles_of_beer
+def buy_new_beer
+def drink_beer
+def last_beer?
+In light of the "Kool-Aid" change, these names are terribly confusing. These method names no
+longer make sense where they are defined, and they are totally misleading in places where they
+are used. To mitigate this confusion, you not only have to change "beer" to "Kool-Aid" inside this
+method, but you also have to make the same change t o every method name  that includes the
+word "beer" and then again to every sender of one o f those messages.
+This small change in requirements forces a change i n many places, which is exactly the problem
+DRY promises to avoid. The fault here, however, lie s not with the DRY principle, but with the
+names of the methods.
+When you choose beer  as the name of a method that returns the string "b eer," you’ve named the
+method after what it does right now. Unfortunately,  when you name a method after its current
+implementation, you can never change that internal implementation without ruining the method
+name.
+You should name methods not after what they do, but  after what they mean, what they represent
+in the context of your domain. If you were to ask y our customer what "beer" is in the context of
+the "99 Bottles" song, they would not answer "Beer is the beer ," they would say something like
+"Beer is the thing you drink " or "Beer is the beverage ."
+"Beer" and "Kool-Aid" are kinds of beverages; the w ord "beverage" is one level of abstraction
+higher than "beer." Naming the method at this sligh tly higher level of abstraction isolates the code
+from changes in the implementation details. If you choose beverage  for the method name, going
+from:
+def beverage  
+  "beer"
+end
+to:
+def beverage  
+ "Kool-Aid"
+end
+makes perfect sense and requires no other change.
+Listing 1.3: Concretely Abstract  contains many small methods, and the strings that make up the
+song are completely DRY. These two things exert a f orce for good that should result in code that’s
+easy to change. However, in Concretely Abstract , this force is overcome by the high cost of dealin g
+1.1.4. Shameless Green
+Page 13with methods that are named at the wrong level of a bstraction. These method names raise the
+cost of change.
+Therefore, one lesson to be gleaned from this solut ion is that you should name methods after the
+concept they represent rather than how they current ly behave. However, notice that even if you
+edited the code to improve every method name, this code still isn’t quite right.
+Changing the name of the beer  method to beverage  makes it easy to replace the string "beer"
+with the string "Kool-Aid" but does nothing to impr ove this code’s score on the domain questions.
+The problem goes far deeper than having methods wit h inadequate names. It’s not just the names
+that are wrong, but the methods themselves. Many me thods in this code represent the wrong
+abstractions.
+The challenge of identifying the right  abstractions is explored in future chapters, but m eanwhile,
+it’s time to consider one more solution.
+1.1.4. Shameless Green
+None of the solutions shown thus far do very well o n the value/cost questions. Incomprehensibly
+Concise  cares only for terseness. Speculatively General  tries for extensibility but achieves
+unwarranted complexity. The heart of Concretely Abstract  is in the right place, but it can’t get its
+feet out of the mud.
+Solving the "99 Bottles" problem in any of these wa ys requires more effort than is necessary and
+results in more complexity than is needed. These so lutions cost too much; they do too many of the
+wrong things and too few of the right.
+Speculatively General  and Concretely Abstract  were both written with an eye toward reducing
+future costs, and it is distressing to see good int entions fail so spectacularly. It’s a particular sh ame
+that the abstractions are wrong because given the o pportunity to do so, the code is completely
+willing to reveal abstractions that are right. The failure here is not bad intention—it’s insufficient
+patience.
+This next example is patient and so provides an antidote for all that h as come before. The
+following solution is known as Shameless Green :
+Listing 1.4: Shameless Green
+ 1 class  Bottles
+ 2   def song
+ 3     verses( 99, 0)
+ 4   end
+ 5 
+ 6   def verses (upper, lower)
+ 7     upper .downto(lower) .map { |i| verse(i)} .join( "\n")
+ 8   end
+ 9 
+10   def verse (number)
+11     case  number
+12     when  0
+13       "No more bottles of beer on the wall, "  +
+14       "no more bottles of beer. \n" +
+15       "Go to the store and buy some more, "  +
+1.1.4. Shameless Green
+Page 1416       "99 bottles of beer on the wall. \n"
+17     when  1
+18       "1 bottle of beer on the wall, "  +
+19       "1 bottle of beer. \n" +
+20       "Take it down and pass it around, "  +
+21       "no more bottles of beer on the wall. \n"
+22     when  2
+23       "2 bottles of beer on the wall, "  +
+24       "2 bottles of beer. \n" +
+25       "Take one down and pass it around, "  +
+26       "1 bottle of beer on the wall. \n"
+27     else
+28       "#{number } bottles of beer on the wall, "  +
+29       "#{number } bottles of beer. \n" +
+30       "Take one down and pass it around, "  +
+31       "#{number -1} bottles of beer on the wall. \n"
+32     end
+33   end
+34 end
+The most immediately apparent quality of this code is how very simple it is. There’s nothing
+tricky here. The code is gratifyingly easy to compr ehend. Not only that, despite its lack of
+complexity, this solution does extremely well on th e domain questions.
+1. How many verse variants are there?
+Clearly, four.
+2. Which verses are most alike? In what way?
+3-99, where only the verse number varies.
+3. Which verses are most different? In what way?
+0, 1 and 2 are different from 3-99, though figuring  out how requires parsing strings with
+your eyes.
+4. What is the rule to determine which verse should be  sung next?
+This is still not explicit. The 0 verse contains a deeply buried, hard-coded 99.
+These answers are identical to those achieved by Listing 1.2: Speculatively General . Shameless
+Green  and Speculatively General  differ, though, in how they compare on the value/c ost questions.
+Shameless Green  is a substantial improvement.
+1. How difficult was this to write?
+It was easy to write.
+2. How hard is it to understand?
+It is easy to understand.
+3. How expensive will it be to change?
+It will be cheap to change. Even though the verse s trings are duplicated, if one verse
+changes it’s easy to keep the others in sync.
+By the criteria that have been established, Shameless Green  is clearly the best solution, yet almost
+no one writes it. It feels embarrassingly easy, and  is missing many qualities that you expect in
+good code. It duplicates strings and contains few n amed abstractions.
+1.2.1. Evaluating Code Based on Opinion
+Page 15Most programmers have a powerful urge to do more, b ut sometimes it’s best to stop right here. If
+you were charged with writing the code to produce t he lyrics to the 99 Bottles song, it is difficult
+to imagine fulfilling that requirement in a more co st-effective way.
+The Shameless Green solution is disturbing because,  although the code is easy to understand, it
+makes no provision for change. In this particular c ase, the song is so unlikely to change that
+betting that the code is "good enough" should pay o ff. However, if you pretend that this problem is
+a proxy for a real, production application, the pro per course of action is not so clear.
+When you DRY out duplication or create a method to name a bit of code, you add levels of
+indirection that make it more abstract. In theory t hese abstractions make code easier to
+understand and change, but in practice they often a chieve the opposite. One of the biggest
+challenges of design is knowing when to stop, and d eciding well requires making judgments
+about code.
+1.2. Judging Code
+You now have access to five different solutions to the "99 Bottles of Beer" problem; the four listed
+in the preceding section and the one you wrote your self.
+Which is best?
+You likely have an opinion on this question—one whi ch, granted, may have been swayed by the
+commentary above. However, independent of that gent le influence, the sum of your experiences
+and expectations predispose you to assess the goodn ess of code in your own unique way.
+You judge code constantly. Writing code requires ma king choices; the choices you make reflect
+personal, internalized criteria. You intend to writ e "good" code and if, in your estimation, you’ve
+written "bad" code, you are clearly aware that you’ ve done so. Regardless of how implicit,
+unachievable, or unhelpful they may be, you already  have rules about code.
+While having standards of any sort is a virtue, the chance of achieving your sta ndards is
+improved if they are explicit and quantifiable. Ans wering the question "What makes code good?"
+thus requires defining goodness in concrete and act ionable ways.
+This is harder than one might think.
+1.2.1. Evaluating Code Based on Opinion
+You’d think that by now, there would exist a univer sally agreed-upon definition of good code that
+could unambiguously guide our programming behavior.  The unfortunate truth is that not only
+are there a multitude of definitions, but these def initions generally describe how code looks when
+it’s done without providing any concrete guidance a bout how to get there.
+Just as "Everybody complains about the weather but nobody does anything about it,"[4] everyone
+has an opinion about what good code looks like, but  those opinions usually don’t tell us what
+action to take to create it. Here are a few definit ions of clean code. Notice that they could describe
+art or wine as easily as software.
+1.2.2. Evaluating Code Based on Facts
+Page 16
+““
+““
+““I like my code to be elegant and efficient.
+— Bjarne Stroustrup
+inventor of C++
+Clean code is … full of crisp abstractions …
+— Grady Booch
+author of Object Oriented Analysis and Design with Applicatio ns
+Clean code was written by someone who cares.
+— Michael Feathers
+author of Working Effectively with Legacy Code
+Your own definition probably follows along these sa me lines. Any pile of code can be made to
+work ; good code not only works, but is also simple, und erstandable, expressive and changeable.
+The problem with these definitions is that although  they accurately describe how good code looks
+once it’s written, they give no help with achieving  this state, and provide little guidance for
+choosing between competing solutions. The attribute s they use to describe good code are
+qualitative, not quantitative.
+What does it mean to be "elegant?" What makes an ab straction "crisp?" Despite the fact that these
+definitions are undeniably correct, none are precis e in a measurable way. This lack of precision
+means that well-meaning programmers can hold identi cally high standards and still have
+significant disagreements about relative goodness. Thus, we argue fruitlessly about code.
+Since form follows function, good code can also be defined simply, and somewhat circularly, as
+that which provides the highest value for the lowes t cost. Our sense of elegance, expressiveness
+and simplicity is an outgrowth of our experiences w hen reading and modifying code. Code that is
+easy to understand and a pleasure to extend natural ly feels simple and elegant.
+If you could identify and measure these qualities, you could seek after them diligently and
+deliberately. Therefore, although your opinions abo ut code matter, you would be well served by
+facts.
+1.2.2. Evaluating Code Based on Facts
+A "metric" is a measure of some quality of code. Me trics are, obviously, created by people, so one
+could argue that they merely express one individual ’s opinion. That assertion, however, vastly
+understates their worth. Measures that rise to beco me metrics are backed by research that has
+stood the test of time. They’ve been scrutinized by  many people over many years. You can think of
+metrics as crowd-sourced opinions about the quality  of code.
+If you apply the same metric to two different piece s of source code, you can then compare that
+code (at least in terms of what the metric measures ) by comparing the resulting numbers. While
+it’s possible to disagree with the premise of a spe cific metric, and to insist that the thing it
+measures isn’t useful, the rules of mathematics req uire all to concede that the numbers produced
+by metrics are facts.
+1.2.2. Evaluating Code Based on Facts
+Page 17
+““It would be extremely handy to have agreed-upon fac ts with which to compare code. In search of
+these facts, this section examines three different metrics: Source Lines of Code, Cyclomatic
+Complexity, and ABC.
+Source Lines of Code
+In the days of yore, the desire for reproducible, r eliable information about the cost of developing
+applications led to the creation of a metric known simply as Source Lines of Code ( SLOC ,
+sometimes shortened to just LOC). This one number h as been used to predict the total effort
+needed to develop software, to measure the producti vity of those who write it, and to predict the
+cost of maintaining it.
+The metric has the advantage of being easily garner ed and reproduced, but suffers from many
+flaws.
+Using SLOC to predict the development effort needed  for a new project is done by counting the
+SLOC of existing  projects for which total effort is known, deciding  which of those existing projects
+the new project most resembles, and then running a cost estimation model to make the
+prediction. If the person doing the estimating is c orrect about which existing project(s) the new
+project most closely resembles, this prediction may  be accurate.
+Measuring programmer productivity by counting lines  of code assumes that all programmers
+write equally efficient code. However, novice progr ammers are often far more verbose than
+those with more experience. Despite the fact that n ovices write more code to produce less
+function, by this metric, they can seem more produc tive.
+While the cost of maintenance is related to the siz e of an application, the way in which code is
+organized also matters. It is cheaper to maintain a  well-designed application than it is to maintain
+a pile of spaghetti-code.
+SLOC numbers reflect code volume, and while it’s us eful for some purposes, knowing SLOC alone
+is not enough to predict code quality.
+Cycl omatic Complexity
+In 1976, Thomas J. McCabe, Sr. published " A Complexity Measure ", in which he asserted:
+What is needed is a mathematical technique that will pr ovide a quantitative
+basis for modularization and allow us to identify softwar e modules that will be
+difficult to test or maintain.
+A "mathematical technique" to identify code that is  "difficult to test or maintain"—this could be
+the perfect tool for assessing code. In his paper, McCabe describes his Cyclomatic Complexity
+metric, an algorithm that counts the number of uniq ue execution paths through a body of source
+code. Think of this algorithm as a little machine t hat ponders your code and then maps out all the
+possible routes through every combination of every branch of every conditional. A method with
+many deeply nested conditionals would score very hi gh, while a method with no conditionals at
+all would score 0.
+1.2.2. Evaluating Code Based on Facts
+Page 18Cyclomatic complexity neither predicts application development time nor measures programmer
+productivity. Its desire to identify code that is difficult to test or maintain  aims directly at code
+quality.
+Cyclomatic complexity can be used in several ways. First, you can use it to compare code. If you
+have two variants of the same method, you can choos e between them based on their cyclomatic
+complexity. Lower scores are better and so by exten sion the code with the lowest score is the best.
+Next, you can use it to limit overall complexity. Y ou can set standards for how high a score you’re
+willing to accept, and require explicit dispensatio n before allowing code to exceed this maximum.
+Finally, you can use it to determine if you’ve writ ten enough tests. Cyclomatic complexity tells you
+the minimum number of tests needed to cover all of the logic in the code. If you have fewer tests
+than cyclomatic complexity recommends, you don’t ha ve complete test coverage.
+Cyclomatic complexity sounds great, and it’s easy t o see that it could be useful, but it views the
+world of code through a narrow lens.
+Assignments, Branches an d Conditions (ABC)  Metric
+The problem with cyclomatic complexity is that it d oesn’t take everything into account. Code does
+more than just evaluate conditions; it also assigns  values to variables and sends messages. These
+things add up, and as you do more and more of each,  your code becomes increasingly difficult to
+understand.
+In 1997, twenty-one years after the unveiling of cy clomatic complexity, Jerry Fitzpatrick
+published " Applying the ABC Metric to C, C++, and Java ", in which he describes a metric that does
+consider more than conditionals. His ABC stands for  assignments, branches and conditions,
+where:
+Assignments  is a count of variable assignments.
+Branches  counts not branches of an if statement (as one cou ld forgivably infer) but
+branches of control, meaning function calls or mess age sends.
+Conditions  counts conditional logic.
+Fitzpatrick describes the ABC metric as a measure o f size, as if ABC is a more sophisticated
+version of SLOC. This is his metric so he certainly gets to say what it represe nts, but you will not
+go wrong if you think of ABC scores as reflecting c ognitive as opposed to physical size. High ABC
+numbers indicate code that takes up a lot of mental  space. In this sense, ABC is a measure of
+complexity. Highly complex code is difficult to und erstand and change, therefore ABC scores are a
+proxy for code quality.
+The most popular tool for generating ABC scores for  Ruby code is Ryan Davis’s Flog . Flog is more
+ABC- ish than strictly ABC. Davis has specifically tuned it  to reflect his considered opinion about
+what makes for good Ruby code. If you’re interested  in the ways in which Flog differs from classic
+ABC, you can find out by simply browsing the source code , but you don’t have to delve into the
+gory details to benefit from running this metric ag ainst your own code.
+1.2.3. Comparing Solutions
+Page 19ABC scores provide an independent perspective that may challenge your ideas about complexity
+and design. High scores suggest that code will be h ard to test and expensive to maintain. If you
+believe your code to be simple but the ABC score sa ys otherwise, you should think again.
+Metrics are fallible but human opinion is no more p recise. Checking metrics regularly will keep
+you humble and improve your code.
+1.2.3. Comparing Solutions
+Now that you have some insight into code metrics, i t’s time to ponder how the code examples
+shown in this chapter compare.
+Since all of the solutions have virtually identical  implementations for song  and verses , these can
+be ignored, focusing the counts on the code that is  necessary for the definition of verse .
+The following table shows each solution’s total lin es of code (SLOC) along with back-of-the-napkin
+counts of assignments, branches[5], and conditionals, and the resulting ABC[6] score.
+Table 1.1: Metrics
+Solution SLOC Assignments Branches Conditionals ABC
+Listing 1.1:
+Incomprehensibly
+Concise19 0 0 15 15
+Listing 1.2:
+Speculatively
+General63 6 10 4 12
+Listing 1.3:
+Concretely Abstract87 4 26 9 28
+Listing 1.4:
+Shameless Green34 0 0 4 4
+Here’s a chart of the above SLOC and ABC scores.
+1.2.3. Comparing Solutions
+Page 20
+Figure 1.1: Metrics Chart
+Although SLOC is not related to ABC score, both are  considered a measure of size, and they
+appear to be roughly correlated. A larger solution in terms of SLOC is for the most part also larger
+in terms of its ABC score. Shameless Green  is the notable exception—it’s only second lowest i n
+SLOC, but has the lowest ABC score by a considerabl e margin.
+Incomprehensibly Concise  and Concretely Abstract  are interesting in that they both have
+characteristically complex code, but along differen t axes. Incomprehensibly Concise  has the fewest
+lines of code, but the most conditionals. It has ma naged to condense a lot of complexity into very
+few lines. In Concretely Abstract , on the other hand, the complexity lies in the bra nching (message
+sends), not so much in the conditionals. The comple xity in this solution is spread across the
+largest number of lines of code; no single method h as any significant amount of complexity.
+Speculatively General  is shorter Concretely Abstract , and its complexity is spread out more evenly
+among assignments, branches, and conditionals.
+Shameless Green  scores best on all counts except SLOC. Incomprehensibly Concise  is the shortest
+solution, but when you look at the ratio of lines o f code to conditionals, Shameless Green  comes
+out more favorably.
+Incomprehensibly Concise  and Shameless Green  are similar in that most of their complexity is
+contained in a single method. Neither has assignmen ts or branching. Despite this similarity, if you
+compare their SLOC scores to their conditional coun ts, you’ll see that they are also very different.
+While Incomprehensibly Concise  has many conditionals relative to SLOC, Shameless Green  has the
+opposite. Incomprehensibly Concise  packs a lot of complexity into a few lines of code . Shameless
+Green  is biased in the other direction; it has more code  but is much simpler.
+1.3. Summary
+Page 21If your goal is to write straightforward code, thes e metrics point you toward Shameless Green .
+1.3. Summary
+As programmers grow, they get better at solving cha llenging problems, and become comfortable
+with complexity. This higher level of comfort somet imes leads to the belief that complexity is
+inevitable, as if it’s the natural, inescapable sta te of all finished code. However, there’s something
+beyond complexity—a higher level of simplicity. Inf initely experienced programmers do not
+write infinitely complex code; they write code that ’s blindingly simple.
+This chapter examined four possible solutions to th e "99 Bottles" problem as a prelude to defining
+what it means to write simple code. It used metrics  as a starting point, injected a bit of common
+sense, and landed on Shameless Green .
+Shameless Green is defined as the solution that qui ckly reaches green while prioritizing
+understandability over changeability. It uses tests  to drive comprehension, and patiently
+accumulates concrete examples while awaiting insigh t into underlying abstractions. It doesn’t
+dispute that DRY is good, rather, it believes that it is cheaper to manage temporary duplication
+than to recover from incorrect abstractions.
+Writing Shameless Green is fast, and the resulting code might be "good enough." Most
+programmers find it embarrassingly duplicative, and  the code is certainly not very object-
+oriented. However, if nothing ever changes, the mos t cost-effective strategy is to deploy this code
+and walk away.
+The challenge comes when a change request arrives. Code that’s good enough when nothing ever
+changes may not be good enough when things do. Chapter 3 introduce s just such a change, and in
+that chapter you’ll begin improving the code. Befor e moving on, however, it’s time to take a step
+back, and learn how to test-drive Shameless Green.
+2.1. Understanding Testing

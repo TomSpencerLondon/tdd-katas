@@ -1,0 +1,2644 @@
+Page 2279. Reaping the Benefits of Design
+The current "99 Bottles" application satisfies all of the known requirements. The code looks very
+object-oriented, and you can articulate a persuasiv e justification for every decision that led to its
+current shape.
+But the tests are a bit musty. They’ve gradually tr ansformed from tests that tell a helpful story
+about the "99 Bottles" song into tests that misrepr esent, if not outright lie, about the entire
+domain. Their only redeeming quality is that at lea st they fail if the code gets broken.
+It’s important to know if something breaks, but tes ts can do far more. They give you the
+opportunity to explain the domain to future readers . They expose design problems that make
+code hard to reuse. Well-designed code is easy to t est; when testing is hard, the code’s design
+needs attention.
+Writing tests, even at this late date, will improve  the code. As a final exercise, this chapter does
+just that.
+9.1. Choosing Which Units to Test
+Every class should have its own unit test, unless d oing otherwise saves money. The allowed-to-
+skip-tests bar is high, but some code meets it. Thi s first section explores such a case.
+9.1.1. Contrasting Unit and Integration Tests
+Back in Chapter 2, unit tests drove the Shameless G reen implementation of "99 Bottles." Those
+initial tests continue to provide a safety net, and  have assured the code’s correctness through
+many refactorings.
+Comforting as the tests are, over time they have go tten woefully out of date. In early chapters,
+Bottles  was the only class. After BottleNumber  was extracted, the unit tests for Bottles
+morphed into integration tests that covered both cl asses. This integration coverage expanded
+further as more classes were extracted. The origina l unit tests now cover Bottles ,
+BottleVerse , and the entire BottleNumber  hierarchy. They remain useful because they’ll
+break if someone introduces an error, but they misl ead readers about the intent and workings of
+the present code.
+Improving the tests will accomplish two things. Fir st, this will reduce costs. Tests that tell the
+right story make it easier for future readers to un derstand the code. Improving the story will
+save you money forever.
+Next, updating the tests will lay bare the conseque nces of the code’s design. It should be easy to
+create simple, intention-revealing tests. When it’s  not, the chief problem is often too much
+coupling. In such cases the solution is not to write complicated tests that overcome tight
+coupling, but rather to loosen the coupling so that  you can write simple tests. The most cost-
+effective time to intervene in tightly coupled code  is right now, before new requirements cause
+you to to start reusing these objects.
+9.1.1. Contrasting Unit and Integration Tests
+Page 228The good news is that writing tests will uncover ev ery bit of overlooked tight coupling and
+immediately reward you for fixing it. Here’s a remi nder of the current tests:
+Listing 9.1: Bottles Tests Reminder
+ 1 class  BottlesTest  < Minitest ::Test
+ 2   def test_the_first_verse
+ 3     expected =
+ 4       "99 bottles of beer on the wall, "  +
+ 5       "99 bottles of beer. \n" +
+ 6       "Take one down and pass it around, "  +
+ 7       "98 bottles of beer on the wall. \n"
+ 8     assert_equal expected, Bottles .new.verse( 99)
+ 9   end
+10 
+11   def test_another_verse
+12     expected =
+13       "3 bottles of beer on the wall, "  +
+14       "3 bottles of beer. \n" +
+15       "Take one down and pass it around, "  +
+16       "2 bottles of beer on the wall. \n"
+17     assert_equal expected, Bottles .new.verse( 3)
+18   end
+19 
+20   def test_verse_2
+21     expected =
+22       "2 bottles of beer on the wall, "  +
+23       "2 bottles of beer. \n" +
+24       "Take one down and pass it around, "  +
+25       "1 bottle of beer on the wall. \n"
+26     assert_equal expected, Bottles .new.verse( 2)
+27   end
+28 
+29   def test_verse_1
+30     expected =
+31       "1 bottle of beer on the wall, "  +
+32       "1 bottle of beer. \n" +
+33       "Take it down and pass it around, "  +
+34       "no more bottles of beer on the wall. \n"
+35      assert_equal expected, Bottles .new.verse( 1)
+36   end
+37 
+38   def test_verse_0
+39     expected =
+40       "No more bottles of beer on the wall, "  +
+41       "no more bottles of beer. \n" +
+42       "Go to the store and buy some more, "  +
+43       "99 bottles of beer on the wall. \n"
+44     assert_equal expected, Bottles .new.verse( 0)
+45   end
+46 
+47   def test_a_couple_verses
+48     # ...
+49     assert_equal expected, Bottles .new.verses( 99, 98)
+50   end
+51 
+52   def test_a_few_verses
+53     # ...
+54     assert_equal expected, Bottles .new.verses( 2, 0)
+55   end
+56 
+57   def test_the_whole_song
+58     # ...
+59     assert_equal expected, Bottles .new.song
+9.1.1. Contrasting Unit and Integration Tests
+Page 22960   end
+61 end
+These tests made perfect sense when Bottles  was the only class. As a first stab in an unknown
+domain they stand up pretty well, but now that you better understand the 99 Bottles problem
+you might be itching to do a few things differently .
+It’s worth taking a minute to remember why there’s such a dearth of tests. The original
+BottleNumber  class was extracted from and then used in Bottles  by way of the Extract Class
+refactoring recipe. This recipe is known to work. A s long as you make one-undo changes and
+confirm that the tests pass after every change, you  can follow the recipe with confidence in the
+result.
+Creating a new class by following a recipe instead of by doing TDD is perfectly allowable, but the
+result relies on the original tests to confirm that  the extracted class remains error-free. Using the
+recipe consigns BottleNumber 's correctness to Bottles ' tests. If BottleNumber  is wrong, a
+Bottles  test breaks.
+Instead of updating the tests immediately after ext racting BottleNumber , or after further
+extracting the BottleNumber  subclasses, the sins against TDD were compounded b y extracting
+yet another class, BottleVerse . Bottles ' tests provided an increasingly broad safety net o ver
+an extended series of other objects.
+Bottles ' tests started out as unit tests but have become i ntegration tests. Unit tests are meant to
+test the public API of a single class. The unit und er test often requires a few collaborating objects
+in order to run, but these other objects are tangen tial and exist only so you can address the unit
+of interest. Unit tests ought not test collaborator s.
+Integration tests are intended to prove that groups  of objects collaborate correctly; they show
+that an entire chain of behavior works. This is exa ctly what these Bottles  tests do.
+Your general approach to testing should be to creat e a unit test for every class, and to test every
+method in that class’s public API. To do so here, y ou have to choose where to begin. In hopes that
+fixing the easy problems will clarify the hard ones , begin with the extremely simple
+BottleNumber  subclasses. Not only are these classes small, but they are also leaf nodes on your
+object dependency graph[23] which suggests that they are minimally entangled w ith your overall
+domain. BottleNumber1  is a reasonable starting point.
+Despite the fact that BottleNumber1  is tiny, testing it presents a conundrum. For exam ple, here’s
+its pronoun  method:
+def pronoun  
+  "it"
+end
+The only reasonable test would look like:
+def test_pronoun  
+  assert_equal "it" , BottleNumber1 .new( 1).pronoun
+9.1.2. Foregoing Tests
+Page 230end
+This is woefully circular. The test assertion exact ly mirrors the method implementation. When
+the assertion duplicates the code, they both must c hange in lockstep or the test will fail.
+Having to change 'it' in two places is a small thin g, but this still feels like a waste of time and
+money. This test doesn’t add much value, and imagin ing it should spur you to consider
+alternatives. Contrary to your original intentions,  perhaps pronoun  (and by extension
+BottleNumber1  as a whole) shouldn’t be tested at all.
+Tests are most valuable when they exercise confirma ble behavior, and you could argue that
+BottleNumber1#pronoun  has none. While this code should very definitely b e exercised during
+testing, the most cost-effective place to do so may  be within some other unit’s test.
+Some other test is already covering this code; it g ets executed during the Bottles  tests. You can
+confirm this by arbitrarily changing pronoun  and running the tests. For example, altering the
+code to return oops  instead of it…
+class  BottleNumber1  < BottleNumber  
+  # ...  
+  def pronoun  
+    "oops"  
+  end 
+  # ...
+end
+…causes these three tests to fail:
+1) Failure: 
+BottlesTest#test_the_whole_song 
+# ... 
+ 
+2) Failure: 
+BottlesTest#test_verse_1 
+# ... 
+ 
+3) Failure: 
+BottlesTest#test_a_few_verses 
+# ...
+While it’s comforting that tests fail if the code g ets broken, the Bottles  tests seem very far away
+from bottle number-ish concerns. Although you might  be casting around for justification to omit
+unit tests for BottleNumber1 , this code has to be executed as part of some  test, and counting on
+the Bottles  tests for coverage feels like a stretch. It’s time  to develop some principles to handle
+this situation.
+9.1.2. Foregoing Tests
+As previously mentioned, you should approach testin g with the intent of creating unit tests for
+every class. After long and careful consideration y ou might decide to allow one object’s unit tests
+to cover a collaborator as well, but this is the ex ception. You should plan to write a unit test for
+every class, and you are entitled to expect to see a unit test for every class in someone else’s code.
+9.1.2. Foregoing Tests
+Page 231The Bottles  tests provide complete coverage for all the existi ng classes, but they’re really
+integration tests masquerading as unit tests. Faux unit tests that reach out to cover distant
+collaborators become increasingly unhelpful to the next programmer. When a test involves
+many objects in combination, the code could break q uite far from the origin of the problem. This
+makes it hard to determine the cause of an error.
+Integration tests are important, but they serve a d ifferent purpose than unit tests. Integration
+tests are great at proving the correctness of the c ollaboration between groups of objects. They
+demonstrate the overall operation of all or a subse t of your application. Because they cover a lot
+of ground, they’re often slow.
+In contrast, unit tests are for you, the programmer . They help you write down, communicate the
+expected behavior of, prevent regression in, and de bug smaller units of code. When something
+goes wrong, it’s the unit tests that provide an err or message near the offending line of code. Since
+they narrow the set of potential code culprits behi nd any problem, they make debugging easier.
+They should stay out of your way when writing code,  which means they should be fast.
+It cannot be emphasized strongly enough that most c lasses deserve their own explicit unit tests.
+This should be your default point of view. But just  as every rule is meant to be broken,
+occasionally the most useful thing to communicate a bout an object is that it is so small, simple, or
+invisible that testing it individually would raise costs rather than lower them. Every now and
+then it makes sense to test an object in conjunctio n with its enclosing unit. Doing so creates a test
+that leaks into the space between integration and u nit, but if you think of the smaller objects as
+being private, you can be justified in calling the whole thing a unit test.
+The classes in the BottleNumber  hierarchy are examples of things so small, simple,  and
+invisible that they might not deserve their own uni t tests.
+If you subscribe to the principle that applications  should have 100% test coverage, you might
+need to reexamine your definition of that rule. Per haps it means "100% of the code should be
+exercised during unit tests," rather than "100% of the public methods should have their own
+personal tests."
+The tests previously imagined for BottleNumber1#pronoun  are so tightly bound to
+implementation details that they may very well inte rfere with change. Tests should give you the
+freedom to improve code, not glue you to its curren t implementation. When they constrain
+rather than liberate, ask if they’re worthwhile, an d consider omitting them.
+In the rare case where you decide to forego giving a class its own unit test, you must be able to
+defend this decision with a clearly articulated jus tification. In addition to size and complexity,
+visibility is also an important consideration. Visi bility is determined by the context  in which the
+class is known.
+To illustrate, here’s a reminder of the BottleVerse  class, which references BottleNumber  on
+line 3:
+Listing 9.2: BottleVerse Reminder
+9.1.2. Foregoing Tests
+Page 232 1 class  BottleVerse
+ 2   def self .lyrics (number)
+ 3     new(BottleNumber .for(number)) .lyrics
+ 4   end
+ 5 
+ 6   attr_reader  :bottle_number
+ 7 
+ 8   def initialize (bottle_number)
+ 9     @bottle_number  = bottle_number
+10   end
+11 
+12   def lyrics
+13     "#{bottle_number } of beer on the wall, " .capitalize +
+14     "#{bottle_number } of beer. \n" +
+15     "#{bottle_number .action }, " +
+16     "#{bottle_number .successor } of beer on the wall. \n"
+17   end
+18 end
+The entire public API of BottleVerse  consists of the lyrics  class method on line 2, so all of
+BottleVerse 's instance methods can be thought of as private. W ithin this one public method,
+BottleVerse  invokes the BottleNumber  factory to get a player of the bottle number role.
+Notice how profoundly BottleVerse  depends on bottle numbers. Instances of BottleVerse
+are entirely reliant on a bottle number to produce a verse. It’s hard to imagine any use of
+BottleVerse  that doesn’t require a concomitant bottle number. From BottleVerse 's point of
+view, it is inseparable from its bottle numbers. Bo ttle numbers exist in the context of
+BottleVerse .
+Now flip your point of view and consider the relati onship between these classes from the
+perspective of a bottle number. Things change drama tically. Individual bottle numbers aren’t
+aware of BottleVerse . They don’t know that they’re part of a song. They  are perfectly willing to
+be used in any situation. They are independent  of context, which means that they could easily be
+reused in a new one.
+Everything in the prior paragraph argues that bottl e numbers are their own self-contained thing,
+which in turn argues that they should have their ow n tests. And yet. They are small, painfully
+simple, used nowhere other than in BottleVerse , and could be completely exercised by the
+soon-to-be-written BottleVerse  tests.
+The tipping point for deciding how to test is visib ility. BottleVerse  has assumed personal
+responsibility for supplying itself with BottleNumber s. BottleNumber s do not get created and
+injected from the outside, but instead, BottleVerse  knows about them inside itself. The
+dependency between BottleVerse  and BottleNumber  is not visible to outside observers.
+At this point, no other place in the application re ferences the BottleNumber  factory or any of
+the manufactured classes. It’s certainly possible t hat someone might eventually do so, but no one
+does right now.
+This wrapping of BottleNumber  by BottleVerse  means that if you stand in the space between
+the public objects of this app, you’ll never see a reference to BottleNumber . It’s so invisible to
+outside observers that it may as well not exist.
+9.1.2. Foregoing Tests
+Page 233In summary, BottleNumber s are:
+small
+simple
+invisible from outside of BottleVerse
+used in no context other than BottleVerse
+These factors combine to suggest that, at least for  the moment, you should think about bottle
+numbers as an integral part of BottleVerse , and test them within BottleVerse 's unit test.
+Most situations are more convoluted, which means th at objects should generally have their own
+unit tests. Even this situation might someday chang e such that BottleNumber s should be unit
+tested independently. If these classes get more com plicated, or begin to be used in other contexts,
+revisit this decision. When BottleNumber s need their own story, they should have their own
+tests.
+One last point before moving on. The most critical and complicated part of bottle numbers is the
+factory, which you might want to unit test explicit ly even if you defer to BottleVerse  for testing
+the other bottle number behavior. When testing the factory it’s important to test the factory’s
+responsibilities, not the responsibilities of the o bjects the factory manufactures. The factory’s job
+is to take a number and turn that number into an in stance of the correct class. Thus the test
+might look like this:
+Listing 9.3: Testing the Bottle Number Factory
+ 1 class  BottleNumberTest  < Minitest ::Test
+ 2   def test_returns_correct_class_for_given_number
+ 3     # 0,1,6 are special
+ 4     assert_equal BottleNumber0 , BottleNumber .for( 0).class
+ 5     assert_equal BottleNumber1 , BottleNumber .for( 1).class
+ 6     assert_equal BottleNumber6 , BottleNumber .for( 6).class
+ 7 
+ 8     # Other numbers get the default
+ 9     assert_equal BottleNumber , BottleNumber .for( 3).class
+10     assert_equal BottleNumber , BottleNumber .for( 7).class
+11     assert_equal BottleNumber , BottleNumber .for( 43).class
+12   end
+13 end
+The above test puts many assertions in a single tes t, which violates a commonly adopted rule.
+However, as this is the most parsimonious expressio n of the factory’s responsibilities, breaking
+that general rule is justified.
+This section laid out some considerations for choos ing to omit unit tests. It doesn’t give license to
+write a bunch of monster integration-y tests and pa ss them off as unit tests, but instead
+acknowledges that some things are so interrelated t hat testing them independently will increase
+rather than reduce costs. The reason you’re writing  tests is to save money , and every potential
+test must be evaluated against that criteria.
+9.2.1. Gathering BottleVerse Tests
+Page 234Use good judgement. Be extremely biased towards cre ating a unit test for every method in every
+class’s public API. But make sure that all tests ju stify their existence and eliminate those that
+don’t.
+While all code  needs to be tested, some tests  aren’t worth writing.
+9.2. Reorganizing Tests
+Unit tests ought to tell an illuminating story. The y should demonstrate and confirm the class’s
+direct responsibilities, and do nothing else. You s hould strive to write the fastest tests possible, i n
+the fewest number necessary, using the most intenti on-revealing expectations, and the least
+amount of code.
+This next section examines the existing tests with an eye towards determining who is really
+responsible for the behavior, and thus who should o wn the tests.
+With that, it’s time to take up BottleVerse .
+9.2.1. Gathering BottleVerse Tests
+BottleVerse  is both more complicated and more visible than the  simple bottle number classes.
+Here’s a reminder of its code:
+Listing 9.4: BottleVerse Implements an Algorithm
+ 1 class  BottleVerse
+ 2   def self .lyrics (number)
+ 3     new(BottleNumber .for(number)) .lyrics
+ 4   end
+ 5 
+ 6   attr_reader  :bottle_number
+ 7 
+ 8   def initialize (bottle_number)
+ 9     @bottle_number  = bottle_number
+10   end
+11 
+12   def lyrics
+13     "#{bottle_number } of beer on the wall, " .capitalize +
+14     "#{bottle_number } of beer. \n" +
+15     "#{bottle_number .action }, " +
+16     "#{bottle_number .successor } of beer on the wall. \n"
+17   end
+18 end
+There’s a fair amount going on here. Relative to th e bottle number classes, BottleVerse  is
+definitely more involved. It’s not quite as easy to  tell what’s happening, and it seems possible that
+a hasty change might break something. Tests would a dd safety and help tell the story of this
+code.
+BottleVerse  gets used when some outside entity chooses it for the verse template and injects it
+into Bottles , as shown on line 4 below:
+Listing 9.5: BottleVerse Is Loosely Coupled to Bottles
+9.2.1. Gathering BottleVerse Tests
+Page 235 1 class  Bottles
+ 2   attr_reader  :verse_template
+ 3 
+ 4   def initialize (verse_template : BottleVerse )
+ 5     @verse_template  = verse_template
+ 6   end
+ 7   # ...
+ 8   def verse (number)
+ 9     verse_template .lyrics(number)
+10   end
+11 end
+In the previous section, the connection between BottleNumber  and BottleVerse  was invisible
+from the outside. In the above code, the relationsh ip between Bottles  and its verse template is
+completely exposed. Bottles  doesn’t supply its own template; someone else pick s the right
+object and passes it in.
+This collaboration is public. Injecting the verse t emplate dependency loosens the coupling
+between Bottles  and BottleVerse , which drives these concrete classes apart. The tw o classes
+are independent.
+Don’t be confused by the fact that verse_template  defaults to BottleVerse  on line 4 above;
+this isn’t a tight coupling between the classes. Th at default is an artifact of an earlier refactoring
+and is temporarily necessary because existing tests  construct new Bottles  without passing an
+argument. A later section of this chapter will upda te the Bottles  tests and tend to this default.
+This combination of code complexity and public visi bility means that BottleVerse  should get
+its own unit tests.
+As always, start by creating a class to hold the te sts:
+Listing 9.6: Create Test for BottleVerse
+1 class  BottleVerseTest  < Minitest ::Test
+2 end
+Now you have to decide what to test. Since a unit t est should contain at least one test for every
+method in the class’s public API, you’ll need to te st the BottleVerse  lyrics  class method. It’s
+fine to create multiple tests for a single method i f doing so will better explain its behavior to
+future readers.
+This lyrics  method is responsible for taking a number and retu rning the lyrics for the
+associated verse. Keeping that in mind, peruse the existing Bottles  tests:
+Listing 9.7: Existing Bottles Tests
+ 1 class  BottlesTest  < Minitest ::Test
+ 2   def test_the_first_verse
+ 3     expected =
+ 4       "99 bottles of beer on the wall, "  +
+ 5       "99 bottles of beer. \n" +
+ 6       "Take one down and pass it around, "  +
+ 7       "98 bottles of beer on the wall. \n"
+ 8     assert_equal expected, Bottles .new.verse( 99)
+ 9   end
+9.2.1. Gathering BottleVerse Tests
+Page 23610 
+11   def test_another_verse
+12     # ...
+13     assert_equal expected, Bottles .new.verse( 3)
+14   end
+15 
+16   def test_verse_2
+17     # ...
+18     assert_equal expected, Bottles .new.verse( 2)
+19   end
+20 
+21   def test_verse_1
+22     # ...
+23      assert_equal expected, Bottles .new.verse( 1)
+24   end
+25 
+26   def test_verse_0
+27     # ...
+28     assert_equal expected, Bottles .new.verse( 0)
+29   end
+30 
+31   def test_a_couple_verses
+32     # ...
+33     assert_equal expected, Bottles .new.verses( 99, 98)
+34   end
+35 
+36   def test_a_few_verses
+37     # ...
+38     assert_equal expected, Bottles .new.verses( 2, 0)
+39   end
+40 
+41   def test_the_whole_song
+42     # ...
+43     assert_equal expected, Bottles .new.song
+44   end
+45 end
+BottlesTest  already contains a number of tests for individual "99 Bottles" verses. For example,
+the test on line 2 above confirms that an input of 99 results in the lyrics for that verse. Similar
+single verse tests occur four more times above (not ice the assertions on lines 13, 18, 23 and 28).
+These tests were created during the initial TDD of Bottles  back in Chapter 2, at which time they
+made perfect sense. Now that BottleVerse  is responsible for creating individual verses for the
+"99 Bottles" song, BottleVerseTest  should take responsibility for proving that the ly rics are
+correct. This means that every test in Bottles  that makes assertions about individual "99
+Bottles" verses should move into BottleVerseTest .
+The best way to get started is to carefully move ju st one test. Since test_the_first_verse
+already exists, moving it will be accomplished with  a refactoring. The test suite is currently
+passing and you don’t want to accidentally introduc e an error. The safest way to move code is by
+way of a now-familiar technique: copy the code, get  it working in the new place, and then delete
+it from the old.
+With that in mind, copy test_the_first_verse  from BottlesTest  to BottleVerseTest , as
+shown below:
+Listing 9.8: Copy the First Test
+9.2.1. Gathering BottleVerse Tests
+Page 237 1 class  BottleVerseTest  < Minitest ::Test
+ 2   def test_the_first_verse
+ 3     expected =
+ 4       "99 bottles of beer on the wall, "  +
+ 5       "99 bottles of beer. \n" +
+ 6       "Take one down and pass it around, "  +
+ 7       "98 bottles of beer on the wall. \n"
+ 8     assert_equal expected, Bottles .new.verse( 99)
+ 9   end
+10 end
+11 
+12 class  BottlesTest  < Minitest ::Test
+13   def test_the_first_verse
+14     expected =
+15       "99 bottles of beer on the wall, "  +
+16       "99 bottles of beer. \n" +
+17       "Take one down and pass it around, "  +
+18       "98 bottles of beer on the wall. \n"
+19     assert_equal expected, Bottles .new.verse( 99)
+20   end
+21   # ...
+22 end
+Change nothing about the copied test. Run the tests . Nine should pass.
+Next, alter the new assertion to test BottleVerse.lyrics(number)  rather than
+Bottles#verse , as shown on line 8 below:
+Listing 9.9: Update the Assertion
+ 1 class  BottleVerseTest  < Minitest ::Test
+ 2   def test_the_first_verse
+ 3     expected =
+ 4       "99 bottles of beer on the wall, "  +
+ 5       "99 bottles of beer. \n" +
+ 6       "Take one down and pass it around, "  +
+ 7       "98 bottles of beer on the wall. \n"
+ 8     assert_equal expected, BottleVerse .lyrics( 99)
+ 9   end
+10 end
+Running the tests will show that nine still pass.
+Now that the new test in BottleVerseTest  has been shown to work, you can delete the old
+version from BottlesTest . This leaves eight passing tests.
+Having verified this process, go ahead and copy all  the other individual verse tests from
+BottlesTest  to BottleVerseTest , again without altering the copied code. After com pleting
+the copying, BottleVerseTest  will look like this:
+Listing 9.10: Copy Remaining Tests for Individual Verses
+ 1 class  BottleVerseTest  < Minitest ::Test
+ 2   def test_the_first_verse
+ 3     # ...
+ 4     assert_equal expected, BottleVerse .lyrics( 99)
+ 5   end
+ 6 
+ 7   def test_another_verse
+ 8     # ...
+9.2.1. Gathering BottleVerse Tests
+Page 238 9     assert_equal expected, Bottles .new.verse( 3)
+10   end
+11 
+12   def test_verse_2
+13     # ...
+14     assert_equal expected, Bottles .new.verse( 2)
+15   end
+16 
+17   def test_verse_1
+18     # ...
+19      assert_equal expected, Bottles .new.verse( 1)
+20   end
+21 
+22   def test_verse_0
+23     # ...
+24     assert_equal expected, Bottles .new.verse( 0)
+25   end
+26 end
+At this point you will have 12 passing tests. After  ensuring that you do, update the assertions in
+BottleVerseTest  to invoke BottleVerse .lyrics  as shown on lines 9, 14, 19, and 24 below,
+perhaps using this as an opportunity to practice se arch/replace using regular expressions:
+Listing 9.11: Update Test Assertions
+ 1 class  BottleVerseTest  < Minitest ::Test
+ 2   def test_the_first_verse
+ 3     # ...
+ 4     assert_equal expected, BottleVerse .lyrics( 99)
+ 5   end
+ 6 
+ 7   def test_another_verse
+ 8     # ...
+ 9     assert_equal expected, BottleVerse .lyrics( 3)
+10   end
+11 
+12   def test_verse_2
+13     # ...
+14     assert_equal expected, BottleVerse .lyrics( 2)
+15   end
+16 
+17   def test_verse_1
+18     # ...
+19      assert_equal expected, BottleVerse .lyrics( 1)
+20   end
+21 
+22   def test_verse_0
+23     # ...
+24     assert_equal expected, BottleVerse .lyrics( 0)
+25   end
+26 end
+After the above update, 12 tests should still pass.  Once you confirm that, you can delete the four
+obsolete tests from BottlesTest  with confidence that you haven’t broken anything. This
+deletion returns you to eight total passing tests, and reduces BottlesTest  to just three tests.
+BottleVerse 's tests now prove that it correctly produces each different flavor of "99 Bottles"
+verse. The lyrics tests are correct and complete, a nd are basically just an updated copy of the
+tests as they were initially created in Chapter 2. At that time these tests seemed good enough, but
+now that you’re addressing the test suite as a whol e, you might be disappointed by the story
+9.2.2. Revealing Intent
+Page 239these tests tell. They miss a golden opportunity to  convey a deeper understanding of the domain
+to future readers.
+Some of the BottleVerse  tests need better names.
+9.2.2. Revealing Intent
+Writing the very first test for a new domain can be  paralyzingly difficult. It’s often much easier
+to write the tenth test, or the fifth, or even the second. The first test is important because without
+it you can’t get started, but sometimes its ultimat e purpose is to teach you that it’s not quite right .
+During the initial round of TDD back in Chapter 2, you had to make several moderately arbitrary
+decisions in order to write the first test. At that  point you didn’t thoroughly understand the
+domain of the song—this knowledge, after all, comes  as a result of conceiving of and writing
+tests. The problem is circular. You can’t write tes ts until you understand the problem, but you
+can’t understand the problem without writing some t ests. No wonder it’s hard to get started.
+Even so, here is where writing tests first really shines. It’s far better to struggle with a test that
+you don’t understand than to write code that you do n’t understand. Tests force you to clarify
+your intentions because they make explicit assertio ns. Code has no such pressure, and can be left
+a confusing mess forever.
+So despite being a bit vague on the details, when g iven the task of writing code to produce 1) the
+entire "99 Bottles" song, 2) a range of verses, or 3) a single verse, you intrepidly decided to create
+a Bottles  class with a public API of song , verses  and verse . You then chose to follow the
+classic TDD inside-out style and begin testing at t he verse  method. At this point you wanted to
+write a test which took a number and returned the l yrics for the associated verse. In order to do
+that, you had to decide which number to use and wha t to name the test.
+Names are important, and you could have invested ti me finding the perfect name for that first
+test. In this case, ignorance comes in handy. Since  you knew it would be hard to pick a great
+name until you understood the domain better, and yo u also knew that writing tests would
+improve your understanding of the domain, you didn’ t spend a lot of time on this first name.
+Calling it test_the_first_verse  allowed you to move on, and moving on gave you hop e of
+someday knowing enough to do better.
+As far as choosing the first number to test, 99 made sense because it appeared first in the song.
+When future programmers read your tests they will i nfer meaning from every decision. Starting
+with 99 is unsurprising. Any other number would cause them  to wonder about the deep
+meaning behind your choice.
+After getting that first test to pass, you realized  that there were other variants of verse  that
+should be tested. You noticed that the lyrics for v erses in the range between 99 and 3 are
+identical except for the value of the number. The t est for the top end of this range already
+existed, so you decided that next you should test t he bottom, using 3 as input. You named this
+test test_another_verse .
+9.2.2. Revealing Intent
+Page 240The test_the_first_verse /test_another_verse  tests exist to show that the lyrics of verses
+from 99 through 3 follow a similar rule, but nothing about their nam es gives any hint of this
+rule’s existence. The bodies of the tests are fine— the problem is in their names. These vague
+names were perfectly acceptable when they were the best you could do, but now you know more
+and can do better. It’s time to improve the story.
+The names of these two tests should convey the foll owing:
+this is a verse test
+a rule exists
+it applies to most verses
+it involves a range
+one test is for the upper bound
+the other test is for the lower bound
+Names like test_verse_general_rule_upper_bound  and
+test_verse_general_rule_lower_bound  perfectly satisfy these constraints.
+Now that you’ve done the hard part and unearthed be tter names, rename the first two
+BottleVerse  tests as shown on lines 2 and 11 below:
+Listing 9.12: Rename Verse Tests for 99 and 3
+ 1 class  BottleVerseTest  < Minitest ::Test
+ 2   def test_verse_general_rule_upper_bound
+ 3     expected =
+ 4       "99 bottles of beer on the wall, "  +
+ 5       "99 bottles of beer. \n" +
+ 6       "Take one down and pass it around, "  +
+ 7       "98 bottles of beer on the wall. \n"
+ 8     assert_equal expected, BottleVerse .lyrics( 99)
+ 9   end
+10 
+11   def test_verse_general_rule_lower_bound
+12     expected =
+13       "3 bottles of beer on the wall, "  +
+14       "3 bottles of beer. \n" +
+15       "Take one down and pass it around, "  +
+16       "2 bottles of beer on the wall. \n"
+17     assert_equal expected, BottleVerse .lyrics( 3)
+18   end
+19   # ...
+20 end
+Here’s an overall look at the resulting BottleVerseTest :
+Listing 9.13: Interim BottleVerse Tests
+ 1 class  BottleVerseTest  < Minitest ::Test
+ 2   def test_verse_general_rule_upper_bound
+ 3     # ...
+ 4     assert_equal expected, BottleVerse .lyrics( 99)
+ 5   end
+ 6 
+9.2.2. Revealing Intent
+Page 241 7   def test_verse_general_rule_lower_bound
+ 8     # ...
+ 9     assert_equal expected, BottleVerse .lyrics( 3)
+10   end
+11 
+12   def test_verse_2
+13     # ...
+14     assert_equal expected, BottleVerse .lyrics( 2)
+15   end
+16 
+17   def test_verse_1
+18     # ...
+19      assert_equal expected, BottleVerse .lyrics( 1)
+20   end
+21 
+22   def test_verse_0
+23     # ...
+24     assert_equal expected, BottleVerse .lyrics( 0)
+25   end
+26 end
+The above names are consistent and symmetrical. The y please the eye and convey more
+information about the song. But they’re still not g ood enough.
+The names clearly indicate that some verses follow a common rule and that others do not. While
+completely true, these suggestions continue to misl ead the reader. The names strongly imply that
+every special verse has its own personal test. Now that you have fulfilled the six-pack
+requirement, verse 6 and verse 7 are also unique. T elling the best story requires that you give
+them their own tests.
+It doesn’t matter that verses 6 and 7 are also test ed in the song  test. The other special verses (2, 1,
+0) are already being tested there too. Appearing in  the song doesn’t make these special verses
+less special. The point behind these tests is tell a story to future readers, and that story should be
+consistent and complete.
+The expectations needed to test verse 7 and verse 6  can be plucked directly from the song  test.
+Use these expectations to create two new verse test s whose names follow the current pattern, as
+shown below:
+Listing 9.14: Test Special Verses 7 and 6
+ 1 class  BottleVerseTest  < Minitest ::Test
+ 2   def test_verse_general_rule_upper_bound
+ 3     # ...
+ 4   end
+ 5 
+ 6   def test_verse_general_rule_lower_bound
+ 7     # ...
+ 8   end
+ 9 
+10   def test_verse_7
+11     expected =
+12       "7 bottles of beer on the wall, "  +
+13       "7 bottles of beer. \n" +
+14       "Take one down and pass it around, "  +
+15       "1 six-pack of beer on the wall. \n"
+16     assert_equal expected, BottleVerse .lyrics( 7)
+17   end
+9.3. Seeking Context Independence
+Page 24218 
+19   def test_verse_6
+20     expected =
+21       "1 six-pack of beer on the wall, "  +
+22       "1 six-pack of beer. \n" +
+23       "Take one down and pass it around, "  +
+24       "5 bottles of beer on the wall. \n"
+25     assert_equal expected, BottleVerse .lyrics( 6)
+26   end
+27 
+28   def test_verse_2
+29     # ...
+30   end
+31 
+32   def test_verse_1
+33     # ...
+34   end
+35 
+36   def test_verse_0
+37     # ...
+38   end
+39 end
+At this point there should be 10 passing tests, hal f of which handle the special verses 7, 6, 2, 1 and
+0.
+Adding tests for verses 7 and 6 made the special ca ses consistent, but muddied the once crystal
+clear water of the general verse rule. There are no w two special cases embedded within the
+range covered by that rule. If you worry that reade rs will be confused by this, spend a moment
+thinking about how you might rename these tests to mitigate that confusion.
+The current names, however, are probably good enoug h. They’ve been significantly improved,
+and divulge information that was formerly only impl icit. They are a tribute to the power of
+names.
+This is a good time to declare BottleVerse 's tests complete and move on to Bottles .
+9.3. Seeking Context Independence
+The word "context" has been used a number of times under the assumption that its technical
+meaning would be clear based on, well, context. You ’ve probably already developed an idea
+about its meaning, but a discussion of the term is in order.
+An object’s context is its surrounding environment,  or the interrelated conditions under which it
+can exist. Objects that require large, convoluted c ontexts are picky about their surroundings;
+they know too much about the outside world. They re quire particular things to be true about
+their environment, which limits their use to very s pecific situations.
+Objects are more usable when they know less. Object s that expect little of their surroundings can
+be more easily applied to novel situations, and so provide greater utility. The most useful are
+those that are entirely independent of context; the y have no expectations about, and make no
+demands upon the external world. As far as context goes, ignorance truly is bliss.
+9.3. Seeking Context Independence
+Page 243This section explores these ideas by examining the Bottles  class and its remaining tests with an
+eye towards reducing their context.
+9.3.1. Examining Bottles ' Responsibilities
+Page 2449.3.1. Examining Bottles' Responsibilities
+Before looking at Bottles ' tests, pause and refresh your memory of the class  itself.
+Listing 9.15: Reconsidering Bottles
+ 1 class  Bottles
+ 2   attr_reader  :verse_template
+ 3 
+ 4   def initialize (verse_template : BottleVerse )
+ 5     @verse_template  = verse_template
+ 6   end
+ 7 
+ 8   def song
+ 9     verses( 99,0)
+10   end
+11 
+12   def verses (upper, lower)
+13     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+14   end
+15 
+16   def verse (number)
+17     verse_template .lyrics(number)
+18   end
+19 end
+The code above is the end result of iteratively ext racting bits that needed to vary. The outcome is
+a class that has almost nothing to do with the "99 Bottles" song. It retains vestiges of its former
+context (the name Bottles , the default BottleVerse , the magic number 99) but someone
+unfamiliar with the code’s history would not recogn ize this class as that song.
+Bottles  is no longer the right name. This is not a Bottles  at all; it’s something completely
+different.
+The name Bottles  diminishes this class, making it appear to be less  than it is. Remnants of the
+circumstances from which it came continue to bind i t to a specific context, even though it is now
+more generally useful. The class has become more ab stract but its very name will prevent
+programmers from recognizing its broader utility.
+Take a fresh look at this code and describe what it  does. Classes should be named after what they
+are: what is this?
+You might be tempted to say it’s a Song . That is correct, but you can do better. It’s a pa rticular
+kind of song, and is distinguished by the downto  on line 13 above. It’s reasonable to assume that
+a song with numbered verses will count up. This son g is a bit unexpected in that it starts at the
+top and counts down. This is a CountdownSong .
+The next section renames Bottles  to CountdownSong , but before moving on, sit back for a
+minute and think about how dissimilar a class named  CountdownSong  feels from a class named
+Bottles . Bottles  is parochial and useful in one specific case. CountdownSong  is generic and
+useful in many cases. For a class named Bottles , the BottleVerse  default and the hard-coded
+99 seem entirely reasonable. In a class named CountdownSong , these relics of a prior context
+9.3.1. Examining Bottles ' Responsibilities
+Page 245are just plain annoying, and you will be motivated to remove them. Bottles  constricts
+possibilities; CountdownSong  expands them.
+Did you feel the world pivot under your feet? This is yet another testament to the power of
+names.
+Bottles  can be renamed to CountdownSong  with a straightforward refactoring. As always, the
+process is to make one-undo changes and ensure the tests pass after every change.
+Start by duplicating the entire Bottles  class and changing the duplicate copy’s name to
+CountdownSong :
+Listing 9.16: Duplicate Bottles as CountdownSong
+ 1 class  CountdownSong
+ 2   attr_reader  :verse_template
+ 3 
+ 4   def initialize (verse_template : BottleVerse )
+ 5     @verse_template  = verse_template
+ 6   end
+ 7 
+ 8   def song
+ 9     verses( 99,0)
+10   end
+11 
+12   def verses (upper, lower)
+13     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+14   end
+15 
+16   def verse (number)
+17     verse_template .lyrics(number)
+18   end
+19 end
+20 
+21 class  Bottles
+22   # ...
+23 end
+Now that CountdownSong  exists, you can update the tests.
+First, rename the test from BottlesTest  to CountdownSongTest  as shown on line 1 below:
+Listing 9.17: Change Test Name
+ 1 class  CountdownSongTest  < Minitest ::Test
+ 2   def test_a_couple_verses
+ 3     # ...
+ 4     assert_equal expected, Bottles .new.verses( 99, 98)
+ 5   end
+ 6 
+ 7   def test_a_few_verses
+ 8     # ...
+ 9     assert_equal expected, Bottles .new.verses( 2, 0)
+10   end
+11 
+12   def test_the_whole_song
+13     # ...
+14     assert_equal expected, Bottles .new.song
+9.3.2. Purifying Tests With Fakes
+Page 24615   end
+16 end
+Now go into CountdownSongTest  and update the places that mention Bottles  to refer to
+CountdownSong  (lines 4, 9, and 14 below):
+Listing 9.18: Use CountdownSong in Tests
+ 1 class  CountdownSongTest  < Minitest ::Test
+ 2   def test_a_couple_verses
+ 3     # ...
+ 4     assert_equal expected, CountdownSong .new.verses( 99, 98)
+ 5   end
+ 6 
+ 7   def test_a_few_verses
+ 8     # ...
+ 9     assert_equal expected, CountdownSong .new.verses( 2, 0)
+10   end
+11 
+12   def test_the_whole_song
+13     # ...
+14     assert_equal expected, CountdownSong .new.song
+15   end
+16 end
+At this point the old Bottles  class is no longer used, so you can delete it. Thi s should leave you
+with 10 passing tests.
+This process for changing a class name involved a f ew small steps rather than one big one. It
+ordered the five necessary changes (the class’s nam e, the test’s name, and the test’s three
+references to the old class name) so they could be made in series, all the while keeping the tests
+running green.
+In a problem this small you’d likely have been fine  making all of the changes at once, but you
+shouldn’t. Build a habit of doing refactorings. Whe n you insist on making changes under green,
+you never have far to go to debug whatever it is th at you just broke. This makes everything
+easier. It’s cheaper to always do refactorings than  to sometimes debug big piles of altered code.
+9.3.2. Purifying Tests With Fakes
+Now that the CountdownSong  exists, take a closer look at its tests (repeated below):
+Listing 9.19: CountdownSong Tests Still Stuck to 99 Bottles Lyrics
+ 1 class  CountdownSongTest  < Minitest ::Test
+ 2   def test_a_couple_verses
+ 3     expected =
+ 4       "99 bottles of beer on the wall, "  +
+ 5       "99 bottles of beer. \n" +
+ 6       "Take one down and pass it around, "  +
+ 7       "98 bottles of beer on the wall. \n" +
+ 8       "\n" +
+ 9       "98 bottles of beer on the wall, "  +
+10       "98 bottles of beer. \n" +
+11       "Take one down and pass it around, "  +
+12       "97 bottles of beer on the wall. \n"
+13     assert_equal expected, CountdownSong .new.verses( 99, 98)
+14   end
+9.3.2. Purifying Tests With Fakes
+Page 24715 
+16   def test_a_few_verses
+17     expected =
+18       "2 bottles of beer on the wall, "  +
+19       "2 bottles of beer. \n" +
+20       "Take one down and pass it around, "  +
+21       "1 bottle of beer on the wall. \n" +
+22       "\n" +
+23       "1 bottle of beer on the wall, "  +
+24       "1 bottle of beer. \n" +
+25       "Take it down and pass it around, "  +
+26       "no more bottles of beer on the wall. \n" +
+27       "\n" +
+28       "No more bottles of beer on the wall, "  +
+29       "no more bottles of beer. \n" +
+30       "Go to the store and buy some more, "  +
+31       "99 bottles of beer on the wall. \n"
+32     assert_equal expected, CountdownSong .new.verses( 2, 0)
+33   end
+34 
+35   def test_the_whole_song
+36     expected = <<~SONG
+37       99 bottles of beer on the wall, 99 bottles of beer .
+38       Take  one down and pass it around, 98 bottles of beer on the wall .
+39 
+40       98 bottles of beer on the wall, 98 bottles of beer .
+41       Take  one down and pass it around, 97 bottles of beer on the wall .
+42 
+43       97 bottles of beer on the wall, 97 bottles of beer .
+44       Take  one down and pass it around, 96 bottles of beer on the wall .
+45 
+46       # ...
+47 
+48       No more bottles of beer on the wall, no more bottles of beer .
+49       Go to the store and buy some more, 99 bottles of beer on the wall .
+50     SONG
+51     assert_equal expected, CountdownSong .new.song
+52   end
+53 end
+These tests are useful in that they prevent regress ions, but they’re an abysmal failure at telling
+the story of CountdownSong . They suffer from the problem you just fixed in th e code; they still
+reflect the context from which they came. The expec tations are misleading, and the 290 lines of
+code elided on line 46 drag your mind back to the " 99 Bottles" context by sheer weight alone.
+These tests strongly imply that CountdownSong  is about "99 Bottles."
+It’s a given that tests should prove that code work s. But they have other purposes too, one of
+which is to explain the domain to the reader. The s tory told by these tests is not the story of
+CountdownSong . Tests should explain the essence of a class. The core responsibility of
+CountdownSong  is to take a verse template and produce a song tha t counts down. These tests fail
+to convey those things.
+If you study the tests long enough, you might event ually discern that the expectations contain
+verses that count down—but then again, you might no t. Additionally, the fact that
+CountdownSong  accepts an injected verse template is completely i nvisible. You cannot tell from
+reading the tests that the verse template can vary.
+9.3.2. Purifying Tests With Fakes
+Page 248Consider the first expectation. The test_a_couple_verses  test would be much more intention-
+revealing if instead of this:
+expected = 
+  "99 bottles of beer on the wall, "  + 
+  "99 bottles of beer. \n" + 
+  "Take one down and pass it around, "  + 
+  "98 bottles of beer on the wall. \n" + 
+  "\n" + 
+  "98 bottles of beer on the wall, "  + 
+  "98 bottles of beer. \n" + 
+  "Take one down and pass it around, "  + 
+  "97 bottles of beer on the wall. \n"
+Its expectation read like this:
+expected = 
+ "This is verse 99. \n" + 
+ "\n" + 
+ "This is verse 98. \n" + 
+ "\n" + 
+ "This is verse 97. \n"
+The second example above makes it crystal clear tha t the output is expected to contain verses
+that count down. This is a better test, and having it is as easy as imagining it. Don’t be bound to
+the original context by your knowledge of existing verse templates; CountdownSong 's tests are
+not doomed to collaborate with BottleVerse . Formulate a wish for the story you want to tell
+and then make that wish come true.
+Doing so simply requires creating a new player of t he verse template role that fulfills this more
+intention-revealing expectation. Here’s a new class  that does just that:
+Listing 9.20: VerseFake With Lyrics Implementation
+1 class  VerseFake
+2   def self .lyrics (number)
+3     "This is verse #{number }.\n"
+4   end
+5 end
+The VerseFake  class above is perfect for your needs, though it m ust be acknowledged that it
+unrepentantly breaks several common programming rul es.
+First, Chapter 8 suggested that you put domain beha vior on instances. This class violates that
+rule; its behavior is on the class side.
+Next, there’s an as-yet-unmentioned object-oriented  programming rule that prohibits the use of
+pattern names in class names. The word "Fake" above  refers to a testing pattern, so naming this
+class VerseFake  violates that rule.
+Fake things first. You’re probably familiar with th e idea of design patterns[24], which are named,
+re-usable solutions to common software problems. Pa ttern names act as shortcuts to big ideas
+and allow programmers to communicate with speed and  precision. Pattern thinking has so
+influenced software design that most programmers ar e familiar with a number of patterns. For
+9.3.2. Purifying Tests With Fakes
+Page 249example, you’ve likely heard of Decorator, Adapter,  Enumerator, and so on, even if you’re a bit
+fuzzy on the specifics of some of their definitions .
+Since pattern names are so meaningful, it can be te mpting to stick them in class names. For
+example, you might use the Decorator[25] pattern to enclose a number  in a new class that adds
+additional responsibility. Initially, NumberDecorator  might seem like a good name for the result.
+The problem with including the name of a pattern in  the name of a class is that this permits you
+the feeling of having created a useful name without  actually having done so. Pattern names don’t
+generally reflect concepts in your application. App ending them to class names pollutes your
+domain with programmer-y words and circumvents the search for names that add semantic
+meaning. Class names that include patterns are a si gnal that you’ve given up too soon on the
+hard problem of naming.
+Class names should reflect concepts in your domain,  not the patterns used to create them.
+Compared to BottleNumber , the much-richer name you gave this class in Chapt er 4,
+NumberDecorator  is so abstract as to be meaningless. Future reader s won’t care that the class
+was created using Decoration but they’ll be gratefu l to know that it’s a bottle-ish kind of number.
+The xUnit Test Patterns[26] book by Gerard Meszaros standardizes the pattern n ames of a set of
+objects that are used to simplify testing.[27]. TestDouble  is his generic name for all of the
+patterns. Within TestDouble  he further delineates the Dummy , Stub , Spy, Mock , Fake , and
+Temporary Test Stub  patterns.
+Meszaros defines Fake  as a TestDouble  that provides a lightweight implementation of a
+collaborator that is needed by the class you are ac tually unit testing. A Fake  is a regular old
+object; no testing magic is involved. In this case the new VerseFake  class is a real player of the
+verse template role; it’s called a Fake  because it’s only used during testing. BottleVerse  plays
+the role of verse template in production. VerseFake  was created to play this role during
+Bottles ' unit tests.
+The upshot is that Fake  is the name of a pattern, so VerseFake  violates the don’t-include-
+pattern-names-in-class-names rule.
+Rules exist to save money, and the two rules that VerseFake  breaks are primarily meant to save
+money in production code; they might not be so appl icable in code created to simplify tests. For
+example, the purpose of VerseFake  is to fake the role of verse template. In this cas e, VerseFake
+might be the most intention-revealing name possible . If you end up needing a number of
+different kinds of fakes, you might need additional  qualifiers in their names ( SimpleVerseFake ,
+ComplicatedVerseFake ) but the word "fake" still adds meaning in the dom ain of your tests.
+Similarly, it’s important that the shape of product ion code not interfere with your ability to
+change it. The put-domain-behavior-on-instances rul e serves this goal. In tests, however, you’re
+less concerned with preserving the fake’s changeabi lity and more interested in directly
+communicating its responsibilities. Putting the beh avior in a class method simplifies the code in
+VerseFake  at the expense of making it less adaptable. This i s a trade-off you’ll happily make in
+code used only by the tests.
+9.3.2. Purifying Tests With Fakes
+Page 250To use VerseFake , first create an alternate test_a_couple_verses  test, as shown on line 2
+below:
+Listing 9.21: Introduce Alternate Test
+ 1 class  CountdownSongTest  < Minitest ::Test
+ 2   def test_a_couple_verses
+ 3   end
+ 4 
+ 5   def test_a_couple_verses
+ 6     expected =
+ 7       "99 bottles of beer on the wall, "  +
+ 8       "99 bottles of beer. \n" +
+ 9       "Take one down and pass it around, "  +
+10       "98 bottles of beer on the wall. \n" +
+11       "\n" +
+12       "98 bottles of beer on the wall, "  +
+13       "98 bottles of beer. \n" +
+14       "Take one down and pass it around, "  +
+15       "97 bottles of beer on the wall. \n"
+16     assert_equal expected, CountdownSong .new.verses( 99, 98)
+17   end
+18   # ...
+19 end
+Next, fill this alternate test with an entirely new  implementation that uses the fake, as shown
+here:
+Listing 9.22: Alternate Test
+ 1 class  CountdownSongTest  < Minitest ::Test
+ 2   def test_a_couple_verses
+ 3     expected =
+ 4      "This is verse 99. \n" +
+ 5      "\n" +
+ 6      "This is verse 98. \n" +
+ 7      "\n" +
+ 8      "This is verse 97. \n"
+ 9     assert_equal(
+10       expected,
+11       CountdownSong .new( verse_template : VerseFake )
+12         .verses( 99, 97))
+13   end
+14 
+15   def test_a_couple_verses
+16     expected =
+17       "99 bottles of beer on the wall, "  +
+18     # ...
+19     assert_equal expected, CountdownSong .new.verses( 99, 98)
+20   end
+21   # ...
+22 end
+The alternate test_a_couple_verses  test above injects VerseFake  (line 11) and sets its
+expectations (line 3) based on the behavior of that  verse template.
+In Ruby, the second test_a_couple_verses  method definition silently overwrites the first.
+Running the tests here proves that the first altern ative is syntactically correct but only the
+second one actually executes. At this point you sho uld continue to have 10 passing tests.
+9.3.3. Purging Redundant Tests
+Page 251Now that the alternate test has been shown to be sy ntactically correct, delete the old one and run
+the tests again. You should still have 10 passing t ests.
+This reduces CountdownSongTest  to:
+Listing 9.23: Retain Alternate Test
+ 1 class  CountdownSongTest  < Minitest ::Test
+ 2   def test_a_couple_verses
+ 3     expected =
+ 4      "This is verse 99. \n" +
+ 5      "\n" +
+ 6      "This is verse 98. \n" +
+ 7      "\n" +
+ 8      "This is verse 97. \n"
+ 9     assert_equal(
+10       expected,
+11       CountdownSong .new( verse_template : VerseFake )
+12         .verses( 99, 97))
+13   end
+14 
+15   def test_a_few_verses
+16     # ...
+17   end
+18 
+19   def test_the_whole_song
+20     # ...
+21   end
+22 end
+Notice that test_a_couple_verses  is more expressive now that it contains less noise . This new
+version also verifies three contiguous verses (the 99, 97  on line 12) rather than only two.
+VerseFake 's verses are so short that you can broaden the exp ectation to illustrate more clearly
+that the input is a range without overly complicati ng the test.
+The test_a_couple_verses  name is now out-of-date. Make a note that it needs  to be updated,
+but tolerate it for the moment. Working on the othe r CountdownSong  tests may provide more
+information about how to name this one.
+Relative to the old, the body of this new test is b oth more intention-revealing and shorter. Using
+the fake converted it into a model of expressive co ncision. One might wish all tests to be so
+straightforward.
+9.3.3. Purging Redundant Tests
+Next, turn your attention to the other test that ma kes assertions about verses,
+test_a_few_verses , shown on line 15 below:
+Listing 9.24: Comparing Verses Tests
+ 1 class  CountdownSongTest  < Minitest ::Test
+ 2   def test_a_couple_verses
+ 3     expected =
+ 4      "This is verse 99. \n" +
+ 5      "\n" +
+ 6      "This is verse 98. \n" +
+ 7      "\n" +
+ 8      "This is verse 97. \n"
+9.3.3. Purging Redundant Tests
+Page 252 9     assert_equal(
+10       expected,
+11       CountdownSong .new( verse_template : VerseFake )
+12         .verses( 99, 97))
+13   end
+14 
+15   def test_a_few_verses
+16     expected =
+17       "2 bottles of beer on the wall, "  +
+18       "2 bottles of beer. \n" +
+19       "Take one down and pass it around, "  +
+20       "1 bottle of beer on the wall. \n" +
+21       "\n" +
+22       "1 bottle of beer on the wall, "  +
+23       "1 bottle of beer. \n" +
+24       "Take it down and pass it around, "  +
+25       "no more bottles of beer on the wall. \n" +
+26       "\n" +
+27       "No more bottles of beer on the wall, "  +
+28       "no more bottles of beer. \n" +
+29       "Go to the store and buy some more, "  +
+30       "99 bottles of beer on the wall. \n"
+31     assert_equal expected, CountdownSong .new.verses( 2, 0)
+32   end
+33 
+34   def test_the_whole_song
+35     # ...
+36   end
+37 end
+Is test_a_few_verses  necessary? If test_a_couple_verses  and test_a_few_verses  test
+different things, you should keep both. If they tes t same thing, you should delete one of them.
+Even though the tests define different expectations , they are logically identical. Each test asserts
+that CountdownSong  produces the correct list of verses for a given ve rse template and range.
+Since they test the same thing, you don’t need both .
+They have been redundant since they were initially created back in Chapter 2. It’s so easy now to
+recognize that test_a_few_verses  isn’t needed that it’s instructive to ask why this  test ever
+seemed necessary.
+Notice that the expectation in test_a_few_verses  lists every verse of the initial "99 Bottles"
+implementation that did not follow the common rule. Put another way, verse 2, 1, and 0 were
+special, and each rightly had their own individual verse test. The fact that these single verses
+were special made it somehow seem reasonable to tes t them in combination. But this was never
+necessary. As long as you have tests to prove that every verse  is correct, you don’t need to test
+verses  against more than one range. If verses  works with one, it will work with all.
+This point is more effectively made by imagining th e logical outcome of adding other redundant
+verses  tests. If you feel the need to test both 99-97 and  2-0, then why not 99-96? And 99-95? 40-
+28, etc? This way lies madness. These superfluous t ests confuse the reader and increase
+maintenance costs without adding additional safety.  One verses  test is enough. Stop there.
+Deleting test_a_few_verses  condenses the tests to:
+9.3.3. Purging Redundant Tests
+Page 253Listing 9.25: Testing the Verses Method Just Once
+ 1 class  CountdownSongTest  < Minitest ::Test
+ 2   def test_a_couple_verses
+ 3     expected =
+ 4      "This is verse 99. \n" +
+ 5       # ...
+ 6      "This is verse 97. \n"
+ 7     assert_equal(
+ 8       expected,
+ 9       CountdownSong .new( verse_template : VerseFake )
+10         .verses( 99, 97))
+11   end
+12 
+13   def test_the_whole_song
+14     expected = <<~SONG
+15       99 bottles of beer on the wall, 99 bottles of beer .
+16       # ...
+17       Go to the store and buy some more, 99 bottles of beer on the wall .
+18     SONG
+19     assert_equal expected, CountdownSong .new.song
+20   end
+21 end
+The resulting CountdownSongTest  contains two tests. The entire suite now contains nine tests,
+all of which pass.
+CountdownSong 's public API contains three methods, but CountdownSongTest  covers only two
+of them. The above example has no test for verse . Since CountdownSong  offers this public
+method, CountdownSongTest  must test it.
+CountdownSongTest  originally tested the entire API ( song , verses  and verse ). However, the
+original verse  tests were specific to "99 Bottles" and they recen tly moved to BottleVerseTest
+where they belong. This move left a gap in CountdownSong 's coverage; it should have a test for
+verse .
+Having gone through the exercise of creating and us ing VerseFake , it’s exceedingly easy to
+construct an intention-revealing test for verse  in CountdownSongTest . Here’s an example:
+Listing 9.26: Test Entire API in CountdownSongTest
+ 1 class  CountdownSongTest  < Minitest ::Test
+ 2   def test_verse
+ 3     expected = "This is verse 500. \n"
+ 4     assert_equal(
+ 5       expected,
+ 6       CountdownSong .new( verse_template : VerseFake )
+ 7         .verse( 500))
+ 8   end
+ 9 
+10   def test_a_couple_verses
+11     # ...
+12   end
+13 
+14   def test_the_whole_song
+15     # ...
+16   end
+17 end
+9.3.4. Profiting from Loose Coupling
+Page 254Notice that CountdownSong  tests verse  using 500 for the verse number. It intentionally conveys
+the idea that a number outside the 99-0 range is ac ceptable. This is visible evidence that
+CountdownSong  is not constrained by the limits of the "99 Bottle s" context from which it came.
+There should again be 10 passing tests.
+Now that you’ve chosen test_verse  for the name of the test for verse , reevaluate the
+test_a_couple_verses  name. Calling this test test_verse  suggests a pattern, and following
+the pattern would make the other tests easier to un derstand. Your intention would be clearer if
+test_a_couple_verses  was renamed to test_verses , as shown below:
+Listing 9.27: Improve Verses Test Name
+ 1 class  CountdownSongTest  < Minitest ::Test
+ 2   def test_verse
+ 3     expected = "This is verse 500. \n"
+ 4     assert_equal(
+ 5       expected,
+ 6       CountdownSong .new( verse_template : VerseFake )
+ 7         .verse( 500))
+ 8   end
+ 9 
+10   def test_verses
+11     expected =
+12      "This is verse 99. \n" +
+13      "\n" +
+14      "This is verse 98. \n" +
+15      "\n" +
+16      "This is verse 97. \n"
+17     assert_equal(
+18       expected,
+19       CountdownSong .new( verse_template : VerseFake )
+20         .verses( 99, 97))
+21   end
+22 
+23   def test_the_whole_song
+24     # ...
+25   end
+26 end
+Using VerseFake  greatly simplified the verse  and verses  tests. The fake enhances the story of
+CountdownSong  rather than distracting from it, as did the old ex pectations with their obsolete
+"99 Bottles" context. A glance at these two tests m akes it clear that CountdownSong  has nothing
+to do with "99 Bottles", but instead, it’s about co unting down.
+The one remaining test is for song . It currently contains 304 lines of code, most of which are
+misleading.
+9.3.4. Pro ting from Loose Coupling
+Having clarified the verse  and verses  tests, it’s now time to address test_the_whole_song ,
+shown in an abbreviated form below:
+Listing 9.28: Revisit Test the Whole Song
+ 1 class  CountdownSongTest  < Minitest ::Test
+ 2   # ...
+9.3.4. Profiting from Loose Coupling
+Page 255 3   def test_the_whole_song
+ 4     expected = <<~SONG
+ 5       99 bottles of beer on the wall, 99 bottles of beer .
+ 6       Take  one down and pass it around, 98 bottles of beer on the wall .
+ 7 
+ 8       98 bottles of beer on the wall, 98 bottles of beer .
+ 9       Take  one down and pass it around, 97 bottles of beer on the wall .
+10 
+11       # ...
+12 
+13       1 bottle of beer on the wall, 1 bottle of beer .
+14       Take  it down and pass it around, no more bottles of beer on the wall .
+15 
+16       No more bottles of beer on the wall, no more bottles of beer .
+17       Go to the store and buy some more, 99 bottles of beer on the wall .
+18     SONG
+19     assert_equal expected, CountdownSong .new.song
+20   end
+21 end
+This test needs work. Counting the lines elided by the comment on line 11 above, it’s 304 lines
+long, most of which involve the expectation. This w all of expectation text makes it impossible to
+understand the story the test wants to tell.
+You’ve already employed VerseFake  to improve the other tests. Injecting it here woul d certainly
+help, but would not solve the wall-of-text problem.  Even if you used the fake to simplify each
+individual verse listed in the expectation, the exp ectation would still be dauntingly long, listing
+100 verses.
+Have a look at CountdownSong  and see if you can spot the source of this problem :
+Listing 9.29: CountdownSong Reprise
+ 1 class  CountdownSong
+ 2   attr_reader  :verse_template
+ 3 
+ 4   def initialize (verse_template : BottleVerse )
+ 5     @verse_template  = verse_template
+ 6   end
+ 7 
+ 8   def song
+ 9     verses( 99,0)
+10   end
+11 
+12   def verses (upper, lower)
+13     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+14   end
+15 
+16   def verse (number)
+17     verse_template .lyrics(number)
+18   end
+19 end
+The 99 on line 9 above condemns you to an expectation tha t lists 100 verses.
+Early in this chapter three remnants of the origina l "99 Bottles" context were identified in this
+song-producing code. First, the class was named Bottles , second, the verse template defaulted
+to BottleVerse , and third, the class contained a hard-coded 99.
+9.3.4. Profiting from Loose Coupling
+Page 256Generalizing the class name to CountdownSong  resolved the first problem but the other two
+vestiges remain. These echos of a now-obsolete cont ext mislead readers and interfere with reuse.
+Since tests are the first reuse of your code, reusa bility problems are exposed by the tests. This is
+exactly what’s behind that wall of text in test_the_whole_song . The awkward test is pointing
+out that all CountdownSong 's are required to have exactly 100 verses. This is  cripplingly
+restrictive.
+Fortunately, it’s easy to gain independence from th e old context; just alter CountdownSong  to
+handle songs of any number of verses, within any ra nge. Extract and then inject the 99 and the 0
+to isolate the things you want to vary.
+The first step is to name the concepts represented by these numbers. You might, for example,
+choose max and min.
+Start using these names by creating attr_reader s as shown in on line 2 below:
+1 class  CountdownSong
+2   attr_reader  :verse_template , :max , :min
+3   # ...
+4 end
+Having done that, you can change CountdownSong  to accept and save these arguments during
+initialization , as shown below:
+Listing 9.30: Inject and Set Max and Min
+1 class  CountdownSong
+2   # ...
+3   def initialize (verse_template : BottleVerse , max: 99, min: 0)
+4     @verse_template  = verse_template
+5     @max , @min  = max, min
+6   end
+7   # ...
+8 end
+Now the song  method can refer to these abstract names rather th an to the concrete values on
+line 10 below:
+Listing 9.31: Use Max and Min in Song
+ 1 class  CountdownSong
+ 2   attr_reader  :verse_template , :max , :min
+ 3 
+ 4   def initialize (verse_template : BottleVerse , max: 99, min: 0)
+ 5     @verse_template  = verse_template
+ 6     @max , @min  = max, min
+ 7   end
+ 8 
+ 9   def song
+10     verses(max, min)
+11   end
+12 
+13   def verses (upper, lower)
+14     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+15   end
+16 
+17   def verse (number)
+9.3.4. Profiting from Loose Coupling
+Page 25718     verse_template .lyrics(number)
+19   end
+20 end
+Thus the dependency is inverted. Where CountdownSong  previously depended on the 99 and 0
+concretions, it now depends on the max and min abstractions. Where it was once handcuffed by
+the context from which it came, it is now independe nt of that context. Paradoxically, now that it
+knows less, it can do more.
+This completes the extraction of max and min. Before moving on to update the tests, there a few
+things to note about the code.
+First, max and min are given defaults on line 4, and these defaults l ook suspiciously like values
+that make sense only in the context of the "99 Bott les" song. It would be better to pass more
+general defaults, but you can’t do that yet because  test_the_whole_song  will fail unless max is
+99. For now just recognize that you’d like this defau lt to be context-independent and be alert for
+an opportunity to make it so.
+Next, notice that the song accepts pairs of numbers  delineating a range of verses in two different
+places (lines 4 and 13). In one place, the pair is named max and min, and in the other, upper  and
+lower . This is intentional. The idea that an entire coun tdown song has a fixed number of verses
+is embodied in max and min. This is about the song. In contrast, the idea tha t the verses  method
+can produce a requested range of descending verses is reflected in upper  and lower . This is
+about the subset of verses to be produced. These ar e two different concepts, and giving them
+different names clarifies the code.
+Now that max and min exist, you can use them to simplify test_the_whole_song . Line 3 below
+shows a much shorter but arguably more useful song test:
+Listing 9.32: Alternate Whole Song Test
+ 1 class  CountdownSongTest  < Minitest ::Test
+ 2   # ...
+ 3   def test_the_whole_song
+ 4     expected =
+ 5       "This is verse 47. \n" +
+ 6       "\n" +
+ 7       "This is verse 46. \n" +
+ 8       "\n" +
+ 9       "This is verse 45. \n" +
+10       "\n" +
+11       "This is verse 44. \n" +
+12       "\n" +
+13       "This is verse 43. \n"
+14     assert_equal(
+15       expected,
+16       CountdownSong .new( verse_template : VerseFake ,
+17                         max: 47,
+18                         min: 43)
+19         .song)
+20   end
+21 
+22   def test_the_whole_song
+23     expected = <<~SONG
+24       99 bottles of beer on the wall, 99 bottles of beer .
+9.3.4. Profiting from Loose Coupling
+Page 25825       Take  one down and pass it around, 98 bottles of beer on the wall .
+26       # ...
+27       No more bottles of beer on the wall, no more bottles of beer .
+28       Go to the store and buy some more, 99 bottles of beer on the wall .
+29     SONG
+30     assert_equal expected, CountdownSong .new.song
+31   end
+32 end
+Now that this better test exists, you can delete th e older version.
+You’re almost done with CountdownSongTest . The only remaining task is to rename
+test_the_whole_song  so that it’s consistent with the other names. Call ing it test_song  works
+perfectly well, and after making it so the final CountdownSongTest  looks like this:
+Listing 9.33: A Beautiful Test Suite
+ 1 class  CountdownSongTest  < Minitest ::Test
+ 2   def test_verse
+ 3     expected = "This is verse 500. \n"
+ 4     assert_equal(
+ 5       expected,
+ 6       CountdownSong .new( verse_template : VerseFake )
+ 7         .verse( 500))
+ 8   end
+ 9 
+10   def test_verses
+11     expected =
+12      "This is verse 99. \n" +
+13      "\n" +
+14      "This is verse 98. \n" +
+15      "\n" +
+16      "This is verse 97. \n"
+17     assert_equal(
+18       expected,
+19       CountdownSong .new( verse_template : VerseFake )
+20         .verses( 99, 97))
+21   end
+22 
+23   def test_song
+24     expected =
+25       "This is verse 47. \n" +
+26       "\n" +
+27       "This is verse 46. \n" +
+28       "\n" +
+29       "This is verse 45. \n" +
+30       "\n" +
+31       "This is verse 44. \n" +
+32       "\n" +
+33       "This is verse 43. \n"
+34     assert_equal(
+35       expected,
+36       CountdownSong .new( verse_template : VerseFake ,
+37                         max: 47,
+38                         min: 43)
+39         .song)
+40   end
+41 end
+The above is a dramatically simplified but informat ion-rich 41 lines of tests. Not only are the
+tests much improved, but your insistence on having high-value tests like these forced you to
+9.4.1. Enriching Code with Signals
+Page 259improve the code.
+This point cannot be emphasized strongly enough. Ti ght coupling between objects made testing
+difficult. Instead of succumbing to those flaws and  writing verbose, confusing tests, the code was
+altered to allow you to write better tests. The cha nges to the code loosened the coupling between
+objects by extracting and injecting dependencies. N ow that max, min and verse_template  are
+being injected, the code is more broadly useful, an d the tests convey more information.
+Insisting on simple tests improved both the tests a nd the code. It ought to be easy to reuse
+objects. Tests are a form of reuse. Making code eas y to test therefore serves the greater purpose
+of making it easy to reuse. This pays off now and f orevermore.
+9.4. Communicating With the Future
+The tests have been squarely focused on communicati ng the intent of the code to imagined
+readers. This commitment to thorough communication has guided the choice of where to locate
+tests, what to name them, and which collaborators t o provide. As helpful and necessary as the
+previous changes were, there’s still a bit more tha t can be done to improve the code.
+This last section makes a few final changes to add more information and safety, and to reduce
+potential confusion. Think of this round as the las t pass through the code before you check it all
+in and walk away.
+9.4.1. Enriching Code with Signals
+All current tests share a similar three-phase struc ture. Each test:
+1. defines an expectation,
+2. executes some code, and
+3. asserts that the result matches the expectation
+This pattern is known as Arrange-Act-Assert (AAA)[28]. Nothing requires that tests be formatted
+this way. They can obviously be made to work regard less of arrangement. This rigorous
+consistency isn’t for the tests; it’s for the human s.
+Committing to a common shape lowers the cognitive l oad imposed upon future readers. When
+every test is structured in the same way, readers d on’t have to waste time determining if
+spurious differences matter. The very shape of the code communicates "nothing odd to see here,
+la, la, la, all is boring and normal, move on along ."
+Choosing to arrange tests in a similar way is a mat ter of programming style . Your team should
+agree upon a common style. Lacking this, everyone’s  code will differ in meaningless ways, which
+raises the cost of reading code.
+A pattern that suits all situations can sometimes f eel a bit heavy for extremely simple cases. For
+example, test_verse  deliberately declares the expected  variable on line 3 below even though
+it could have merely hard-coded "This is verse 500.\n"  on line 5.
+9.4.1. Enriching Code with Signals
+Page 260Listing 9.34: Style Trumps Substance
+ 1 class  CountdownSongTest  < Minitest ::Test
+ 2   def test_verse
+ 3     expected = "This is verse 500. \n"
+ 4     assert_equal(
+ 5       expected,
+ 6       CountdownSong .new( verse_template : VerseFake )
+ 7         .verse( 500))
+ 8   end
+ 9   # ...
+10 end
+In the test above, the commitment to honoring a com mon style overrode the desire to shorten
+the listing. Following the style communicates to re aders that there’s nothing special or
+uncommon about this test, and conveying that inform ation is more valuable than reducing this
+listing by one line.
+By definition, future readers of your code know les s than you know now. They are swimming in
+murky water, bumping into dimly perceived concepts,  searching for clarity. The very shape of
+code can be a beacon of light, rich with meaning. Y ou’re always on the lookout for code
+arrangements that send signals  to these hapless readers.
+Style is one kind of signal, but there are others. For example, you may have wondered why
+test_song  chose 47 and 43 for max and min (lines 17 and 18 below).
+Listing 9.35: Signaling With Prime Numbers
+ 1 class  CountdownSongTest  < Minitest ::Test
+ 2   # ...
+ 3   def test_song
+ 4     expected =
+ 5       "This is verse 47. \n" +
+ 6       "\n" +
+ 7       "This is verse 46. \n" +
+ 8       "\n" +
+ 9       "This is verse 45. \n" +
+10       "\n" +
+11       "This is verse 44. \n" +
+12       "\n" +
+13       "This is verse 43. \n"
+14     assert_equal(
+15       expected,
+16       CountdownSong .new( verse_template : VerseFake ,
+17                         max: 47,
+18                         min: 43)
+19         .song)
+20   end
+21 end
+Among the infinite universe of numbers, why choose these?
+Future readers will wonder if there’s meaning behin d your choice of test data. They want very
+much to know whether the numbers shown on lines 17 and 18 above matter, or if other values
+would suffice. This problem is easy to solve in tes ts that take a string because in those cases you
+can communicate directly with the reader (for examp le "any string goes here" ).
+Communicating that any number will do, however, req uires an agreed-upon signal.
+9.4.2. Verifying Roles
+Page 261This test uses prime numbers to signal arbitrarines s. Programmers familiar with the Prime
+Number Signal ™ will immediately recognize that the  47 and 43 do not matter; the numbers
+signal that they themselves are arbitrary examples.
+Once you start thinking about sending signals, oppo rtunities abound. It’s sometimes possible to
+imbue actual language syntax with additional meanin g. For example, the late Jim Weirich[29]
+took advantage of the fact that Ruby allows code bl ocks to be delimited either with curly braces
+{…} or with do…end . Because most folks use these variants interchange ably, he felt free to co-opt
+them to send signals. Weirich used do…end  to warn that the enclosed block had side-effects, and
+{…} to assure that it did not. Readers of his code rem ain grateful for these signals.
+You might be wondering if it would be more straight forward to break down and write a
+comment rather than trying to send a signal. After all, a comment can be read by anyone, but
+someone unfamiliar with the signal will miss it. Wh ile true, this ignores a key quality of
+comments. Maintenance is hit-or-miss, and over time  they often become invisible and outdated.
+As long as your team can agree upon a style guide, code-based signals are ultimately more
+reliable than comments.
+Now that you’re familiar with the Prime Number Sign al, you might be wondering if every test
+for CountdownSong  should use it. The short answer is that it would b e perfectly fine to go back
+and change those other tests to use prime numbers. The longer answer is that it might not be
+necessary to do so.
+The 500 used in test_verse  is so ridiculously large that it already signals t hat any number,
+even a big one, will do. The 99/97 used in test_verses  is a bit more difficult to defend, but
+readers will probably not be confused. If you are c oncerned that they will be, you should go alter
+those tests to use prime numbers right now.
+Signals offer a cheap way to add valuable informati on to code. Look for opportunities to develop
+and use them. Even if your team consists only of yo u, the information imparted by a signal will
+be useful to your future self.
+9.4.2. Verifying Roles
+Ruby is dynamically typed and doesn’t have syntax t o support interfaces. This presents both
+opportunities and challenges. On the positive side,  these qualities make it supremely easy to
+create and use polymorphic duck types.[30] Lack of type declaration syntax makes Ruby easy to
+write and a joy to read; the compilers' needs don’t  get in the way of creating direct,
+straightforward code. Additionally, Ruby's dynamism  gives you freedom to do amazing things,
+unchecked by the language itself, for better or wor se.
+Of course, the downside to not having a compiler ch ecking types is that there’s no compiler
+checking types. You may do anything without constra int, including sending messages to objects
+that don’t understand them and suffering run-time f ailures. In dynamically typed languages, the
+challenge of ensuring that your duck types quack co rrectly rests solely upon you.
+There are a number of ways to accomplish this. In o rder of lesser to greater ceremony, the
+options are as follows, with implications for lyrics :
+9.4.2. Verifying Roles
+Page 2621. Tell everyone to implement the correct API in the ir role players.
+Say "Hey, everyone should make their verse template  objects respond to lyrics(number) "
+at regular intervals.
+2. Programmatically verify that all players of a rol e respond to messages in that role’s API.
+Test that each player responds to lyrics .
+3. Programmatically verify that all players of a rol e respond to its API, including defining the
+correct number of parameters.
+Test that each player responds to lyrics , and that lyrics  has one parameter.
+4. Programmatically verify that all players of a rol e respond to its API, define the correct
+number of parameters, receive arguments of the corr ect types, and return the expected
+type.
+Test that each player responds to lyrics(arg) , that arg is a number, and that the result is
+a string.
+5. Switch to a language with compiler guaranteed int erfaces.
+On very small teams, option 1 above may suffice. If  not, escalate to option 2 and start
+programmatically confirming that role players meet their obligations. Most times option 2 will
+provide enough safety and you won’t need to endure the additional complexity of implementing
+option 3. If you find that despite your best effort s you are seeing run-time failures after
+implementing option 3, the memo is clearly not gett ing out. Teams that have this problem might
+be better off switching to a statically-typed langu age.
+RSpec testers use shared example groups  to verify roles. In Minitest, you can verify roles  using
+normal Ruby modules.
+Start by creating the module:
+Listing 9.36: Test to Verify Verse Role Player
+1 module  VerseRoleTest
+2   def test_plays_verse_role
+3     assert_respond_to @role_player , :lyrics
+4   end
+5 end
+You can add test_plays_verse_role  to any class by including this module. Notice that  line 3
+above relies on the @role_player  instance variable, so tests that include this modu le must set
+that variable.
+Now that the module exists you can verify that BottleVerse  plays the verse template role. The
+first step is to create a new setup method in BottleVerseTest  wherein you initialize
+@role_player  to BottleVerse , like so:
+Listing 9.37: Setup to Initialize Variable
+1 class  BottleVerseTest  < Minitest ::Test
+2   def setup
+3     @role_player  = BottleVerse
+4   end
+9.4.2. Verifying Roles
+Page 2635   # ...
+6 end
+With @role_player  set, you can safely include VerseRoleTest  into BottleVerseTest  as
+shown on line 2 below:
+Listing 9.38: Verify BottleVerse Plays Role
+1 class  BottleVerseTest  < Minitest ::Test
+2   include  VerseRoleTest
+3 
+4   def setup
+5     @role_player  = BottleVerse
+6   end
+7   # ...
+8 end
+Running the tests at this point executes test_plays_verse_role  as part of BottleVerseTest ,
+so you should now have 11 passing tests.
+Proving that BottleVerse , the real production object, plays the verse templ ate role is definitely
+worthwhile, but now comes the good part. Because VerseFake  is a real object it can have its own
+tests . It’s scarily recursive to think about testing obj ects that were created for use only in tests,
+and you should probably not write tests that make a ssertions about VerseFake 's
+implementation details. However, VerseFake  has one critically important responsibility; it mu st
+play the role of verse template. It’s up to you to ensure that it does so.
+Now that you have the role-verifying module, this i s surprisingly easy to accomplish. Create a
+simple VerseFakeTest  that sets @role_player = VerseFake  and includes the
+VerseRoleTest  module. Here’s that entire test:
+Listing 9.39: Verify VerseFake Plays Role
+1 class  VerseFakeTest  < Minitest ::Test
+2   include  VerseRoleTest
+3 
+4   def setup
+5     @role_player  = VerseFake
+6   end
+7 end
+You’ve now confirmed that VerseFake  correctly plays the verse template role. This test  prevents
+the unfortunate circumstance in which tests that co llaborate with fakes sometimes continue to
+pass even after changes to production code have bro ken the application. If, for example, the API
+of the verse template role changes from lyrics  to sing , a test will now fail unless you update
+every role player and the VerseRoleTest  to reflect the new interface. This forces all play ers of a
+role, even your fakes, to stay in sync with the API .
+You should now have 12 passing tests, and can be co nfident that every object that purports to
+play the verse role does so correctly.
+Duck typing is powerful but can be perilous. While verbally agreeing on a role’s API may be
+enough to keep very small teams out of trouble, as more people get involved, you’ll need a more
+9.4.3. Obliterating Obsolete Context
+Page 264reliable way to communicate. Role tests are a great  investment; they cost little but provide
+tremendous value. If you’re using a dynamically-typ ed language and leaning on polymorphism
+and dependency injection, you should write them.
+9.4.3. Obliterating Obsolete Context
+The final task in this last section is to pass thro ugh the code one more time, locating and
+removing obsolete context. CountdownSong  retains a few misleading vestiges of "99 Bottles";  it’s
+finally time to remove them.
+Consider the code below:
+Listing 9.40: CountdownSong Default Reflect Obsolete Context
+1 class  CountdownSong
+2   attr_reader  :verse_template , :max , :min
+3 
+4   def initialize (verse_template : BottleVerse , max: 99, min: 0)
+5     @verse_template  = verse_template
+6     @max , @min  = max, min
+7   end
+8   # ...
+9 end
+In line 4 above, the default values for verse_template , max, and min are artifacts of the "99
+Bottles" context from which CountdownSong  came. These defaults give the impression that the
+old context still matters. It doesn’t, and the best  way to make that clear is to change this code.
+You now have to decide whether to provide defaults at all, and if so, what values to use.
+CountdownSong  could conceivably supply defaults for max and min, but can’t reasonably guess
+which verse template should be used.
+Making outsiders supply a verse_template  is as easy as removing the default, as shown on li ne
+4 below:
+Listing 9.41: Remove Verse Template Default
+1 class  CountdownSong
+2   attr_reader  :verse_template , :max , :min
+3 
+4   def initialize (verse_template :, max: 99, min: 0)
+5     @verse_template  = verse_template
+6     @max , @min  = max, min
+7   end
+8   # ...
+9 end
+This couldn’t be done earlier because the old tests  expected CountdownSong  to set
+verse_template  to BottleVerse . Now that all tests supply a verse template, they work
+seamlessly throughout this transition.
+This leaves max and min. The lower number, min, feels almost as straightforward as
+verse_template . Songs probably count down to 0; it’s easy to defend a decision to default min
+to 0 in CountdownSong .
+9.4.3. Obliterating Obsolete Context
+Page 265The max number is a bit trickier. It can be argued that, j ust as CountdownSong  can’t know what
+verse template you want, it can’t know how many ver ses your song contains. Users of
+CountdownSong  will likely always need to provide this value. Eve n so, CountdownSong  might
+want to set a default in order to send a signal.
+Defaulting max to a ridiculously large number signals that CountdownSong  can handle very long
+songs. The following snippet does just that:
+Listing 9.42: Reset the Max
+1 def initialize (verse_template :, max: 999999 , min: 0)
+2   # ...
+3 end
+Having made that final change, peruse the complete listings and glory in your accomplishments:
+Listing 9.43: Final Code
+  1 class  CountdownSong
+  2   attr_reader  :verse_template , :max , :min
+  3 
+  4   def initialize (verse_template :, max: 999999 , min: 0)
+  5     @verse_template  = verse_template
+  6     @max , @min  = max, min
+  7   end
+  8 
+  9   def song
+ 10     verses(max, min)
+ 11   end
+ 12 
+ 13   def verses (upper, lower)
+ 14     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+ 15   end
+ 16 
+ 17   def verse (number)
+ 18     verse_template .lyrics(number)
+ 19   end
+ 20 end
+ 21 
+ 22 
+ 23 class  BottleVerse
+ 24   def self .lyrics (number)
+ 25     new(BottleNumber .for(number)) .lyrics
+ 26   end
+ 27 
+ 28   attr_reader  :bottle_number
+ 29 
+ 30   def initialize (bottle_number)
+ 31     @bottle_number  = bottle_number
+ 32   end
+ 33 
+ 34   def lyrics
+ 35     "#{bottle_number } of beer on the wall, " .capitalize +
+ 36     "#{bottle_number } of beer. \n" +
+ 37     "#{bottle_number .action }, " +
+ 38     "#{bottle_number .successor } of beer on the wall. \n"
+ 39   end
+ 40 end
+ 41 
+ 42 
+ 43 class  BottleNumber
+9.4.3. Obliterating Obsolete Context
+Page 266 44   def self .for(number)
+ 45     case  number
+ 46     when  0
+ 47       BottleNumber0
+ 48     when  1
+ 49       BottleNumber1
+ 50     when  6
+ 51       BottleNumber6
+ 52     else
+ 53       BottleNumber
+ 54     end.new(number)
+ 55   end
+ 56 
+ 57   attr_reader  :number
+ 58   def initialize (number)
+ 59     @number  = number
+ 60   end
+ 61 
+ 62   def to_s
+ 63     "#{quantity } #{container }"
+ 64   end
+ 65 
+ 66   def quantity
+ 67     number .to_s
+ 68   end
+ 69 
+ 70   def container
+ 71     "bottles"
+ 72   end
+ 73 
+ 74   def action
+ 75     "Take #{pronoun } down and pass it around"
+ 76   end
+ 77 
+ 78   def pronoun
+ 79     "one"
+ 80   end
+ 81 
+ 82   def successor
+ 83     BottleNumber .for(number - 1)
+ 84   end
+ 85 end
+ 86 
+ 87 class  BottleNumber0  < BottleNumber
+ 88   def quantity
+ 89     "no more"
+ 90   end
+ 91 
+ 92   def action
+ 93     "Go to the store and buy some more"
+ 94   end
+ 95 
+ 96   def successor
+ 97     BottleNumber .for( 99)
+ 98   end
+ 99 end
+100 
+101 class  BottleNumber1  < BottleNumber
+102   def container
+103     "bottle"
+104   end
+105 
+106   def pronoun
+107     "it"
+9.4.3. Obliterating Obsolete Context
+Page 267108   end
+109 end
+110 
+111 class  BottleNumber6  < BottleNumber
+112   def quantity
+113     "1"
+114   end
+115 
+116   def container
+117     "six-pack"
+118   end
+119 end
+Listing 9.44: Final Tests
+  1 module  VerseRoleTest
+  2   def test_plays_verse_role
+  3     assert_respond_to @role_player , :lyrics
+  4   end
+  5 end
+  6 
+  7 class  VerseFake
+  8   def self .lyrics (number)
+  9     "This is verse #{number }.\n"
+ 10   end
+ 11 end
+ 12 
+ 13 class  VerseFakeTest  < Minitest ::Test
+ 14   include  VerseRoleTest
+ 15 
+ 16   def setup
+ 17     @role_player  = VerseFake
+ 18   end
+ 19 end
+ 20 
+ 21 
+ 22 class  BottleVerseTest  < Minitest ::Test
+ 23   include  VerseRoleTest
+ 24 
+ 25   def setup
+ 26     @role_player  = BottleVerse
+ 27   end
+ 28 
+ 29   def test_verse_general_rule_upper_bound
+ 30     expected =
+ 31       "99 bottles of beer on the wall, "  +
+ 32       "99 bottles of beer. \n" +
+ 33       "Take one down and pass it around, "  +
+ 34       "98 bottles of beer on the wall. \n"
+ 35     assert_equal expected, BottleVerse .lyrics( 99)
+ 36   end
+ 37 
+ 38   def test_verse_general_rule_lower_bound
+ 39     expected =
+ 40       "3 bottles of beer on the wall, "  +
+ 41       "3 bottles of beer. \n" +
+ 42       "Take one down and pass it around, "  +
+ 43       "2 bottles of beer on the wall. \n"
+ 44     assert_equal expected, BottleVerse .lyrics( 3)
+ 45   end
+ 46 
+ 47   def test_verse_7
+ 48     expected =
+ 49       "7 bottles of beer on the wall, "  +
+9.4.3. Obliterating Obsolete Context
+Page 268 50       "7 bottles of beer. \n" +
+ 51       "Take one down and pass it around, "  +
+ 52       "1 six-pack of beer on the wall. \n"
+ 53     assert_equal expected, BottleVerse .lyrics( 7)
+ 54   end
+ 55 
+ 56   def test_verse_6
+ 57     expected =
+ 58       "1 six-pack of beer on the wall, "  +
+ 59       "1 six-pack of beer. \n" +
+ 60       "Take one down and pass it around, "  +
+ 61       "5 bottles of beer on the wall. \n"
+ 62     assert_equal expected, BottleVerse .lyrics( 6)
+ 63   end
+ 64 
+ 65   def test_verse_2
+ 66     expected =
+ 67       "2 bottles of beer on the wall, "  +
+ 68       "2 bottles of beer. \n" +
+ 69       "Take one down and pass it around, "  +
+ 70       "1 bottle of beer on the wall. \n"
+ 71     assert_equal expected, BottleVerse .lyrics( 2)
+ 72   end
+ 73 
+ 74   def test_verse_1
+ 75     expected =
+ 76       "1 bottle of beer on the wall, "  +
+ 77       "1 bottle of beer. \n" +
+ 78       "Take it down and pass it around, "  +
+ 79       "no more bottles of beer on the wall. \n"
+ 80      assert_equal expected, BottleVerse .lyrics( 1)
+ 81   end
+ 82 
+ 83   def test_verse_0
+ 84     expected =
+ 85       "No more bottles of beer on the wall, "  +
+ 86       "no more bottles of beer. \n" +
+ 87       "Go to the store and buy some more, "  +
+ 88       "99 bottles of beer on the wall. \n"
+ 89     assert_equal expected, BottleVerse .lyrics( 0)
+ 90   end
+ 91 end
+ 92 
+ 93 
+ 94 class  CountdownSongTest  < Minitest ::Test
+ 95   def test_verse
+ 96     expected = "This is verse 500. \n"
+ 97     assert_equal(
+ 98       expected,
+ 99       CountdownSong .new( verse_template : VerseFake )
+100         .verse( 500))
+101   end
+102 
+103   def test_verses
+104     expected =
+105      "This is verse 99. \n" +
+106      "\n" +
+107      "This is verse 98. \n" +
+108      "\n" +
+109      "This is verse 97. \n"
+110     assert_equal(
+111       expected,
+112       CountdownSong .new( verse_template : VerseFake )
+113         .verses( 99, 97))
+9.5. Summary
+Page 269114   end
+115 
+116   def test_song
+117     expected =
+118       "This is verse 47. \n" +
+119       "\n" +
+120       "This is verse 46. \n" +
+121       "\n" +
+122       "This is verse 45. \n" +
+123       "\n" +
+124       "This is verse 44. \n" +
+125       "\n" +
+126       "This is verse 43. \n"
+127     assert_equal(
+128       expected,
+129       CountdownSong .new( verse_template : VerseFake ,
+130                         max: 47,
+131                         min: 43)
+132         .song)
+133   end
+134 end
+In the heat of coding, it can be tempting to skip t his final, cleanup pass. But don’t miss this last b it
+of scrubbing to make the code shine.
+9.5. Summary
+Tests help prevent errors in code, but to character ize them so simply is a disservice; they offer
+far more. Good OO is built upon small, interchangea ble objects that interact via abstractions. The
+behavior of each individual object is often quite o bvious, but the same cannot be said for the
+operation of the whole. Tests fill this breach.
+Object-oriented applications rely on message sendin g. The key virtue of messages is that they
+add indirection. Messages allow the sender to ask f or an abstraction and be confident that the
+receiver will use the appropriate concrete implemen tation to fulfill the request. Senders are
+responsible for knowing what they want, receivers, for knowing how to do it. Separating
+intention from implementation in this way allows yo u to introduce new variations without
+altering existing code; simply create a new object that responds to the original message with a
+different implementation.
+When designed with the following features, object-o riented code can interact with new and
+unanticipated variants without having to change:
+1. Variants are isolated.
+They’re usually isolated in some kind of object, of ten a new class.
+2. Variant selection is isolated.
+Selection happens in factories, which may be as sim ple as isolated conditionals that
+choose a class.
+3. Message senders and receivers are loosely coupled.
+This is commonly accomplished by injecting dependen cies.
+9.5. Summary
+Page 2704. Variants are interchangeable.
+Message senders treat injected objects as equivalen t players of identical roles.
+Initially, this reliance on abstractions and indire ction increases the complexity of code. What OO
+promises in return is a reduction in the future cos t of change. Highly concrete, tightly coupled
+code will resist tomorrow’s change. Code that depen ds on loosely coupled abstractions will
+encourage it.
+Because tests need to execute code, they supply ear ly and direct information about inadequate
+design, and they provide impetus and inspiration fo r refinements. When tests are difficult to
+write, require lots of setup, or can’t tell a satis fying story, something is wrong. Listen. Fixing
+problems now is not only cheaper than fixing them l ater, but will improve your code, clarify
+your tests, and make glad your work.
+Afterword
+Page 271Afterword
+Congratulations, you’ve made it. You are now, if no t at the end of all things, at least at the end of
+this thing. Completing this book is an accomplishment, and you deserve to take a minute to revel
+in your success before moving on. Regardless of you r mindset or experience level before you
+started, you’re different now that you’re done.
+This book has two primary goals. The first relates to process , and the second, perspective .
+The first goal is to supply concrete, repeatable te chniques that you can employ to improve your
+own applications. These techniques were illustrated , not just with code, but also by chronicling
+the rationale behind every decision—there was no ha nd-waving around awkward corners. The
+detailed, specific explanations eventually accumula ted into a number of general ideas, or
+canons , about how to write code.
+Strive for simplicity. Don’t abstract too soon. Foc us on smells. Concentrate on difference. Take
+small steps. Follow the Flocking Rules . Refactor under green. Fix the easy problems first . Work
+horizontally. Seek stable landing points. Be discip lined. Don’t chase the shiny thing.
+In addition, deal with new requirements by first re factoring existing code to be open to them,
+and then writing new code to meet them. Achieving o penness is usually the more challenging
+task, but can be sought in absolute safety if you h ave tests that act as a wall at your back.
+You may need better tests. If so, writing them will  save you money.
+The canons are practical rules that guide the progr amming process . Adhering to them will lower
+your stress, speed up your work, and improve your c ode. If you commit to nothing more than to
+follow them, your reading time will have been well spent.
+However, this book is not just about process. It ha s a second, more abstract, goal—it aspires to
+infect you with a certain perspective about object- oriented programming. This book wants you
+to fall in love with polymorphism.
+When you write conditionals that supply behavior, a nd put those conditionals in classes whose
+names other  classes know, your code depends upon concretions, and will break with every
+change.
+However, when you disperse behavior into polymorphi c objects, you can use factories to isolate
+both the names of the classes and the conditionals that choose them. Factories instantiate role-
+playing objects, which you can then inject as depen dencies. When you inject smart
+dependencies, and trust them to behave correctly, y our code depends upon abstract roles rather
+than on concrete classes. This loosens the coupling  between objects and makes code open to
+change.
+Trust  is necessary, but the path to reaching it is circu lar. Acting in trust requires faith, and faith
+can only be earned by trustworthiness. Your objects  must be trustworthy, and your code must
+Afterword
+Page 272trust your objects. Failing at either obligation do oms you to conditionals.
+The secret to programming happiness is to combine t he canons with the infection, building
+applications from polymorphic, trustworthy objects,  and changing them one step at a time.
+That’s officially the end, but before you go, one l ast request.
+Hold high standards, but judge yourself gently. Per fection is just not that likely. Most times the
+requirements you’re given aren’t quite right, or ar e incompletely conveyed, or misunderstood,
+or about to change, ad nauseam. Circumstances consp ire to make it hard to get everything
+exactly right, despite your best efforts.
+Think of your code as a message in a bottle, writte n in haste for future readers. They’ll always
+know more than you know right now. Your job is not to be perfect, but to write a generous and
+sympathetic story. Tell them a story they can under stand, and they’ll cherish you forever.
+Thanks for reading, and we hope that you’ve enjoyed  the book.
+Getting the exercise
+Page 273Appendix A: Initial Exercise
+Getting the exercise
+The code in this book is on GitHub. The simplest wa y to get the exercise is to clone the repository
+and check out the correct branch, as follows:
+git clone --depth=1 --branch=2.1-appendix-b-exercise-10 https://github.com/sandimetz/99bottles_ruby.
+git
+The directory structure for the exercise should loo k like this:
+├── lib 
+│   └── bottles.rb 
+└── test 
+    └── bottles_test.rb
+If you don’t have git installed, create the expecte d directory structure, and then copy and paste
+the contents of the raw file on GitHub  into bottles_test.rb .
+Finally, if you don’t have an Internet connection, you can find the full code listing for the test
+suite below, in the Test Suite  section.
+Doing the exercise
+To run the test suite, invoke Ruby with the path to  the test file.
+ruby test/bottles_test.rb
+The test suite contains one failing test, and many skipped tests. Your goal is to write code that
+passes all of the tests. Follow this protocol:
+run the tests and examine the failure
+write only enough code to pass the failing test
+unskip the next test (this simulates writing it you rself)
+Repeat the above until no test is skipped, and you’ ve written code to pass each one.
+Work on this task for 30 minutes. The vast majority  of folks do not finish in 30 minutes, but it’s
+useful, for later comparison purposes, to record ho w far you got. Even if you can’t force yourself
+to stop at that point, take a break at 30 minutes a nd save your code.
+Return to Preface .
+Return to Chapter 1 .
+Test Suite
+Getting the exercise
+Page 274Listing A.1: Exercise
+  1 gem 'minitest' , '~> 5.4'
+  2 require  'minitest/autorun'
+  3 require  'minitest/pride'
+  4 require_relative '../lib/bottles'
+  5 
+  6 class  BottlesTest  < Minitest ::Test
+  7   def test_the_first_verse
+  8     expected =
+  9       "99 bottles of beer on the wall, "  +
+ 10       "99 bottles of beer. \n" +
+ 11       "Take one down and pass it around, "  +
+ 12       "98 bottles of beer on the wall. \n"
+ 13     assert_equal expected, Bottles .new.verse( 99)
+ 14   end
+ 15 
+ 16   def test_another_verse
+ 17     skip
+ 18     expected =
+ 19       "3 bottles of beer on the wall, "  +
+ 20       "3 bottles of beer. \n" +
+ 21       "Take one down and pass it around, "  +
+ 22       "2 bottles of beer on the wall. \n"
+ 23     assert_equal expected, Bottles .new.verse( 3)
+ 24   end
+ 25 
+ 26   def test_verse_2
+ 27     skip
+ 28     expected =
+ 29       "2 bottles of beer on the wall, "  +
+ 30       "2 bottles of beer. \n" +
+ 31       "Take one down and pass it around, "  +
+ 32       "1 bottle of beer on the wall. \n"
+ 33     assert_equal expected, Bottles .new.verse( 2)
+ 34   end
+ 35 
+ 36   def test_verse_1
+ 37     skip
+ 38     expected =
+ 39       "1 bottle of beer on the wall, "  +
+ 40       "1 bottle of beer. \n" +
+ 41       "Take it down and pass it around, "  +
+ 42       "no more bottles of beer on the wall. \n"
+ 43      assert_equal expected, Bottles .new.verse( 1)
+ 44   end
+ 45 
+ 46   def test_verse_0
+ 47     skip
+ 48     expected =
+ 49       "No more bottles of beer on the wall, "  +
+ 50       "no more bottles of beer. \n" +
+ 51       "Go to the store and buy some more, "  +
+ 52       "99 bottles of beer on the wall. \n"
+ 53     assert_equal expected, Bottles .new.verse( 0)
+ 54   end
+ 55 
+ 56   def test_a_couple_verses
+ 57     skip
+ 58     expected =
+ 59       "99 bottles of beer on the wall, "  +
+ 60       "99 bottles of beer. \n" +
+ 61       "Take one down and pass it around, "  +
+ 62       "98 bottles of beer on the wall. \n" +
+ 63       "\n" +
+Getting the exercise
+Page 275 64       "98 bottles of beer on the wall, "  +
+ 65       "98 bottles of beer. \n" +
+ 66       "Take one down and pass it around, "  +
+ 67       "97 bottles of beer on the wall. \n"
+ 68     assert_equal expected, Bottles .new.verses( 99, 98)
+ 69   end
+ 70 
+ 71   def test_a_few_verses
+ 72     skip
+ 73     expected =
+ 74       "2 bottles of beer on the wall, "  +
+ 75       "2 bottles of beer. \n" +
+ 76       "Take one down and pass it around, "  +
+ 77       "1 bottle of beer on the wall. \n" +
+ 78       "\n" +
+ 79       "1 bottle of beer on the wall, "  +
+ 80       "1 bottle of beer. \n" +
+ 81       "Take it down and pass it around, "  +
+ 82       "no more bottles of beer on the wall. \n" +
+ 83       "\n" +
+ 84       "No more bottles of beer on the wall, "  +
+ 85       "no more bottles of beer. \n" +
+ 86       "Go to the store and buy some more, "  +
+ 87       "99 bottles of beer on the wall. \n"
+ 88     assert_equal expected, Bottles .new.verses( 2, 0)
+ 89   end
+ 90 
+ 91   def test_the_whole_song
+ 92     skip
+ 93     expected = <<~SONG
+ 94       99 bottles of beer on the wall, 99 bottles of beer .
+ 95       Take  one down and pass it around, 98 bottles of beer on the wall .
+ 96 
+ 97       98 bottles of beer on the wall, 98 bottles of beer .
+ 98       Take  one down and pass it around, 97 bottles of beer on the wall .
+ 99 
+100       97 bottles of beer on the wall, 97 bottles of beer .
+101       Take  one down and pass it around, 96 bottles of beer on the wall .
+102 
+103       96 bottles of beer on the wall, 96 bottles of beer .
+104       Take  one down and pass it around, 95 bottles of beer on the wall .
+105 
+106       95 bottles of beer on the wall, 95 bottles of beer .
+107       Take  one down and pass it around, 94 bottles of beer on the wall .
+108 
+109       94 bottles of beer on the wall, 94 bottles of beer .
+110       Take  one down and pass it around, 93 bottles of beer on the wall .
+111 
+112       93 bottles of beer on the wall, 93 bottles of beer .
+113       Take  one down and pass it around, 92 bottles of beer on the wall .
+114 
+115       92 bottles of beer on the wall, 92 bottles of beer .
+116       Take  one down and pass it around, 91 bottles of beer on the wall .
+117 
+118       91 bottles of beer on the wall, 91 bottles of beer .
+119       Take  one down and pass it around, 90 bottles of beer on the wall .
+120 
+121       90 bottles of beer on the wall, 90 bottles of beer .
+122       Take  one down and pass it around, 89 bottles of beer on the wall .
+123 
+124       89 bottles of beer on the wall, 89 bottles of beer .
+125       Take  one down and pass it around, 88 bottles of beer on the wall .
+126 
+127       88 bottles of beer on the wall, 88 bottles of beer .
+Getting the exercise
+Page 276128       Take  one down and pass it around, 87 bottles of beer on the wall .
+129 
+130       87 bottles of beer on the wall, 87 bottles of beer .
+131       Take  one down and pass it around, 86 bottles of beer on the wall .
+132 
+133       86 bottles of beer on the wall, 86 bottles of beer .
+134       Take  one down and pass it around, 85 bottles of beer on the wall .
+135 
+136       85 bottles of beer on the wall, 85 bottles of beer .
+137       Take  one down and pass it around, 84 bottles of beer on the wall .
+138 
+139       84 bottles of beer on the wall, 84 bottles of beer .
+140       Take  one down and pass it around, 83 bottles of beer on the wall .
+141 
+142       83 bottles of beer on the wall, 83 bottles of beer .
+143       Take  one down and pass it around, 82 bottles of beer on the wall .
+144 
+145       82 bottles of beer on the wall, 82 bottles of beer .
+146       Take  one down and pass it around, 81 bottles of beer on the wall .
+147 
+148       81 bottles of beer on the wall, 81 bottles of beer .
+149       Take  one down and pass it around, 80 bottles of beer on the wall .
+150 
+151       80 bottles of beer on the wall, 80 bottles of beer .
+152       Take  one down and pass it around, 79 bottles of beer on the wall .
+153 
+154       79 bottles of beer on the wall, 79 bottles of beer .
+155       Take  one down and pass it around, 78 bottles of beer on the wall .
+156 
+157       78 bottles of beer on the wall, 78 bottles of beer .
+158       Take  one down and pass it around, 77 bottles of beer on the wall .
+159 
+160       77 bottles of beer on the wall, 77 bottles of beer .
+161       Take  one down and pass it around, 76 bottles of beer on the wall .
+162 
+163       76 bottles of beer on the wall, 76 bottles of beer .
+164       Take  one down and pass it around, 75 bottles of beer on the wall .
+165 
+166       75 bottles of beer on the wall, 75 bottles of beer .
+167       Take  one down and pass it around, 74 bottles of beer on the wall .
+168 
+169       74 bottles of beer on the wall, 74 bottles of beer .
+170       Take  one down and pass it around, 73 bottles of beer on the wall .
+171 
+172       73 bottles of beer on the wall, 73 bottles of beer .
+173       Take  one down and pass it around, 72 bottles of beer on the wall .
+174 
+175       72 bottles of beer on the wall, 72 bottles of beer .
+176       Take  one down and pass it around, 71 bottles of beer on the wall .
+177 
+178       71 bottles of beer on the wall, 71 bottles of beer .
+179       Take  one down and pass it around, 70 bottles of beer on the wall .
+180 
+181       70 bottles of beer on the wall, 70 bottles of beer .
+182       Take  one down and pass it around, 69 bottles of beer on the wall .
+183 
+184       69 bottles of beer on the wall, 69 bottles of beer .
+185       Take  one down and pass it around, 68 bottles of beer on the wall .
+186 
+187       68 bottles of beer on the wall, 68 bottles of beer .
+188       Take  one down and pass it around, 67 bottles of beer on the wall .
+189 
+190       67 bottles of beer on the wall, 67 bottles of beer .
+191       Take  one down and pass it around, 66 bottles of beer on the wall .
+Getting the exercise
+Page 277192 
+193       66 bottles of beer on the wall, 66 bottles of beer .
+194       Take  one down and pass it around, 65 bottles of beer on the wall .
+195 
+196       65 bottles of beer on the wall, 65 bottles of beer .
+197       Take  one down and pass it around, 64 bottles of beer on the wall .
+198 
+199       64 bottles of beer on the wall, 64 bottles of beer .
+200       Take  one down and pass it around, 63 bottles of beer on the wall .
+201 
+202       63 bottles of beer on the wall, 63 bottles of beer .
+203       Take  one down and pass it around, 62 bottles of beer on the wall .
+204 
+205       62 bottles of beer on the wall, 62 bottles of beer .
+206       Take  one down and pass it around, 61 bottles of beer on the wall .
+207 
+208       61 bottles of beer on the wall, 61 bottles of beer .
+209       Take  one down and pass it around, 60 bottles of beer on the wall .
+210 
+211       60 bottles of beer on the wall, 60 bottles of beer .
+212       Take  one down and pass it around, 59 bottles of beer on the wall .
+213 
+214       59 bottles of beer on the wall, 59 bottles of beer .
+215       Take  one down and pass it around, 58 bottles of beer on the wall .
+216 
+217       58 bottles of beer on the wall, 58 bottles of beer .
+218       Take  one down and pass it around, 57 bottles of beer on the wall .
+219 
+220       57 bottles of beer on the wall, 57 bottles of beer .
+221       Take  one down and pass it around, 56 bottles of beer on the wall .
+222 
+223       56 bottles of beer on the wall, 56 bottles of beer .
+224       Take  one down and pass it around, 55 bottles of beer on the wall .
+225 
+226       55 bottles of beer on the wall, 55 bottles of beer .
+227       Take  one down and pass it around, 54 bottles of beer on the wall .
+228 
+229       54 bottles of beer on the wall, 54 bottles of beer .
+230       Take  one down and pass it around, 53 bottles of beer on the wall .
+231 
+232       53 bottles of beer on the wall, 53 bottles of beer .
+233       Take  one down and pass it around, 52 bottles of beer on the wall .
+234 
+235       52 bottles of beer on the wall, 52 bottles of beer .
+236       Take  one down and pass it around, 51 bottles of beer on the wall .
+237 
+238       51 bottles of beer on the wall, 51 bottles of beer .
+239       Take  one down and pass it around, 50 bottles of beer on the wall .
+240 
+241       50 bottles of beer on the wall, 50 bottles of beer .
+242       Take  one down and pass it around, 49 bottles of beer on the wall .
+243 
+244       49 bottles of beer on the wall, 49 bottles of beer .
+245       Take  one down and pass it around, 48 bottles of beer on the wall .
+246 
+247       48 bottles of beer on the wall, 48 bottles of beer .
+248       Take  one down and pass it around, 47 bottles of beer on the wall .
+249 
+250       47 bottles of beer on the wall, 47 bottles of beer .
+251       Take  one down and pass it around, 46 bottles of beer on the wall .
+252 
+253       46 bottles of beer on the wall, 46 bottles of beer .
+254       Take  one down and pass it around, 45 bottles of beer on the wall .
+255 
+Getting the exercise
+Page 278256       45 bottles of beer on the wall, 45 bottles of beer .
+257       Take  one down and pass it around, 44 bottles of beer on the wall .
+258 
+259       44 bottles of beer on the wall, 44 bottles of beer .
+260       Take  one down and pass it around, 43 bottles of beer on the wall .
+261 
+262       43 bottles of beer on the wall, 43 bottles of beer .
+263       Take  one down and pass it around, 42 bottles of beer on the wall .
+264 
+265       42 bottles of beer on the wall, 42 bottles of beer .
+266       Take  one down and pass it around, 41 bottles of beer on the wall .
+267 
+268       41 bottles of beer on the wall, 41 bottles of beer .
+269       Take  one down and pass it around, 40 bottles of beer on the wall .
+270 
+271       40 bottles of beer on the wall, 40 bottles of beer .
+272       Take  one down and pass it around, 39 bottles of beer on the wall .
+273 
+274       39 bottles of beer on the wall, 39 bottles of beer .
+275       Take  one down and pass it around, 38 bottles of beer on the wall .
+276 
+277       38 bottles of beer on the wall, 38 bottles of beer .
+278       Take  one down and pass it around, 37 bottles of beer on the wall .
+279 
+280       37 bottles of beer on the wall, 37 bottles of beer .
+281       Take  one down and pass it around, 36 bottles of beer on the wall .
+282 
+283       36 bottles of beer on the wall, 36 bottles of beer .
+284       Take  one down and pass it around, 35 bottles of beer on the wall .
+285 
+286       35 bottles of beer on the wall, 35 bottles of beer .
+287       Take  one down and pass it around, 34 bottles of beer on the wall .
+288 
+289       34 bottles of beer on the wall, 34 bottles of beer .
+290       Take  one down and pass it around, 33 bottles of beer on the wall .
+291 
+292       33 bottles of beer on the wall, 33 bottles of beer .
+293       Take  one down and pass it around, 32 bottles of beer on the wall .
+294 
+295       32 bottles of beer on the wall, 32 bottles of beer .
+296       Take  one down and pass it around, 31 bottles of beer on the wall .
+297 
+298       31 bottles of beer on the wall, 31 bottles of beer .
+299       Take  one down and pass it around, 30 bottles of beer on the wall .
+300 
+301       30 bottles of beer on the wall, 30 bottles of beer .
+302       Take  one down and pass it around, 29 bottles of beer on the wall .
+303 
+304       29 bottles of beer on the wall, 29 bottles of beer .
+305       Take  one down and pass it around, 28 bottles of beer on the wall .
+306 
+307       28 bottles of beer on the wall, 28 bottles of beer .
+308       Take  one down and pass it around, 27 bottles of beer on the wall .
+309 
+310       27 bottles of beer on the wall, 27 bottles of beer .
+311       Take  one down and pass it around, 26 bottles of beer on the wall .
+312 
+313       26 bottles of beer on the wall, 26 bottles of beer .
+314       Take  one down and pass it around, 25 bottles of beer on the wall .
+315 
+316       25 bottles of beer on the wall, 25 bottles of beer .
+317       Take  one down and pass it around, 24 bottles of beer on the wall .
+318 
+319       24 bottles of beer on the wall, 24 bottles of beer .
+Getting the exercise
+Page 279320       Take  one down and pass it around, 23 bottles of beer on the wall .
+321 
+322       23 bottles of beer on the wall, 23 bottles of beer .
+323       Take  one down and pass it around, 22 bottles of beer on the wall .
+324 
+325       22 bottles of beer on the wall, 22 bottles of beer .
+326       Take  one down and pass it around, 21 bottles of beer on the wall .
+327 
+328       21 bottles of beer on the wall, 21 bottles of beer .
+329       Take  one down and pass it around, 20 bottles of beer on the wall .
+330 
+331       20 bottles of beer on the wall, 20 bottles of beer .
+332       Take  one down and pass it around, 19 bottles of beer on the wall .
+333 
+334       19 bottles of beer on the wall, 19 bottles of beer .
+335       Take  one down and pass it around, 18 bottles of beer on the wall .
+336 
+337       18 bottles of beer on the wall, 18 bottles of beer .
+338       Take  one down and pass it around, 17 bottles of beer on the wall .
+339 
+340       17 bottles of beer on the wall, 17 bottles of beer .
+341       Take  one down and pass it around, 16 bottles of beer on the wall .
+342 
+343       16 bottles of beer on the wall, 16 bottles of beer .
+344       Take  one down and pass it around, 15 bottles of beer on the wall .
+345 
+346       15 bottles of beer on the wall, 15 bottles of beer .
+347       Take  one down and pass it around, 14 bottles of beer on the wall .
+348 
+349       14 bottles of beer on the wall, 14 bottles of beer .
+350       Take  one down and pass it around, 13 bottles of beer on the wall .
+351 
+352       13 bottles of beer on the wall, 13 bottles of beer .
+353       Take  one down and pass it around, 12 bottles of beer on the wall .
+354 
+355       12 bottles of beer on the wall, 12 bottles of beer .
+356       Take  one down and pass it around, 11 bottles of beer on the wall .
+357 
+358       11 bottles of beer on the wall, 11 bottles of beer .
+359       Take  one down and pass it around, 10 bottles of beer on the wall .
+360 
+361       10 bottles of beer on the wall, 10 bottles of beer .
+362       Take  one down and pass it around, 9 bottles of beer on the wall .
+363 
+364       9 bottles of beer on the wall, 9 bottles of beer .
+365       Take  one down and pass it around, 8 bottles of beer on the wall .
+366 
+367       8 bottles of beer on the wall, 8 bottles of beer .
+368       Take  one down and pass it around, 7 bottles of beer on the wall .
+369 
+370       7 bottles of beer on the wall, 7 bottles of beer .
+371       Take  one down and pass it around, 6 bottles of beer on the wall .
+372 
+373       6 bottles of beer on the wall, 6 bottles of beer .
+374       Take  one down and pass it around, 5 bottles of beer on the wall .
+375 
+376       5 bottles of beer on the wall, 5 bottles of beer .
+377       Take  one down and pass it around, 4 bottles of beer on the wall .
+378 
+379       4 bottles of beer on the wall, 4 bottles of beer .
+380       Take  one down and pass it around, 3 bottles of beer on the wall .
+381 
+382       3 bottles of beer on the wall, 3 bottles of beer .
+383       Take  one down and pass it around, 2 bottles of beer on the wall .
+Getting the exercise
+Page 280384 
+385       2 bottles of beer on the wall, 2 bottles of beer .
+386       Take  one down and pass it around, 1 bottle of beer on the wall .
+387 
+388       1 bottle of beer on the wall, 1 bottle of beer .
+389       Take  it down and pass it around, no more bottles of beer on the wall .
+390 
+391       No more bottles of beer on the wall, no more bottles of beer .
+392       Go to the store and buy some more, 99 bottles of beer on the wall .
+393     SONG
+394     assert_equal expected, Bottles .new.song
+395   end
+396 end
+References
+Page 281References
+Abelson, Harold, and Sussman, Gerald, with Sussman Julie. Structure and Interpretation of
+Computer Programs, Second Edition . Cambridge, MA: The MIT Press, 1996.
+Beck, Kent. Test-driven development by example . Boston: Addison-Wesley, 2002.
+Beck, Kent. “Don’t Cross the Beams: Avoiding Interference Betwe en Horizontal and Vertical
+Refactorings”  https://www.facebook.com/kentlbeck/notes . 15 September 2011. Web. 26 Feb 2017.
+Fowler, Martin, and Kent Beck. Refactoring Improving the Design of Existing Code . Boston:
+Addison-Wesley, 1999.
+Fowler, Martin, with Beck, Kent. Refactoring Improving the Design of Existing Code, Second
+Edition . Boston: Addison-Wesley, 2018.
+Gamma, Erich, Richard Helm, Ralph Johnson, and John  Vissides. Design patterns: Elements of
+Reusable Object-Oriented Software . Boston: Addison-Wesley, 1994.
+Kerievsky, Joshua. Refactoring To Patterns . Boston: Addison-Wesley, 2004.
+Knuth, Donald. "The Complexity of Songs."  Communications of the ACM, Volume 27 Issue 4.
+Association for Computing Machinery (ACM). April 19 84. Web. 15 Feb 2019.
+Lieberherr, K., Holland, I., Riel, A. "Object-Oriented Programming: An Objective Sense of  Style" .
+OOPSLA '88 Proceedings. September, 1988. Web. 15 Fe b 2019.
+Meszaros, Gerard. xUnit Test Patterns . Boston: Addison-Wesley, 2007.
+Acknowledgements
+Page 282Acknowledgements
+Sandi Metz
+This book represents the distillation of innumerabl e discussions about object-oriented
+programming and design. As every programmer knows, these conversations aren’t for everyone.
+Accordingly, I am deeply grateful to all those who graciously and enthusiastically participated in
+extended debates about these ideas.
+My heartfelt thanks to Jim Gay, Avdi Grimm, Sara Me i, Katrina Owen, TJ Stankus, and Tom
+Stuart, all of whom have helped teach the Practical  Object Oriented Design course from which
+this book arose. Their deep expertise and gentle ob jections challenged my certainties and refined
+my thoughts. Their influence is felt throughout thi s book.
+I owe a special debt to all who’ve taken the POOD c ourse. There’s nothing like trying to explain
+something to make it obvious that you don’t actuall y understand it. The explanations herein
+were vastly improved as a result of students insist ing that they make sense. I am grateful for
+their tenacity.
+Julia Trimmer’s flair for editing is evident throug hout the book. This book is a tribute to her
+unwavering commitment to readability, and her deter mination to teach me the usage difference
+between "which" and "that". I fear she succeeded in  only the first of these, so I am grateful for
+both her past and her future efforts.
+And finally, my thanks to Amy Germuth, who smiled a nd nodded when I swore that I would
+never write another book, and then watched patientl y for years while I battled with this one.
+Having her in my corner made this possible.
+Katrina Owen
+Learning to refactor was fun and confusing and stre nuous. Perhaps more strenuous for Thomas
+Drevon and my other colleagues at Bengler than for me. They not only put up with my endless
+search for better design, but encouraged me in it. I’m sorry for all the spurious abstractions that I
+saddled you with when I left.
+The “99 Bottles of Beer” song is not an obvious cho ice of topic for a programming book. I don’t
+think we’d have stumbled onto it if it hadn’t been for the students at Turing School of Software
+and Design, whose struggles and trials led me to cr eate Exercism. If you solved the “99 Bottles of
+Beer” problem on Exercism in the early days, you mi ght be the direct inspiration for this book.
+A special thanks goes to Jim Weirich who explored t he design ideas present in the “99 Bottles of
+Beer” problem with us, and who generously shared al l of his knowledge and insights.
+Writing a book has been an adventure. Thanks to Mar iana Lenetis, who would go drinking with
+me when everything became too much. The hot chocola te was amazing. Thanks also to John
+Ryan, who has compassionately listened to my rants,  and who contributed perspective and
+Acknowledgements
+Page 283advice. And thanks to Sander who has miraculously t aken care of the thousands of small and
+enormous things to keep our lives running smoothly.
+TJ Stankus
+In 2005 I found myself in a meeting room with devel opers from different departments within the
+vast Duke University system. In that group was a wo man named Sandi, who I found myself
+nodding in agreement with every time she spoke. We bumped into each other again in 2006, at
+the first RailsConf. Since then, I’ve enjoyed a wor king relationship and friendship with Sandi that
+has been one of the most rewarding aspects of my ca reer.
+Around 2014, I was a student in a Practical Object- Oriented Design (POOD) course taught by
+Sandi and Katrina. It was (and still is) the best p rogramming course I’ve ever taken. Later, when
+Sandi and Katrina invited me along to be a co-instr uctor, I couldn’t have been more thrilled and
+appreciative.
+When the first edition of the this book came out, w e were able to more quickly cover material in
+the POOD course, and with the time that freed up, w e experimented with additional
+requirements to the problem. These requirements end ed up becoming new content for the
+second edition of the book you are now reading.
+Thank you to the many students whose questions and feedback allowed us to refine the new
+content over the course of a couple years. There ar e only three names on the cover of this book,
+but it is the collective output of an extensive col laboration of engaged and inquisitive
+programmers. I could not be more grateful for the c onversations and generous interactions I’ve
+had with each of you.
+1. From the novel by Joseph Heller, a catch-22  is a paradoxical situation from which you cannot escape because of
+contradictory rules.
+2. As per Cambridge Dictionary , "separated from an event by an amount of time or other events."
+3. For those unfamiliar with the fairy tale, this is a reference to everything owned by the Little, Small, Wee Bear in Goldilocks
+(Goldenlocks) and the Three Bears .
+4. This quote was historically thought to originate with Mark Twain but is now widely attributed to Charles Dudley Warner .
+Twain and Warner were neighbors and the former apparently heard it from the latter.
+5. The branch counts include all message sends and standard library calls except for '+', which for this purpose is arbitrarily
+treated like an operator.
+6. The ABC scores are the magnitude of the vector <A,B,C> as per wikipedia .
+7. A red herring  is something that misleads or distracts from a relevant or important issue.
+8. A hair shirt, or cilice , is an undergarment made of animal hair, worn to induce discomfort as a sign of repentance or
+atonement.
+9. An opportunity cost  is the "cost" incurred by not enjoying the benefit associated with the best alternative choice.
+10. See Kent Beck Don’t Cross the Beams: Avoiding Interference Between Horizontal and Vertical Refactorings .
+11. Thanks to Avdi Grimm  for the suggestion of using rows and columns in an imaginary spreadsheet to help find names for
+underlying concepts.
+12. Thanks to Tom Stuart  for the suggestion that, when you’re struggling to name a concept for which you have only a few
+examples, it can help to imagine other concrete things that might also fall into the same category.
+13. "You’ll never know less than you know right now" is a quote from Kent Beck.
+14. Spidey (or spider) sense is a tingling feeling at the base of Marvel Comics superhero Spider-Man 's skull that alerts him to
+danger.
+15. A quote from 1 Corinthians 13:12 of the King James Version of the Christian Bible .
+16. Merriam Webster defines bang on  as "exactly correct or appropriate."
+Acknowledgements
+Page 28417. A fine kettle of fish  is a muddle, or awkward state of affairs.
+18. A google search for exceptions for flow control  uncovers many articles, most of which roundly condemn the use of this
+technique.
+19. Pseudocode  is an informal high-level description of the operating principle of a computer program or other algorithm.
+20. Forwarding  is an OO technique whereby a message is directed to another object.
+21. Delegation  is like forwarding  except that in the receiving object `self` refers to the original sender, not the current object.
+22. Why Ruby Class Methods Resist Refactoring  from the Code Climate Blog .
+23. Leaf nodes on a dependency graph  are the end of the line. Other objects depend on them, but they depend on no one. As
+such, they are often simpler than average, and usually represent concepts that are far from the center of your domain.
+24. The idea of a Design Pattern was introduced by the architect Christopher Alexander . It was applied to software by the
+Gang of Four in their seminal book Design Patterns: Elements of Reusable Object-Oriented Software .
+25. The decorator pattern  allows behavior to be added to an individual object, dynamically, without affecting the behavior of
+other objects from the same class.
+26. Martin Fowler’s introduction  to xUnitTest Patterns is a better explanation of why you should read this book than the
+official book blurb .
+27. Any early version of Meszaros’s section on Mock, Fakes, Stubs and Dummies  is available on his xUnitPatterns website .
+28. Arrange Act Assert  is a pattern for arranging code in unit tests. It suggests that group your tests into 3 sections: 1) Arrange
+→ inputs and preconditions, 2) Act → on the object or method you’re testing, and 3) Assert → that you got what you
+expected.
+29. We still miss you, Jim.
+30. In duck typing  an object’s suitability for use is determined by the messages to which it responds rather than its type.

@@ -1,0 +1,1444 @@
+Page 1035. Separating Responsibilities
+The previous two chapters applied the Flocking Rule s to reduce duplication in the verse
+method. The resulting code is gratifyingly consiste nt, and now explicitly exposes concepts that
+cast only faint shadows in the original code. Remem ber, however, that the impetus behind that
+entire refactoring was the arrival of the six-pack requirement. Without this change in
+requirements, you might very well have stopped at S hameless Green.
+This chapter returns to the six-pack problem. Code smells again guide the choice of the next
+refactoring. A new class eventually gets created, a nd along the way a number of big ideas are
+examined. This chapter explores what it means to mo del abstractions and rely on messages; it
+considers the consequences of mutation and the peri ls of premature performance optimization.
+5.1. Selecting the Target Code Smell
+Code should be open for extension and closed for mo dification. It’s time to reexamine the
+current code in light of the ongoing six-pack requi rement. Recall the following flowchart (which
+originally appeared in Chapter 3):
+5.1. Selecting the Target Code Smell
+Page 104
+Figure 5.1: Open Closed Flowchart
+Despite the fact that you’ve successfully replaced a fair amount of duplication with well-named
+methods that expose concepts in the 99 Bottles doma in, the resulting code is not yet open to the
+six-pack requirement. If anything, the current inca rnation is less amenable to this requirement
+than was Shameless Green. Within Shameless Green, y ou could have simply amended the case
+statement to add a branch for verses 6 and 7. The c hanges needed to meet the six-pack
+requirement within the new code are not nearly so o bvious. It may seem as if you have
+complicated things without making any progress towa rds meeting the goal.
+The truth about refactoring is that it sometimes ma kes things worse, in which case your efforts
+serve gallantly to disprove an idea. The refactorin g recipes don’t promise to result in code that
+better expresses the problem—they merely make it ea sy to create that new expression, and just
+as easy to revert it. Proper refactoring allows you  to explore a problem domain safely.
+5.1.1. Identifying Patterns in Code
+Page 105You’ve now completed one refactoring, and the resul ting code is not yet open to the six-pack
+requirement. Not only that, but it is entirely poss ible that you do not yet know what change will
+make  it open. At this point, you must decide whether it ’s better to proceed with additional
+modifications to the code, or better to revert the previous change and take a different tack.
+The current code, although not open to the new requ irement, is improved. This suggests that it’s
+reasonable to continue forward, in hopes that more good things will come.
+Therefore, have faith, and iterate. This means you must continue to be guided by code smells,
+and doing so requires that you identify the smells in the current code.
+5.1.1. Identifying Patterns in Code
+One way to get better at identifying smells is to p ractice describing the characteristics of code.
+Look at the Bottles  class below and make note of the things that catch  your eye. Include any
+patterns that you see, and things you like, hate, o r don’t understand. This listing is followed by a
+series of questions intended to inspire further tho ughts, so take a minute to ponder before
+reading on.
+Listing 5.1: DRY Bottles Class
+ 1 class  Bottles
+ 2   def song
+ 3     verses( 99,0)
+ 4   end
+ 5 
+ 6   def verses (upper, lower)
+ 7     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+ 8   end
+ 9 
+10   def verse (number)
+11     "#{quantity(number) .capitalize } #{container(number) } " +
+12       "of beer on the wall, "  +
+13     "#{quantity(number) } #{container(number) } of beer. \n" +
+14     "#{action(number) }, " +
+15     "#{quantity(successor(number)) } #{container(successor(number)) } " +
+16       "of beer on the wall. \n"
+17   end
+18 
+19   def quantity (number)
+20     if number == 0
+21       "no more"
+22     else
+23       number .to_s
+24     end
+25   end
+26 
+27   def container (number)
+28     if number == 1
+29       "bottle"
+30     else
+31       "bottles"
+32     end
+33   end
+34 
+35   def action (number)
+36     if number == 0
+37       "Go to the store and buy some more"
+38     else
+5.1.2. Spotting Common Qualities
+Page 10639       "Take #{pronoun(number) } down and pass it around"
+40     end
+41   end
+42 
+43   def pronoun (number)
+44     if number == 1
+45       "it"
+46     else
+47       "one"
+48     end
+49   end
+50 
+51   def successor (number)
+52     if number == 0
+53       99
+54     else
+55       number - 1
+56     end
+57   end
+58 end
+The following questions draw attention to a number of interesting characteristics of the code as
+it’s written so far:
+1. Do any methods have the same shape?
+2. Do any methods take an argument of the same name?
+3. Do arguments of the same name always mean the sam e thing?
+4. If you were to add the private keyword to this cl ass, where would it go?
+5. If you were going to break this class into two pi eces, where’s the dividing line?
+For those methods created by the Flocking Rules ( quantity , container , action , pronoun  and
+successor , hereafter referred to as the "flocked five"):
+6. Do the tests in the conditionals have anything in  common?
+7. How many branches do the conditionals have?
+8. Do the methods contain any code other  than the conditional?
+9. Does each method depend more on the argument that  got passed, or on the class as a
+whole?
+The remainder of this section examines the above qu estions. If any didn’t occur to you, look back
+at the code and try to answer them before proceedin g.
+5.1.2. Spotting Common Qualities
+The first five questions above look at the class as  a whole and expose common qualities of the
+code. This next section examines these questions in  detail.
+Question 1: Do any methods have the same shape?
+5.1.2. Spotting Common Qualities
+Page 107Yes. The flocked five all have the same shape.
+You can easily identify same-shaped methods by doin g the Squint Test (see sidebar ). The fact that
+these methods are so consistent is a tribute to the  Flocking Rules. Had the methods been created
+at different times, by different people, for differ ent reasons, they could easily have contained a
+variety of shapes. For example, the following three  methods are logically  the same:
+Listing 5.2: Various Conditional Forms
+ 1 # verbose conditional
+ 2 def container (number)
+ 3   if number == 1
+ 4    "bottle"
+ 5   else
+ 6    "bottles"
+ 7   end
+ 8 end
+ 9 
+10 # guard clause
+11 def quantity (number)
+12   return  "no more"  if number == 0
+13   number .to_s
+14 end
+15 
+16 # ternary expression
+17 def pronoun (number)
+18   number == 1 ? "it"  : "one"
+19 end
+All of the above methods pass the tests. The proble m is not that the code doesn’t work; it’s that
+the non-essential variation disguises a common shap e. This unnecessary variation makes the
+methods appear to be different when they are actual ly very much the same.
+Programmers naturally assume that difference exists  for a reason, but here there isn’t one.
+Superfluous difference raises the cost of reading c ode, and increases the difficulty of future
+refactorings.
+It’s not yet clear what it means that these methods  have the same shape, but it’s important to
+notice that they do.
+Squint Test
+One easy way to judge code is by performing a Squin t Test. This test requires no setup, and
+can be performed on any code at any time.
+Here’s how it works:
+1. Put the code of interest on your screen.
+2. Lean back.*
+3. Squint your eyes such that you can still see the code, but can no longer read it.
+4. Look for:
+5.1.2. Spotting Common Qualities
+Page 108a. changes in shape, and
+b. changes in color.
+Changes in indentation reveal the presence of condi tionals. Two or more levels of
+indentation expose nested conditionals. Conditional s result in multiple execution paths
+through the code, which add complexity and make cod e hard to understand.
+Changes in color indicate differences in the level of abstraction. A method that intermixes
+many colors tells a story that will be difficult to  follow.
+*Instead of leaning back and squinting, it’s accept able to zoom out in your text editor until
+you can no longer read the code, but can still see its shape and color.
+Question 2: Do any methods take an argument of the same name?
+Six methods take number  as an argument—the verse  method and the flocked five.
+Listing 5.3: Methods Which Take an Argument Named Number
+1 def verse (number)
+2 def quantity (number)
+3 def container (number)
+4 def action (number)
+5 def pronoun (number)
+6 def successor (number)
+Question 3: Do arguments of the same name always me an the same thing?
+The easiest way to understand what number  represents is to follow its path through the code,
+beginning with song . Here’s a reminder of that method:
+Listing 5.4: Song Method
+1 def song
+2   verses( 99,0)
+3 end
+When song  sends verses(99, 0) , the 99 and 0 represent the starting and ending verse
+numbers to sing. You could argue that the 99 and 0 represent the starting number of bottles  in
+the verse to be sung, but that would be stretching it and you’d be in a minority. Most folks
+interpret the 99 and 0 as verse  numbers.
+If song  is sending verse numbers to verses , the verses  method must be receiving them. Here’s
+that method:
+Listing 5.5: Verses Method
+1 def verses (upper, lower)
+2   upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+3 end
+5.1.2. Spotting Common Qualities
+Page 109The upper  and lower  arguments are verse numbers. The verses  method iterates between
+them, so i, the argument yielded to the block, must also repr esent a verse number. Therefore,
+and quite sensibly so, the argument with which verse  is invoked must be the verse number to
+be sung. As received by verse , this argument is named number .
+1 def verse (number)
+To repeat (with no intention to belabor the point),  the number  argument taken by verse
+represents a verse number.
+Now switch your attention to the flocked five, all of which also take an argument named number .
+Here, for example, is container :
+1 def container (number)
+The question at hand is whether number  as received by container  represents the same concept
+as number  as received by verse . To answer this question, consider the entire verse  method:
+Listing 5.6: Verse Method
+1 def verse (number)
+2   "#{quantity(number) .capitalize } #{container(number) } " +
+3     "of beer on the wall, "  +
+4   "#{quantity(number) } #{container(number) } of beer. \n" +
+5   "#{action(number) }, " +
+6   "#{quantity(successor(number)) } #{container(successor(number)) } " +
+7     "of beer on the wall. \n"
+8 end
+Notice that line 2 above invokes container  with number , while line 6 invokes container  with
+successor(number) . Within every verse, container  is invoked twice, on two different values.
+This happens because each verse knows about two dif ferent numbers of bottles. Verse 37, for
+example, begins with 37 bottles of beer, and ends w ith 36. As you’ve already seen, the incoming
+number  argument to verse  represents a verse number . However, the parameter that verse  then
+passes on to container  stands for something else—a bottle number .
+The same is true for the other flocked five methods —the argument they receive is a bottle
+number rather than a verse number. Thus, the verse  method and the flocked five methods use
+the same argument name to represent different conce pts.
+This is rarely a good idea.
+If you have long since noticed this issue, congratu lations, but you’re in a minority. Most folks
+who work this problem name the argument taken by th e flocked five methods after the
+parameter passed from verse . Initially, this made perfect sense. Back in Chapt er 3, when the
+Flocking Rules led to the extraction of the container  method, your grasp of the problem was
+less developed than it is now. Then it was clear on ly that:
+the case  statement in verse  switched on number , and
+container  needed an argument in order to decide whether to r eturn "bottle" or "bottles."
+5.1.3. Enumerating Flocked Method Commonalities
+Page 110In the interests of consistency, it was reasonable back in Chapter 3 to name the argument taken
+by container  after the parameter being passed from verse . In the interim it hasn’t mattered
+that number  stands for a verse number within verse  but a bottle number within container .
+Now, however, it begins to. Having multiple methods  that take the same argument is a code
+smell. It’s important, however, to recognize that h ere the term "same" means same concept , not
+identical name . In an ideal world, each different concept would h ave its own unique, precise
+name, and there would be no ambiguity. Unfortunatel y, real world code often fails to meet this
+ideal. In long-lived applications, the same concept  might go by several different names, or, as in
+this case, different concepts might hide behind a s ingle name. These naming mistakes make it
+harder to notice underlying code smells, and now th at you’re looking for patterns in the code,
+you must examine the arguments and clarify the abst ractions that they represent.
+Having examined the use of number  in Bottles , it’s now clear that this argument represents a
+verse number to verse , but a bottle number to the flocked five methods.
+Question 4: If you were to add the private keyword,  where would it go?
+After verse  and before the flocked five methods.
+Question 5: If you were going to break this class i nto two pieces, where’s the dividing line?
+Same as above, after verse  and before the flocked five methods.
+5.1.3. Enumerating Flocked Method Commonalities
+Now that you’ve considered the class as a whole, it ’s time to move on to questions six through
+nine, which apply only to the flocked five methods.
+Question 6: Do the tests in the conditionals have a nything in common?
+Here’s a summary of the conditionals:
+Listing 5.7: Flocked Five Conditionals
+ 1 def quantity (number)
+ 2   if number == 0
+ 3     # ...
+ 4 end
+ 5 
+ 6 def container (number)
+ 7   if number == 1
+ 8     # ...
+ 9 end
+10 
+11 def action (number)
+12   if number == 0
+13     # ...
+14 end
+15 
+5.1.3. Enumerating Flocked Method Commonalities
+Page 11116 def pronoun (number)
+17   if number == 1
+18     # ...
+19 end
+20 
+21 def successor (number)
+22   if number == 0
+23     # ...
+24 end
+In the code above, not only do all of the condition als test the value of number , but they test for
+number  to be exactly equal  to another value.
+These conditionals could logically have used the le ss than, greater than or not equal operators,
+and still pass the tests. The Incomprehensibly Concise  example in Chapter 1 managed to use all
+four of these operations, and your own solution may  also have had conditionals that tested for
+something other than equality.
+Programmers tend to blithely interchange these diff erent comparison operators, confident that if
+the tests pass, the code is correct. However, havin g tests that pass doesn’t guarantee the best
+expression of code, and this is a case where your c hoice of operator affects future costs.
+Testing for equality has several benefits over the alternatives. Most obviously, it narrows the
+range of things that meet the condition. In the abo ve examples, if unexpected values of number
+arrive, the else  branch executes. Knowing that the only way to get to the true  branch is by
+supplying an exact value of number  makes it easier for future readers to understand t he code.
+This reduces the difficulty of debugging errors cau sed by incorrect inputs. Testing for equality
+also makes the code more precise, and this precisio n, as you will soon see, enables future
+refactorings.
+Question 7: How many branches do the conditionals h ave?
+Each conditional contains two branches. This may or  may not have meaning, but it’s certainly a
+visible quality of the code and thus worth noting.
+Question 8: Do the methods contain any code other  than the conditional?
+No. Each method is named after a concept, and conta ins a single conditional. This conditional
+uses the value of number  to choose the correct concrete expression of the c oncept. These
+methods are fiercely committed to having one respon sibility and never conflating two concepts.
+Question 9: Do methods that take number  as an argument depend more on number , or more
+on the class as a whole?
+The flocked five depend only on the number  argument, rather than on the rest of the class. Th is is
+true even for action , if you accept that although action  depends on pronoun , pronoun
+depends only on number .
+5.1.4. Insisting Upon Messages
+Page 112In conjunction, these nine questions group certain methods together. The same-shaped, same-
+kind-of-conditional-testing, bottle-number-taking, argument-depending, flocked five methods fall
+into one group, and the song , verses , and verse  methods into another. The answers to the
+questions above reveal many characteristics of the code, but there’s one more quality to discuss
+before moving on.
+5.1.4. Insisting Upon Messages
+This code contains a deeply non-object-oriented pat tern: the flocked five methods take an
+argument, examine it, and then supply behavior for it .
+As you’ve seen, those five methods share this commo n shape:
+Listing 5.8: Common Shape
+def container (number) 
+  if number == 1 
+    "bottle"  
+  else  
+    "bottles"  
+  end
+end
+The above method was created by the Flocking Rules,  and so exhibits many desirable qualities.
+Despite that, it’s deeply flawed when considered fr om the point of view of an independent OO
+practitioner. What that practitioner would see here  is that someone has gone to the trouble of
+injecting a dependency ( number ), but that dependency is too impaired to supply th e needed
+behavior. Consequently, not only does container  know about number , but it’s also forced to
+understand what the specific values of number  mean, and to know what to do in each case. The
+container  method depends  on each of these things. If any of them change, th e container
+method might be forced to change in turn.
+It made sense to tolerate a conditional back in Sha meless Green. That solution optimized for
+understandability without regard for changeability.  Its goal was to get to green quickly. The
+resulting code was more procedural than object-orie nted, but would have been good enough if
+nothing ever changed. However, now that you have a new requirement and are rearranging the
+code, you’d like to apply a full-blown OO mindset, and that mindset is deeply suspicious of
+conditionals.
+As an OO practitioner, when you see a conditional, the hairs on your neck should stand up. Its
+very presence ought to offend your sensibilities. Y ou should feel entitled  to send messages to
+objects, and look for a way to write code that allo ws you to do so. The above pattern means that
+objects are missing, and suggests that subsequent r efactorings are needed to reveal them. Be on
+the lookout for this code shape, as it implies that  there’s more to be done.
+This is not to say that you’ll never have a conditi onal in an object-oriented application. There is a
+place for conditionals in OO. Manageable OO applica tions consist of pools of small objects that
+collaborate to accomplish tasks. Collaborators must  be brought together in useful combinations,
+and assembling these combinations requires knowing which objects are suitable. Some object,
+somewhere, must choose which objects to create, and  this often involves a conditional.
+5.2.1. Modeling Abstractions
+Page 113However, there’s a big difference between a conditi onal that selects the correct object and one
+that supplies behavior. The first is acceptable and  generally unavoidable. The second suggests
+that you are missing objects in your domain.
+Code is striving for ignorance, and preserving igno rance requires minimizing dependencies. The
+container  method yearns to be injected with a smarter object  to which it could merely forward
+the message, as shown here:
+def container (smarter_number) 
+  smarter_number .container
+end
+The existing code is imploring you to create that s marter object.
+5.2. Extracting Classes
+The questions above identify characteristics that g roup methods together, and many of these
+groups overlap. For example, a number of methods ta ke the same argument. Most methods that
+do so have the same shape, contain a conditional, c ould be considered private, and depend more
+on the argument than on the class as a whole.
+Each item above acts like a vote, and these votes c ombine to point to Primitive Obsession  as the
+dominant code smell. Built-in data classes like String , Integer , Array , and Hash  are examples
+of "primitives." Primitive Obsession  is when you use one of these data classes to repre sent a
+concept in your domain. Obsessing on a primitive re sults in code that passes built-in types
+around, and supplies behavior for them.
+The cure for Primitive Obsession  is to create a new class to use in place of the pr imitive. For this
+operation, the refactoring recipe is Extract Class .
+5.2.1. Modeling Abstractions
+Having decided to cure the Primitive Obsession  code smell with the Extract Class  refactoring, you
+must now choose a name for this new class.
+The primitive that you’re replacing represents a bo ttle number. Notice that it is not a bottle : it’s a
+bottle number . A bottle is made of plastic, or glass, or aluminu m, and contains water, or soda, or
+beer. A bottle has a shape and a volume. It exists in the physical world.
+Unlike bottles, numbers aren’t things—they’re ideas , albeit ones so ubiquitous that you’ve likely
+forgotten how abstract and unlikely they are. Numbe rs are symbols used to describe quantities
+of things. They don’t physically exist. You can pic k up a bottle, but you cannot pick up a "six."
+This new class does not represent a kind of bottle:  it represents a kind of number. The distinction
+may seem subtle, but the divide between these two c oncepts is chasmic. A bottle is a thing, while
+a number is an idea. It’s easy to imagine creating objects that stand in for things, but the power
+of OO is that it lets you model ideas.
+5.2.2. Naming Classes
+Page 114Model-able ideas often lie dormant in the interacti ons between other objects. For example, an
+event management application might contain Buyer  and Ticket  classes. Buyer  and Ticket  are
+obvious because you can reach out and touch them in  the real world. These objects interact in
+many ways: buyers buy tickets, perhaps at a discoun t, and may later change their minds and
+return the tickets for refunds.
+Where, in such an application, should the logic to manage purchases, discounts, and refunds
+reside? You could  jam everything into Buyer  and Ticket , but the power of OO is that it allows
+you to create a virtual world in which Purchase , Discount  and Refund  are just as real.
+Embodying these concepts into discrete classes sepa rates responsibilities and makes the overall
+application easier to understand, test, and change.
+Experienced OO programmers deftly create virtual wo rlds in which ideas are as real as physical
+things. If you are not yet comfortable doing so, st art today by thinking of the class you’re about to
+extract not as a physical bottle, but as a symbolic  number with an added bit of bottle-ish
+behavior.
+Bearing that idea in mind, consider what to name th is class. The two most obvious choices are
+BottleNumber , or ContainerNumber .
+5.2.2. Naming Classes
+You’ve been introduced to the rule about naming met hods at one higher level of abstraction than
+their current implementation. Extrapolated to class es, that rule suggests this new class should be
+named ContainerNumber . However, you’ve also read fairly lengthy discours es about not
+anticipating the future, and since the existing req uirements involve only bottles, you might lean
+towards BottleNumber .
+BottleNumber  is less flexible but more straightforward. ContainerNumber  is just the opposite;
+it’s a bit more general, and so would work for a br oader range of vessels. BottleNumber  is more
+concrete. ContainerNumber  is more abstract.
+The tie-breaker here is that the "name things at on e higher level of abstraction" rule applies more
+to methods than to classes. It would be speculative  to call this new class ContainerNumber . The
+rule about naming can thus be amended: while you sh ould continue to name methods after what
+they mean , classes can be named after what they are.
+Having two requirements for bottles firmly suggests  that this class represents a bottle number,
+and should be named as such. As always, you can rev isit this decision if things change later.
+5.2.3. Extracting BottleNumber
+This section extracts a new class named BottleNumber  from the existing code. It does not use
+TDD. Instead, it creates the new class by following  a slightly modified version of Martin Fowler’s
+Extract Class  refactoring recipe.
+As you might recall, safe refactoring relies upon t ests running green, so the fact that the new
+BottleNumber  class will come into existence before its tests ar rive has a couple of
+5.2.2. Naming Classes
+Page 115consequences. First, the existing Bottles  tests become the safety net for this new class. Th ey
+were originally written as unit tests, but using th em to indirectly test BottleNumber  transforms
+them into a kind of integration test. These tests m ust continue to run after every change.
+Next, while extracting the class, code that is known to work  is copied from Bottles  into
+BottleNumber . It’s important to put this new class fully into u se before editing any of the copied
+code. Safety is being provided by the Bottles  tests, so they must exercise the new code as
+quickly as possible.
+In the previous chapters, the process of changing c ode was subdivided into four steps.
+1. parse the new code
+2. parse and execute it
+3. parse, execute and use its result
+4. delete unused code
+These steps still apply. Start the class extraction  by creating an empty BottleNumber  class, as
+shown below:
+Listing 5.9: BottleNumber Class Definition
+1 class  Bottles
+2   # ...
+3 end
+4 
+5 class  BottleNumber
+6 end
+As you go through this refactoring, remember to sav e the code after every change, and to run the
+tests after every save.
+Next, copy the methods that obsess on bottle number  into the new class.
+Listing 5.10: Obsessive Methods Copied to BottleNumber
+ 1 class  Bottles
+ 2   # ...
+ 3   def quantity (number)
+ 4     if number == 0
+ 5       "no more"
+ 6     else
+ 7       number .to_s
+ 8     end
+ 9   end
+10 
+11   def container (number)
+12     # ...
+13   end
+14 
+15   def action (number)
+16     # ...
+17   end
+18 
+19   def pronoun (number)
+20     # ...
+5.2.2. Naming Classes
+Page 11621   end
+22 
+23   def successor (number)
+24     # ...
+25   end
+26 end
+27 
+28 class  BottleNumber
+29   def quantity (number)
+30     if number == 0
+31       "no more"
+32     else
+33       number .to_s
+34     end
+35   end
+36 
+37   def container (number)
+38     if number == 1
+39       "bottle"
+40     else
+41       "bottles"
+42     end
+43   end
+44 
+45   def action (number)
+46     if number == 0
+47       "Go to the store and buy some more"
+48     else
+49       "Take #{pronoun(number) } down and pass it around"
+50     end
+51   end
+52 
+53   def pronoun (number)
+54     if number == 1
+55       "it"
+56     else
+57       "one"
+58     end
+59   end
+60 
+61   def successor (number)
+62     if number == 0
+63       99
+64     else
+65       number - 1
+66     end
+67   end
+68 end
+Remember that the verse  method should not be extracted. Even though its argument is also
+named number , in this case the argument represents a verse numb er, not a bottle number.
+Notice that the above example copied  methods from Bottle  to BottleNumber . The methods
+weren’t moved—they were duplicated, so nothing abou t Bottle  has yet been changed. This
+means that the old code continues to work as is and  the new code is not yet being executed.
+Running the tests at this point merely parses the n ew code, proving that it’s syntactically correct.
+As mentioned earlier, the recipe being followed her e was inspired by one from Martin Fowler.
+The "official" Extract Class  recipe begins by linking the old class to the new.  Then one at a time,
+5.2.2. Naming Classes
+Page 117the recipe moves attributes, and then methods, of i nterest. In contrast, the example above starts
+with Fowler’s final step, and combines all of the m ethod moves within a single change.
+This may seem like a large leap, but here you can b e confident that you’re moving the right
+group of methods. These methods were created by the  Flocking Rules, so they visibly share a
+common pattern. This common pattern makes it easy t o recognize that they belong together in
+the extracted class. This visual similarity is a tr ibute to the rules, and an illustration of the valu e
+of stable landing points (remember the stream and t he rocks?) The prior refactoring resulted in
+deeply consistent code, and here’s more proof that consistent code makes the current refactoring
+easy.
+The BottleNumber  class needs to know the value of number , so add an attr_reader for :number,
+and an initialize  method to set the variable. Here’s the code:
+Listing 5.11: BottleNumber Holding Onto Number
+1 class  BottleNumber
+2   attr_reader  :number
+3   def initialize (number)
+4     @number  = number
+5   end
+6   # ...
+7 end
+On line 2 above, attr_reader  is a class method. Invoking it with the symbol :number
+effectively defines a new instance method on BottleNumber  that acts like this:
+def number  
+  @number
+end
+Because of the attr_reader , BottleNumber  responds to the number  message by returning the
+value held in the @number  instance variable. This variable is set within the initialize  method
+on line 4 above. That initialize  method gets invoked when new is sent to BottleNumber .
+The BottleNumber  class now contains all of the necessary code, but as yet this code is only
+being parsed. The next small step is to execute a b it of the new class without using the result.
+The following example does this by altering the quantity  method of Bottles  to invoke the
+quantity  method of BottleNumber :
+Listing 5.12: Parse and Execute a Bit of New Code
+ 1 class  Bottles
+ 2   # ...
+ 3   def quantity (number)
+ 4     BottleNumber .new(number) .quantity(number)
+ 5     if number == 0
+ 6       "no more"
+ 7     else
+ 8       number .to_s
+ 9     end
+10   end
+11   # ...
+12 end
+5.2.2. Naming Classes
+Page 118Line 4 above executes the new method, but then disc ards the result in favor of existing code.
+This proves that the new code can execute without b lowing up, but does not prove that it returns
+the correct result.
+It must now be admitted that the added line of code  is, by any standard, ugly.
+BottleNumber .new(number) .quantity(number)
+In the above code, both BottleNumber.new  and quantity  require the number  argument, so it
+must be passed twice. You may find this annoyingly redundant. In the newly-created
+BottleNumber  class, the quantity  method could easily make do without an argument. I t can
+get the right number by simply sending the number  message to itself. Instead of the code above,
+you’d prefer:
+BottleNumber .new(number) .quantity
+However, as previously mentioned, you should refrai n from altering the code in these copied
+methods until the new class is fully wired into the  old. Regardless of how much you hate passing
+the parameter twice, at this point you should resis t the urge to make the change shown above.
+First, fully connect BottleNumber  to Bottles . Once that’s complete, you can return and
+improve the methods in BottleNumber .
+So, setting that unpleasant code temporarily aside,  the next small step in the current refactoring
+is to use the result of the quantity  message within the Bottle  class. The easiest way to
+accomplish this is to move line 4 to the bottom of the method, like so:
+Listing 5.13: Parse, Execute and Use Result
+ 1 class  Bottles
+ 2   # ...
+ 3   def quantity (number)
+ 4     if number == 0
+ 5       "no more"
+ 6     else
+ 7       number .to_s
+ 8     end
+ 9     BottleNumber .new(number) .quantity(number)
+10   end
+11   # ...
+12 end
+The tests pass, so now you can delete the old imple mentation from quantity  (lines 4-8 above).
+This leaves the following code:
+Listing 5.14: Resulting Quantity Method
+1 class  Bottles
+2   # ...
+3   def quantity (number)
+4     BottleNumber .new(number) .quantity(number)
+5   end
+6   # ...
+7 end
+5.2.4. Removing Arguments
+Page 119Repeat the above procedure for each of the methods copied from the Bottles  class. This is an
+extremely mechanical, wonderfully boring, and deepl y comforting refactoring process.
+Here’s the resulting Bottles  class:
+Listing 5.15: Forwarding Messages to BottleNumber
+ 1 class  Bottles
+ 2   # ...
+ 3   def quantity (number)
+ 4     BottleNumber .new(number) .quantity(number)
+ 5   end
+ 6 
+ 7   def container (number)
+ 8     BottleNumber .new(number) .container(number)
+ 9   end
+10 
+11   def action (number)
+12     BottleNumber .new(number) .action(number)
+13   end
+14 
+15   def pronoun (number)
+16     BottleNumber .new(number) .pronoun(number)
+17   end
+18 
+19   def successor (number)
+20     BottleNumber .new(number) .successor(number)
+21   end
+22 end
+These methods in Bottles  now merely forward messages along to BottleNumber .
+5.2.4. Removing Arguments
+Now that the old Bottles  class fully uses BottleNumber , the existing tests serve as a safety net
+for changes to the new class. This means that you c an now undertake improvements in the new
+code.
+Although BottleNumber  works, parts of it are annoyingly redundant. The p roblem is that even
+though instances of BottleNumber  know their number , its methods continue to require number
+as an argument. To illustrate, here are the two quantity  methods:
+Listing 5.16: Redundant Arguments
+ 1 class  Bottles
+ 2   # ...
+ 3   def quantity (number)
+ 4     BottleNumber .new(number) .quantity(number)
+ 5   end
+ 6   # ...
+ 7 end
+ 8 
+ 9 class  BottleNumber
+10   attr_reader  :number
+11   def initialize (number)
+12     @number  = number
+13   end
+14 
+15   def quantity (number)
+16     if number == 0
+5.2.4. Removing Arguments
+Page 12017       "no more"
+18     else
+19       number .to_s
+20     end
+21   end
+22   # ...
+23 end
+Line 4 above gets a new BottleNumber  and asks for its quantity . Doing so requires two
+references to number . The initialize  method (invoked by new and defined on line 11) and the
+quantity  method (line 15) both require a number  argument.
+The point of the Primitive Obsession /Extract Class  refactoring is to create a smarter object to
+stand in for the primitive. This smarter object, by  definition, knows both the value of the
+primitive and its associated behavior. Because the new BottleNumber  class holds the right
+number, the methods in BottleNumber  don’t need to take an argument, and invokers of th ese
+methods could be relieved of their obligation to pa ss a parameter.
+Now that BottleNumber  is fully connected to Bottles , it’s safe to start making these
+improvements. Notice that if you’re willing to simu ltaneously alter both the senders and the
+receivers of every message, it’s easy to make this change. For example, you could fix the
+quantity  method by changing line 4 above to remove the argu ment being passed to quantity ,
+while simultaneously deleting the parameter from li ne 15. If you make both of these changes at
+once, and then save the code, the tests will pass.
+Keep in mind that is a multi-line change. Some prob lems are so simple that it’s easiest to just leap
+in and make such a change, but others are so comple x that it isn’t feasible to fix everything at
+once. In real-world applications, the same method n ame is often defined several times, and a
+message might get sent from many different places. Learning the art of transforming code one
+line at a time, while keeping the tests passing at every point, lets you undertake enormous
+refactorings piecemeal. This small problem is a goo d place to practice this technique, in
+preparation for later tackling bigger ones.
+Back in Chapter 3, you had to add an argument to a method that was already being cal led
+without  one. This is the opposite problem: here you need t o remove  an argument from a method
+that’s currently being invoked with  one. Whether arguments are being added or removed,  the
+trick is the same: you must change the method defin ition to temporarily set the argument to a
+default.
+There are several ways to accomplish this. The foll owing technique is the most direct, but
+requires a short refresher on Ruby syntax.
+Consider quantity , repeated again below. This method defines a numbe r parameter .
+Remember, however, that the BottleNumber  class itself responds to the number message . Now
+answer this question: On line 4 below, does number  refer to the argument, or to the message?
+Listing 5.17: BottleNumber Quantity Redux
+ 1 class  BottleNumber
+ 2   # ...
+ 3   def quantity (number)
+5.2.4. Removing Arguments
+Page 121 4     if number == 0
+ 5       "no more"
+ 6     else
+ 7       number .to_s
+ 8     end
+ 9   end
+10   # ...
+11 end
+Ruby is perfectly happy to allow the same name to b e used for different things and to infer
+which you mean based on context. In the code above,  the programmer clearly intends for
+number  on line 4 to refer to the number  argument from line 3, and that’s exactly what Ruby  does.
+The number  on line 4 is interpreted as a reference to the met hod’s argument rather than as a
+send of the number  message.
+Armed with this knowledge, you can guess that remov ing the argument from the method
+definition would cause Ruby to interpret line 4 as a send of the number  message. This is your
+goal, but unfortunately, the Bottles  class is still sending  quantity(number) , so this change
+breaks the tests.
+The trick to working your way forward under green w hile making only one-line changes, is to
+alter the name of the argument to something other  than number , and simultaneously give it a
+default. Line 3 below contains that change:
+Listing 5.18: Renamed Argument
+ 1 class  BottleNumber
+ 2   # ...
+ 3   def quantity (delete_me =nil)
+ 4     if number == 0
+ 5       "no more"
+ 6     else
+ 7       number .to_s
+ 8     end
+ 9   end
+10   # ...
+11 end
+Above, the number  argument for quantity  has been renamed to delete_me  and assigned a
+default of nil. That change turns the number  reference on line 4 into a message send, which
+allows this method to depend upon a message sent to  itself rather than an argument passed by
+someone else.
+Now that the argument is optional, turn your attent ion to senders of quantity . In this
+application there’s only the one in Bottles , shown here:
+Listing 5.19: Forward With Redundant Arguments
+1 class  Bottles
+2   # ...
+3   def quantity (number)
+4     BottleNumber .new(number) .quantity(number)
+5   end
+6   # ...
+7 end
+5.2.4. Removing Arguments
+Page 122Removing the number  argument from the quantity  message invocation on line 4 results in this
+code:
+Listing 5.20: Forward Without Redundancy
+1 class  Bottles
+2   # ...
+3   def quantity (number)
+4     BottleNumber .new(number) .quantity
+5   end
+6   # ...
+7 end
+Once you have located and removed the parameter fro m all of its senders, the quantity  method
+definition no longer needs to take an argument. You  can now return to BottleNumber  and
+remove the delete_me  argument and default, as on line 3 below:
+Listing 5.21: BottleNumber Quantity Method Without Argument
+ 1 class  BottleNumber
+ 2   # ...
+ 3   def quantity
+ 4     if number == 0
+ 5       "no more"
+ 6     else
+ 7       number .to_s
+ 8     end
+ 9   end
+10   # ...
+11 end
+Here’s a recap of the steps for removing an argumen t using one-line changes.
+1. Alter the method definition to change the paramet er name, and provide a default.
+Start by changing the existing parameter name to an ything other than what it currently is.
+Using delete_me  will help you remember to delete the paramater whe n you’ve updated
+all of the senders. The value of the default does n ot matter, so it’s common to use nil. In
+the example above:
+def quantity (number)
+became:
+def quantity (delete_me =nil)
+2. Change every sender of the message to remove the argument. In the example:
+BottleNumber .new(number) .quantity(number)
+became:
+BottleNumber .new(number) .quantity
+3. Finally, delete the parameter from the method def inition. So:
+def quantity (delete_me =nil)
+became:
+5.2.5. Trusting the Process
+Page 123def quantity
+As you can see, despite the length of the explanati on, the technique is simple, and involves only
+three steps. Having practiced on quantity , the other methods will easily bend to your will. You
+can now follow this process to remove the number  argument from the remaining methods in
+BottleNumber .
+If you do this refactoring yourself, you’ll find th at container  and action  work as expected, but
+that when you change pronoun , the tests begin to fail.
+5.2.5. Trusting the Process
+Refactorings that lead to errors can shake your fai th in the validity of the corresponding recipes.
+However, these recipes have proven themselves relia ble for many people across many
+circumstances. If you adhere to a recipe and tests start failing, it’s likely that there’s something
+about the problem that you don’t yet understand.
+In this case, you’ve been using the "remove argumen ts via one-line changes" process. It works
+for quantity , container , and action  but causes the tests to fail when applied to pronoun .
+Specifically, if you go to pronoun  in BottleNumber :
+Listing 5.22: Initial BottleNumber Pronoun Method
+1 class  BottleNumber
+2   # ...
+3   def pronoun (number)
+4     if number == 1
+5     # ...
+6   end
+7   # ...
+8 end
+and change the number  parameter on line 3 to delete_me , and supply a default:
+Listing 5.23: Updated BottleNumber Pronoun Method
+1 class  BottleNumber
+2   # ...
+3   def pronoun (delete_me =nil)
+4     if number == 1
+5     # ...
+6   end
+7   # ...
+8 end
+Then go to the pronoun  method in Bottles :
+Listing 5.24: Initial Bottles Pronoun Method
+1 class  Bottles
+2   # ...
+3   def pronoun (number)
+4     BottleNumber .new(number) .pronoun(number)
+5   end
+6   # ...
+7 end
+5.2.5. Trusting the Process
+Page 124and remove the argument from the forward of pronoun  to BottleNumber :
+Listing 5.25: Updated Bottles Pronoun Method
+1 class  Bottles
+2   # ...
+3   def pronoun (number)
+4     BottleNumber .new(number) .pronoun
+5   end
+6   # ...
+7 end
+Now when you return to the pronoun  method definition in BottleNumber  and delete the entire
+argument:
+Listing 5.26: Back to BottleNumber Pronoun
+1 class  BottleNumber
+2   # ...
+3   def pronoun
+4     # ...
+5   end
+6   # ...
+7 end
+Then the tests begin to fail with:
+ArgumentError: wrong number of arguments (given 1, expected 0)
+The process that worked for other methods is now fa iling for pronoun . While this error might
+lead you to doubt the validity of the technique, it  doesn’t point out a flaw in the process. Instead,
+it exposes a slightly more complex bit of code.
+Recall the steps needed to remove parameters:
+1. Alter the method definition to change the paramet er name, and provide a default.
+2. Change every sender of the message to remove the argument.
+3. Delete the parameter from the method definition.
+The failure appeared after step 3. The error messag e indicates that some caller is still passing a
+parameter to pronoun . This means step 2 isn’t complete; in other words,  some sender  has not
+been fixed. This should trigger you to examine the source code where the failure occurred.
+When you do so, you’ll see the following:
+Listing 5.27: BottleNumber Action Method Uses Pronoun
+ 1 class  BottleNumber
+ 2   # ...
+ 3   def action
+ 4     if number == 0
+ 5       "Go to the store and buy some more"
+ 6     else
+ 7       "Take #{pronoun(number) } down and pass it around"
+ 8     end
+ 9   end
+5.2.5. Trusting the Process
+Page 12510   # ...
+11 end
+It turns out that pronoun  is invoked only from the action  method of BottleNumber , where the
+message is sent to self . The pronoun  method defined back in Bottles  is no longer used (as you
+can confirm by cavalierly deleting it and running t he tests).
+Instead of changing the unused pronoun  method in Bottles , step 2 should have removed the
+number  argument from the call to pronoun  in the action  method of BottleNumber , leaving:
+Listing 5.28: BottleNumber Action Method Corrected
+ 1 class  BottleNumber
+ 2   # ...
+ 3   def action
+ 4     if number == 0
+ 5       "Go to the store and buy some more"
+ 6     else
+ 7       "Take #{pronoun } down and pass it around"
+ 8     end
+ 9   end
+10   # ...
+11 end
+Once you make that change and then complete the steps, the code passe s the tests.
+The lesson here is that the process works , and that encountering errors while following it
+suggests that a closer look at the code is in order . A great benefit of these refactoring techniques
+is that you can accomplish quite a bit while thinki ng very little. Sometimes, however, thought
+just can’t be avoided. The blessing of these techni ques is that altering code in such small
+increments severely constrains the number of errors  any change can introduce. When forced to
+think, you can be confident that your efforts will be narrowly focused on an opportune topic.
+Now that pronoun  works, only the successor  method remains. It succumbs to this refactoring
+with no surprises. This completes the removal of ex traneous arguments to methods in the
+BottleNumber  class, and leaves the code at the following restin g point.
+Listing 5.29: Forward Messages to Smarter Number
+ 1 class  Bottles
+ 2   def song
+ 3     verses( 99,0)
+ 4   end
+ 5 
+ 6   def verses (upper, lower)
+ 7     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+ 8   end
+ 9 
+10   def verse (number)
+11     "#{quantity(number) .capitalize } #{container(number) } " +
+12       "of beer on the wall, "  +
+13     "#{quantity(number) } #{container(number) } of beer. \n" +
+14     "#{action(number) }, " +
+15     "#{quantity(successor(number)) } #{container(successor(number)) } " +
+16       "of beer on the wall. \n"
+17   end
+18 
+5.2.5. Trusting the Process
+Page 12619   def quantity (number)
+20     BottleNumber .new(number) .quantity
+21   end
+22 
+23   def container (number)
+24     BottleNumber .new(number) .container
+25   end
+26 
+27   def action (number)
+28     BottleNumber .new(number) .action
+29   end
+30 
+31   def successor (number)
+32     BottleNumber .new(number) .successor
+33   end
+34 end
+35 
+36 class  BottleNumber
+37   attr_reader  :number
+38   def initialize (number)
+39     @number  = number
+40   end
+41 
+42   def quantity
+43     if number == 0
+44       "no more"
+45     else
+46       number .to_s
+47     end
+48   end
+49 
+50   def container
+51     if number == 1
+52       "bottle"
+53     else
+54       "bottles"
+55     end
+56   end
+57 
+58   def action
+59     if number == 0
+60       "Go to the store and buy some more"
+61     else
+62       "Take #{pronoun } down and pass it around"
+63     end
+64   end
+65 
+66   def pronoun
+67     if number == 1
+68       "it"
+69     else
+70       "one"
+71     end
+72   end
+73 
+74   def successor
+75     if number == 0
+76       99
+77     else
+78       number - 1
+79     end
+80   end
+81 end
+5.3. Appreciating Immutability
+Page 127This completes the extraction of BottleNumber . The original Bottles  class is now free of
+conditionals, but they didn’t disappear—they just m oved into this new class in a slightly simpler
+form. Even with the conditionals, however, the code  in BottleNumber  has a regular, orderly
+aspect that feels pleasing, and bodes well for futu re refactorings.
+It’s almost time to return your focus to the Bottles  class, but before doing so, there are a few
+broad ideas to consider.
+5.3. Appreciating Immutability
+To mutate  is to change. State  is "the particular condition of something at a spe cific time." A
+variable  is "that which varies," or, in maths, "a quantity which admits an infinite number of
+values in the same expression."
+In the physical world, conditions vary over time. Y our coffee cup was full, but now is empty.
+You’ve been exercising, and now you’re more fit. Th e Himalayas are rising.
+It’s the same cup, you, and mountain range, but the ir conditions have changed. The real world is
+pervaded by this idea—what exists, will change.
+Human agreement about the necessity and rightness o f change is reflected in the choice of the
+word variable  for use within computer programming languages. Wha t purpose has a variable
+other than to vary? Most object-oriented programmer s write code that both expects and relies
+upon object mutation. Objects are constructed, used , mutated, and then used again.
+Regardless of how intuitive and natural it may seem , mutation is not an absolute requirement. It
+is perfectly possible (as programmers of functional  languages will happily inform you) to
+construct applications from immutable  objects, meaning objects that do not change. For t hose
+unused to this idea, it can be disorienting to imag ine reality as constructed by the functional
+programmer. Instead of refilling your existing cup,  you discard it in favor of a new one that looks
+identical but is full of coffee. Rather than changi ng yourself to be more fit, you swap yourself for
+the new, fitter, you. As the Himalayas rise, you re place your existing copy with a brand new
+mountain range that’s a tiny bit taller.
+If the idea of immutability is new to you, the exam ples in the prior paragraph may seem
+positively alarming. The first concern most folks h ave is for performance. The consequences of
+getting a whole new cup when all you want is more c offee don’t seem so bad, but replacing an
+entire mountain range to handle a five-millimeter a nnual height change may feel excessive.
+The next section will delve into those consideratio ns, so defer performance concerns for a
+moment. For now, ponder the benefits of working wit h objects that do not change. What virtue
+might immutability provide, and what trouble might it avoid?
+One of the best things about immutable objects is t hat they are easy to understand and reason
+about. These objects never start out one way and th en secretly morph into something else. You
+can be confident that what you see at creation time  is always what you get later.
+5.4. Assuming Fast Enough
+Page 128Because they are easy to reason about, immutable ob jects are also easy to test. Objects that
+change need tests for the affected behavior. The ch ange might be caused by a collaborating
+object, or triggered by a distant event, so tests c ould need additional collaborators, or actions
+triggered by apparently unrelated parts of your app . Tests for immutable objects avoid this extra
+setup, which makes the tests cheaper to write and e asier to understand.
+Another key virtue of immutable objects is that the y are thread safe. Some of the most pernicious
+bugs in multi-threaded systems involve the inadvert ent changing of shared state by different
+threads. These bugs are often related to the timing  of thread execution, and so are notoriously
+difficult to reproduce, as well as costly and frust rating to debug. This class of problem is entirely
+avoided by immutable objects. You can’t break share d state if shared state doesn’t change.
+Therefore, there are many good reasons to prefer ob jects that do not mutate. You are restrained
+from creating them only by the habit of mutability,  and the (often unquestioned) assumption
+that instantiating new objects will be unacceptably  more costly than reusing existing ones.
+Having read this section, look back at the new BottleNumber  class in Listing 5.29: Forward
+Messages to Smarter Number . The question of mutability applies directly to th is new class.
+Imagine that you’re holding onto an instance of BottleNumber  whose number  variable contains
+the value 99. The verse progresses such that it now needs bottl e number 98. Is it better to mutate
+the value of number  in the current instance of BottleNumber , or should that object be discarded
+in favor of BottleNumber.new(98) ?
+If you lean towards mutating the existing BottleNumber  rather than making another, it’s
+possible that you are biased against creating new o bjects. This bias is often unexamined, and has
+its roots in the assumption that if you routinely c reate many new objects, your application will
+be too slow.
+5.4. Assuming Fast Enough
+The benefits of immutability are so great that, if it were free , you’d choose it every time.
+Immutability’s offsetting costs are twofold. First,  you must become reconciled to the idea, which
+for many programmers is no small thing. Next, achie ving immutability requires the creation of
+more (sometimes many more) new objects.
+Getting habituated to a new way of thinking need ha ppen only once, so this cost is not a
+permanent concern; drinking the immutability Kool-A id today suffices for forever. The ongoing
+costs of immutability are therefore mostly in the c reation of new objects, and that’s the topic of
+this section.
+You may be familiar with Phil Karlton’s famous sayi ng "There are only two hard things in
+Computer Science: cache invalidation and naming thi ngs." You’ve already read a great deal
+about naming things, and it’s finally time to discu ss caching.
+A cache , in computer science, is a local copy of something  stored elsewhere. Saving a local copy
+of the results of an expensive operation, or caching  it, is assumed to increase the speed of your
+application, and so lower costs.
+5.4. Assuming Fast Enough
+Page 129The presumptions in the above statement are twofold . First, it assumes that caching will make
+applications faster, and next, it assumes that cach ing will lower costs. These statements are
+sometimes true, but not always.
+When you send a message and save the result into a variable, you’ve created a simple cache. If
+the value in your variable becomes obsolete, you mu st invalidate this cache, either by discarding
+it, or by resending the message and saving the new result.
+Caching is easy. However, figuring out that a cache  needs to be updated can be hard. The code to
+do so is often complicated and confusing. This addi tional code must be tested, and inevitably,
+when it turns out that the tests are insufficient, debugged. The extra code needed to manage a
+cache can be so difficult to write, hard to underst and, and expensive to run that it offsets the
+original benefits.
+Notice that the costs of caching and mutation are i nterrelated. If the thing you cache doesn’t
+mutate, your local copy is good forever. If you cac he something that changes, you must write
+additional code to recognize that your copy is stal e, and to re-run the initial operation to update
+the cache.
+If you’ve ever worked on code that handles complica ted cache invalidation, it will come as no
+surprise that the word itself comes from the French  cacher , which means to conceal or hide.
+Outdated caches can be a source of opaque, expensiv e, and frustrating bugs. The net cost of
+caching can be calculated only by comparing the ben efit of increases in speed to the cost of
+creating and maintaining  the cache. If you require this speed increase, any  cost is cheap. If you
+don’t, every cost is too much.
+Mutation and caching complicate code. This complica tion is often accepted as necessary and
+justified by the belief that it will improve perfor mance. However, the unfortunate truth is that
+humans are very bad at predicting in advance whethe r a program will be fast enough overall,
+and, if not, which parts of it will be too slow.
+Complicating code in order to solve performance pro blems, in advance of actual data about
+where those problems are, raises costs and very oft en pays nothing in return. These guesses are
+almost certain to be wrong, and merely serve to har m readability and impede change.
+Given this, the best programming strategy is to wri te the simplest code possible and measure its
+performance once you’re done. If the whole is not a cceptably fast, profile the performance, and
+speed up the slowest parts. Increasing speed may  require caching, but many problems can be
+fixed by substituting more efficient code in specif ic, narrow places. Once you understand
+precisely what’s wrong, it may be possible to fix i t without caching at all.
+Your goal is to optimize for ease of understanding while maintaining performance that’s fast
+enough. Don’t sacrifice readability in advance of h aving solid performance data. The first
+solution to any problem should avoid caching, use i mmutable objects, and treat object creation
+as free . This results in speedy development of simple code , which leaves plenty of time to identify
+and correct the real performance problems.
+5.5. Creating BottleNumbers
+Page 130Now that this somewhat theoretical discussion is co mplete, it’s time return to the Bottles  class,
+and apply ideas to actual code.
+5.5. Creating BottleNumbers
+Even for those comfortable with object creation, th e code in Bottles  constructs a notable
+number of BottleNumber s. Examine the methods below, and count the number of times a new
+BottleNumber  is created by verse .
+Listing 5.30: Lots of New BottleNumbers
+ 1 class  Bottles
+ 2   # ...
+ 3   def verse (number)
+ 4     "#{quantity(number) .capitalize } #{container(number) } " +
+ 5       "of beer on the wall, "  +
+ 6     "#{quantity(number) } #{container(number) } of beer. \n" +
+ 7     "#{action(number) }, " +
+ 8     "#{quantity(successor(number)) } #{container(successor(number)) } " +
+ 9       "of beer on the wall. \n"
+10   end
+11 
+12   def quantity (number)
+13     BottleNumber .new(number) .quantity
+14   end
+15 
+16   def container (number)
+17     BottleNumber .new(number) .container
+18   end
+19 
+20   def action (number)
+21     BottleNumber .new(number) .action
+22   end
+23 
+24   def successor (number)
+25     BottleNumber .new(number) .successor
+26   end
+27 end
+In the code above, a new instance of BottleNumber  is created each time quantity , container ,
+action , or successor  are invoked. The verse  method sends those messages a total of nine
+times. Therefore, over the course of the song, 900 new instances of BottleNumber  are created
+(nine each in 100 verses).
+This may feel excessive.
+This plethora of object creation is the result of t he prior refactoring. The recipe replaces the body
+of each original method with code that forwards the  message to a new instance of the newly-
+extracted class.
+Within Bottles , verse  is the only method that sends the quantity , container , action , or
+successor  messages, so the presence of these forwarding meth ods may seem like overkill. In
+this simple example, they probably are. In more com plicated problems, however, it would not be
+surprising to perform an Extract Class  refactoring and find that the resulting forwarding
+messages were invoked many times, from many differe nt methods within the original class.
+5.5. Creating BottleNumbers
+Page 131These forwarding methods exist to provide a single place for the original class to catch these
+messages when sent to itself, and funnel them along  to the new class.
+The previous refactoring recipe makes no attempt to  minimize the number of new objects, and
+creates a set of forwarding methods that unabashedl y create new instances of the extracted
+class. The upshot is 900 new BottleNumber s.
+This code works, and if you find it distressing, it ’s likely because it feels wasteful. There are
+alternatives. If unconstrained by the recipe, there  are a number of ways to avoid such profligate
+object creation, and it’s instructive to consider t hem.
+For example, the first three phrases of the first v erse of the song send quantity  and container
+twice, and action  once. This creates five instances of BottleNumber  for the number  99. If the
+first instance were to be cached, it could be re-us ed four times in these three phrases.
+The fourth phrase of verse 99 sends successor  twice, which creates two additional instances of
+BottleNumber  99. The previously cached bottle number could be u sed here also. Therefore,
+BottleNumber  99 could be created once, and then reused six time s.
+The fourth phrase of verse 99 also sends quantity  and container . This creates two instances
+of BottleNumber  on the successor, which is 98. Caching the first i nstance would save another
+object creation within this verse. Additionally, th e cached copy could be re-used in the following
+verse, saving seven more object creations for a tot al of eight altogether. Over the course of the
+song, caching could reduce the number of new BottleNumber  instances from 900 to 100.
+For those who feel the need to be even more parsimo nious, it’s possible to create a single
+instance of BottleNumber  and reuse it 900 times. To accomplish this, one wo uld create a
+BottleNumber  for the number  99, and then, when the need for bottle number 98 a rose, change
+the value of number  from 99 to 98 in that one existing object. And jus t like that, you’ve added
+caching plus mutation.
+So you can reduce the number of new BottleNumber s by caching existing ones, and decrease
+this number further if you’re willing to mutate the m. Doing either of these things may lower
+some costs, but will certainly raise others. These things are not free.
+As a thought exercise, take a minute before reading  on and imagine altering the existing code to
+use a single instance of BottleNumber . If you find that exercise easy, try another, this  time
+pretending that quantity , container , action , and successor  are sent from multiple methods
+within Bottles . Pause a moment if you care to, and go write the c ode. You’ll find that the
+changes needed to do this add complexity. This comp lexity may cost more than the benefit
+gained by faster performance.
+Having done that experiment, return to the problem at hand. In this example, the forwarding
+methods are invoked from only one method of Bottles . This means that it’s possible to reduce
+object creation by adding a simple, automatically-i nvalidating, low-cost cache. The following
+example shows a BottleNumber  being cached on line 4:
+5.5. Creating BottleNumbers
+Page 132Listing 5.31: Caching a BottleNumber
+ 1 class  Bottles
+ 2   # ...
+ 3   def verse (number)
+ 4     bottle_number = BottleNumber .new(number)
+ 5 
+ 6     "#{quantity(number) .capitalize } #{container(number) } " +
+ 7       "of beer on the wall, "  +
+ 8     "#{quantity(number) } #{container(number) } of beer. \n" +
+ 9     "#{action(number) }, " +
+10     "#{quantity(successor(number)) } #{container(successor(number)) } " +
+11       "of beer on the wall. \n"
+12   end
+13   # ...
+14 end
+Line 4 above creates a new instance of BottleNumber  and caches it in a temporary variable
+(this is the Temporary Variable  code smell) within the verse  method. This cache reduces object
+creation without adding much additional complexity,  so here it’s justified because the benefits
+outweigh the costs.
+Now that this cached object exists, you can gradual ly alter the verse template to send messages
+to the new object rather than to self . The next example begins the transition with the s implest
+change possible. Line 5 below asks this new object for its action :
+Listing 5.32: Asking the Cached Object for Its Action
+1 def verse (number)
+2   bottle_number = BottleNumber .new(number)
+3 
+4   # ...
+5   "#{bottle_number .action }, " +
+6   # ...
+7 end
+In the code above, action(number)  has been replaced by bottle_number.action . This sends
+the action  message directly to the new BottleNumber , entirely bypassing the local
+implementation.
+A similar change can be made in the first and secon d phrases of the verse  template, as shown
+below:
+Listing 5.33: Using the Cached Object in Phrases 1 and 2
+1 def verse (number)
+2   bottle_number = BottleNumber .new(number)
+3 
+4   "#{bottle_number .quantity .capitalize } #{bottle_number .container } " +
+5     "of beer on the wall, "  +
+6   "#{bottle_number .quantity } #{bottle_number .container } of beer. \n" +
+7   "#{bottle_number .action }, " +
+8   # ...
+9 end
+In lines 4-7 of the code above, quantity  and container  are now sent directly to
+bottle_number . This, again, bypasses the local implementations i n favor of sending messages to
+the cached object.
+5.6. Recognizing Liskov Violations
+Page 133Now the first three phrases of the verse template s end messages to a BottleNumber  rather than
+to self . Only phrase four remains to be updated.
+5.6. Recognizing Liskov Violations
+Phrases 1 through 3 of the verse template refer to the same bottle number, and so can share the
+currently-cached BottleNumber  instance. Phrase 4, however, uses a different bott le number.
+Here’s a reminder of the code:
+Listing 5.34: Current Phrase 4
+1 def verse (number)
+2   bottle_number = BottleNumber .new(number)
+3 
+4   # ...
+5   "#{quantity(successor(number)) } #{container(successor(number)) } " +
+6     "of beer on the wall. \n"
+7 end
+The plan is to change phrase 4 to send messages to instances of BottleNumber  rather than to
+self . Previously, when making a similar change to phras e 1 and 2,
+quantity(number)
+was replaced with
+bottle_number .quantity
+On line 5 above, phrase 4 also invokes quantity , but it passes a different argument than does
+phrase 1:
+quantity(successor(number))
+The quantity  method above is passed successor(number)  because phrase 4 is about the next
+number. For example, in a verse where phrase 1 is a bout number 99, then phrase 4 is about
+number 98.
+The goal here is to send the quantity  message to an object that can answer correctly, an d the
+problem is that you do not yet have access to such an object.
+BottleNumber s implement successor , and it feels as if successor  should return the object
+you need. Your object-oriented intuition is bang on[16] if you expect the successor  of a
+BottleNumber  to be another BottleNumber . If this were true, you could replace:
+quantity(successor(number))
+with:
+bottle_number .successor .quantity
+Unfortunately, as is, this code doesn’t work. If yo u make the above change and run the tests,
+you’ll see:
+5.6. Recognizing Liskov Violations
+Page 134NoMethodError: undefined method `quantity' for 99:Integer
+The problem is that successor  still returns a number, when logically it should n ow return the
+succeeding BottleNumber . BottleNumber s know quantity , but Integers do not.
+Back when successor  was first created, it was correct for it to return  a number. This
+abstraction was identified by the Flocking Rules, w hich called for copying code from the old
+verse  case  statement into the new successor  method. The case  statement originally returned
+numbers, thus the successor  method did the same. At that point, successor  was a number.
+However, the successor  method has moved to a new class, and the concept o nce represented
+by a number is now represented by a BottleNumber . The type of the object has changed, but the
+successor  method still returns the old type. You have every right to expect any method named
+successor  to return an object that implements the same API a s the receiver, but alas, this
+successor  method does not.
+This inconsistency is another violation of the gene ralized Liskov Substitution Principle. A
+method named successor  implicitly promises that the thing it returns will  behave like the
+object to which you sent the message. But this successor  method lies. It breaks its promise,
+which forces the sender to know that the return is untrustworthy and to take steps to handle the
+violation.
+As annoying as this is, you are in the middle of al tering the verse  template to send messages to
+objects. This current refactoring is almost complet e, and it is often better to finish horizontal
+refactorings before undertaking vertical tangents. You could  veer from the path and fix the
+Liskov violation, but in the spirit of completing t he current thought before undertaking a new
+task, stay the course . You’ve already declared a temporary variable to h old bottle number 99. The
+current problem can be solved by declaring another variable to hold bottle number 98 and
+writing some shameless code. On line 3 below, the f ollowing example bravely does just that:
+Listing 5.35: Caching the Successor
+ 1 def verse (number)
+ 2   bottle_number      = BottleNumber .new(number)
+ 3   next_bottle_number = BottleNumber .new(bottle_number .successor)
+ 4 
+ 5   "#{bottle_number .quantity .capitalize } #{bottle_number .container } " +
+ 6     "of beer on the wall, "  +
+ 7   "#{bottle_number .quantity } #{bottle_number .container } of beer. \n" +
+ 8   "#{bottle_number .action }, " +
+ 9   "#{next_bottle_number .quantity } #{next_bottle_number .container } " +
+10     "of beer on the wall. \n"
+11 end
+Line 3 above creates a new BottleNumber  on the successor of the existing BottleNumber .
+Ultimately, you’d like to improve this line of code , but at present it suffices to move the current
+refactoring forward. Now that next_bottle_number  exists, line 9 can ask it for its quantity
+and container .
+After that change, the verse  method contains two distinct parts. Lines 5-10 abo ve define a
+template which queries instances of BottleNumber  for details. Lines 2 and 3 create new
+5.6. Recognizing Liskov Violations
+Page 135instances of BottleNumber . Line 2 seems reasonable, but line 3 is awkward be cause the Liskov
+violation forces you to invoke successor  and then convert its return into a BottleNumber
+yourself.
+This completes the caching of BottleNumber s in the verse  method, but there’s one final change
+to make. Now that verse  talks directly to objects cached in temporary vari ables, the forwarding
+methods are no longer needed. Deleting them reduces  the code to the following:
+Listing 5.36: Obsession Cured
+ 1 class  Bottles
+ 2   def song
+ 3     verses( 99,0)
+ 4   end
+ 5 
+ 6   def verses (upper, lower)
+ 7     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+ 8   end
+ 9 
+10   def verse (number)
+11     bottle_number      = BottleNumber .new(number)
+12     next_bottle_number = BottleNumber .new(bottle_number .successor)
+13 
+14     "#{bottle_number .quantity .capitalize } #{bottle_number .container } " +
+15       "of beer on the wall, "  +
+16     "#{bottle_number .quantity } #{bottle_number .container } of beer. \n" +
+17     "#{bottle_number .action }, " +
+18     "#{next_bottle_number .quantity } #{next_bottle_number .container } " +
+19       "of beer on the wall. \n"
+20   end
+21 end
+22 
+23 class  BottleNumber
+24   attr_reader  :number
+25   def initialize (number)
+26     @number  = number
+27   end
+28 
+29   def quantity
+30     if number == 0
+31       "no more"
+32     else
+33       number .to_s
+34     end
+35   end
+36 
+37   def container
+38     if number == 1
+39       "bottle"
+40     else
+41       "bottles"
+42     end
+43   end
+44 
+45   def action
+46     if number == 0
+47       "Go to the store and buy some more"
+48     else
+49       "Take #{pronoun } down and pass it around"
+50     end
+51   end
+52 
+5.7. Summary
+Page 13653   def pronoun
+54     if number == 1
+55       "it"
+56     else
+57       "one"
+58     end
+59   end
+60 
+61   def successor
+62     if number == 0
+63       99
+64     else
+65       number - 1
+66     end
+67   end
+68 end
+This completes the extraction of the BottleNumber  class, resolves the Primitive Obsession  code
+smell, and heralds the end of Chapter 5.
+5.7. Summary
+This chapter continued the quest to make Bottles  open to the six-pack requirement. It
+recognized that many methods in Bottles  obsessed on number , and undertook the Extract Class
+refactoring to cure this obsession. The refactoring  created a new class named BottleNumber .
+During the course of the refactoring, conditionals were examined from an experienced OO
+practitioners' point of view. This chapter also exp lored the rewards of modeling abstractions, the
+trade-offs of caching, the advantages of immutabili ty, and the benefits of deferring performance
+tuning.
+Most programmers are happier with the current code than they were with Shameless Green, but
+this version is far from perfect. The total ABC sco re, for example, has gone up again. From the
+metrics point of view, after turning one conditiona l into many back in Chapter 4, you’ve now
+compounded your sins by introducing a new class whi ch adds no new behavior but increases
+the length of the code.
+Also, there are no unit tests for BottleNumber . It relies entirely on Bottle 's tests.
+The code still exudes many smells (duplication, con ditionals, and temporary field, to name a
+few). And, finally, it commits a Liskov violation i n the successor  method.
+The refactorings in this and the prior chapter were  undertaken in hopes of making the code
+open to the six-pack requirement, but this has not yet succeeded. You’ve been acting in faith that
+removing code smells would eventually lead to openn ess. It’s possible that your faith is being
+tested.
+Despite the imperfections listed above, there are w ays in which the code is better. There are now
+two classes, but each has focused responsibilities.  While it’s true that the whole is bigger, each
+part is easy to understand and reason about.
+5.7. Summary
+Page 137The code is consistent and regular, and embodies an  extremely stable landing point that
+splendidly enables the next refactoring.
+With that, on to Chapter 6.
+6.1. Consolidating Data Clumps

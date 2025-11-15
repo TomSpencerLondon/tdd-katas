@@ -1,0 +1,1522 @@
+Page 1386. Achieving Openness
+Despite much refactoring, the code is still not ope n to the six-pack requirement. Once again, you
+must decide whether to continue forward with the ex isting code, or to retreat and strike out in a
+different direction.
+Consider the code’s present state. BottleNumber  now contains methods that isolate  the things
+that need to change. If you were willing to abandon  the quest for openness and directly alter the
+code, you could fulfill the six-pack requirement by  simply adding another branch to the
+conditionals in the quantity  and container  methods. When the value of number is 6, the
+quantity could be changed to return "1," and contai ner changed to return "six-pack."
+This increasing isolation of the concepts that need  to vary is an indication that the code is
+moving in the right direction. In optimism, then, t his chapter continues forward. It removes a
+Data Clump , deals with the conditionals in BottleNumber , introduces a Factory , fixes a Liskov
+violation, and ultimately, fulfills the six-pack re quirement.
+6.1. Consolidating Data Clumps
+The BottleNumber  class contains conditionals, and removing them wou ld make the code easier
+to understand and cheaper to maintain. Before focus ing on that problem, however, there’s a
+simpler code smell that can be addressed.
+The verse  method contains two things that always appear toge ther. Have a look at the code
+(repeated below) and see if you can identify them:
+Listing 6.1: Quantity and Container Form a Data Clump
+ 1 class  Bottles
+ 2   # ...
+ 3   def verse (number)
+ 4     bottle_number      = BottleNumber .new(number)
+ 5     next_bottle_number = BottleNumber .new(bottle_number .successor)
+ 6 
+ 7     "#{bottle_number .quantity .capitalize } #{bottle_number .container } " +
+ 8       "of beer on the wall, "  +
+ 9     "#{bottle_number .quantity } #{bottle_number .container } of beer. \n" +
+10     "#{bottle_number .action }, " +
+11     "#{next_bottle_number .quantity } #{next_bottle_number .container } " +
+12       "of beer on the wall. \n"
+13   end
+14 end
+Above, quantity  and container  appear together in three different places (lines 7 , 9, and 11).
+The duplication of this pairing gives off a whiff o f the Data Clump  code smell. As the name
+implies, Data Clump  is officially about data , and is defined as the situation in which several
+(three or more) data fields routinely occur togethe r.
+Having a clump of data usually means you are missin g a concept. When a clump gets sent as a
+set of parameters, the method that receives the clu mp can easily become polluted with clump
+management logic. If more than one method takes the  same clump as input, some or all of this
+6.1. Consolidating Data Clumps
+Page 139management logic will inevitably get duplicated in several places. Not only is it a pain to
+maintain this duplication, but over time the logic might accidentally diverge, introducing errors
+and confusing everyone involved.
+In the present case, it’s a slight stretch to call the quantity  and container  pairing above a Data
+Clump , but the value of removing clumps is so great that  it makes sense to view this code through
+that lens. If these two things always appear togeth er, it’s a signal that this pairing represents a
+deeper concept, and that concept should be named.
+Full-grown Data Clumps  are usually removed by extracting a class, but in this small example it
+makes sense to simply create a new method. As alway s, the method should be given a name that
+reflects its purpose. If you’re willing to take a b it of license defining this purpose, you can give
+the method a name that has the side effect of great ly simplifying verse .
+This side effect requires a brief explanation. Ruby  string interpolation has a quality that you may
+not have considered, but which you surely already r ely upon. When Ruby finds a #{ }  within a
+double-quoted string, it evaluates the code between  the curly braces, and then replaces the
+entire #{ }  bit with the result of that evaluation. This works , regardless of the type of the result.
+For example, the statement:
+"five plus three = #{5+3}"
+returns the string:
+"five plus three = 8"
+It’s easy to take the above success for granted, bu t consider this:
+"five plus three = "  + (5+3)
+# TypeError: no implicit conversion of Integer into String
+The #{5+3}  works when interpolated, but the 5+3 fails when concatenated to a string with +.
+You probably know that you can fix the error above by explicitly converting the Integer  to a
+string with to_s , as so:
+"five plus three = "  + (5+3).to_s # this works
+Sending to_s  to the Integer  converts it into a string, which makes it appropri ate for
+concatenation.
+Having seen this example, you may be unsurprised to  hear that Ruby (along with most other
+programming languages) uses a similar technique dur ing string interpolation. Interpolation
+works, regardless of the return type of the evaluat ed code, because Ruby sends to_s  to the result
+of #{ }  before substituting that result into the string.
+All Ruby objects know to_s . It’s implemented at the top of the hierarchy in O bject, where it’s
+documented as:
+Returns a string representing obj. The default to_s prints the object’s class
+6.1. Consolidating Data Clumps
+Page 140
+““and an encoding of the object id.
+— Ruby 2.7
+Object.to_s
+It’s perfectly acceptable to override this default behavior, and many of your own classes would
+benefit from a custom to_s  implementation. In the current situation, if you w ere to implement
+to_s  on BottleNumber , you might do so as shown below:
+Listing 6.2: BottleNumber Provides a String Representation
+1 class  BottleNumber
+2   # ...
+3   def to_s
+4     "#{quantity } #{container }"
+5   end
+6   # ...
+7 end
+Having done the above, you can now replace the quantity /container  clump with a simple
+to_s  message send. For example, the second phrase of th e verse  template currently says:
+"#{bottle_number .quantity } #{bottle_number .container } of beer. \n" +
+Now that the custom to_s  exists, you can convert the object to a string:
+bottle_number .to_s
+Now that you can convert bottle_number  to a string, you can take advantage of the fact th at
+interpolation will invoke to_s .
+"#{bottle_number } of beer. \n" +
+You can make a similar change anywhere quantity  and container  are used together. Here’s
+the entire verse method, with the clumps replaced b y an implicit call to to_s  on
+bottle_number :
+Listing 6.3: Verse With Data Clumps Removed
+ 1 class  Bottles
+ 2   # ...
+ 3   def verse (number)
+ 4     bottle_number      = BottleNumber .new(number)
+ 5     next_bottle_number = BottleNumber .new(bottle_number .successor)
+ 6 
+ 7     "#{bottle_number } ".capitalize +
+ 8       "of beer on the wall, "  +
+ 9     "#{bottle_number } of beer. \n" +
+10     "#{bottle_number .action }, " +
+11     "#{next_bottle_number } " +
+12       "of beer on the wall. \n"
+13   end
+14 end
+Notice that on line 7 above the capitalize  message has been removed from the interpolation
+and placed at the end of the string. This is both n ecessary (try changing the original code to "#
+6.2. Making Sense of Conditionals
+Page 141{bottle_number.capitalize}"  if you doubt this) and arguably more correct. Afte r all,
+capitalization happens to the first word of a sente nce, not to a bottle_number .
+Removing the clump shortens the lines so much that the code can be reformatted to more
+accurately reflect the song. The four phrases of a verse can be seen more clearly now, as shown
+on lines 7-10 below:
+Listing 6.4: Verse Method Template in Four Phrases
+ 1 class  Bottles
+ 2   # ...
+ 3   def verse (number)
+ 4     bottle_number      = BottleNumber .new(number)
+ 5     next_bottle_number = BottleNumber .new(bottle_number .successor)
+ 6 
+ 7     "#{bottle_number } of beer on the wall, " .capitalize +
+ 8     "#{bottle_number } of beer. \n" +
+ 9     "#{bottle_number .action }, " +
+10     "#{next_bottle_number } of beer on the wall. \n"
+11   end
+12 end
+Using to_s  to remove the quantity /container  pair reduces the amount of code in the verse
+template, but, admittedly, comes perilously close t o abusing the intent of to_s . One could
+defensibly argue that this to_s  implementation is so specific to verse 's current needs that it is
+ill-suited for use in other situations.
+In its defense, the current to_s  maximizes the effect of removing the Data Clump  in verse , and
+so this implementation provides a great illustratio n of the value of clump removal. In real life,
+you might need a more general implementation of to_s , in which case you’d give the new
+method a different name, and then explicitly send t hat message from within the verse template
+string.
+The verse  method is getting simpler, but it still has more t han one responsibility. This problem
+is reflected by the very structure of the code— the above method contains a blank line .
+Programmers add blank lines to signify changes of t opic. The presence of multiple topics
+suggests the existence of multiple responsibilities , which makes code harder to understand when
+reading, and easier to harm when changing.
+Despite the fact that the verse  method does more than one thing, it is improved. Its template
+now contains four lines, which echoes the four phra ses in every verse. Each template line is
+short enough to display without wrapping on most re ading devices. This method isn’t perfect,
+but removing the data clump improves its readabilit y and sheds light on its intentions.
+6.2. Making Sense of Conditionals
+Now that Bottles 's quantity /container  clump is resolved, it’s time to identify the next code
+smell.
+Switch your attention to the BottleNumber  class. It’s full of conditionals, all of which hav e the
+same shape. Here’s that code:
+6.2. Making Sense of Conditionals
+Page 142Listing 6.5: BottleNumber
+ 1 class  BottleNumber
+ 2   attr_reader  :number
+ 3   def initialize (number)
+ 4     @number  = number
+ 5   end
+ 6 
+ 7   def to_s
+ 8     "#{quantity } #{container }"
+ 9   end
+10 
+11   def quantity
+12     if number == 0
+13       "no more"
+14     else
+15       number .to_s
+16     end
+17   end
+18 
+19   def container
+20     if number == 1
+21       "bottle"
+22     else
+23       "bottles"
+24     end
+25   end
+26 
+27   def action
+28     if number == 0
+29       "Go to the store and buy some more"
+30     else
+31       "Take #{pronoun } down and pass it around"
+32     end
+33   end
+34 
+35   def pronoun
+36     if number == 1
+37       "it"
+38     else
+39       "one"
+40     end
+41   end
+42 
+43   def successor
+44     if number == 0
+45       99
+46     else
+47       number - 1
+48     end
+49   end
+50 end
+The conditionals above are much like the ones vocif erously objected to in the Insisting Upon
+Messages  section of Chapter 5. The difference is that they now depend on the number  message,
+whereas they previously depended on a number  argument .
+A brief review of that transition may be helpful. H ere’s a sample of how the methods looked in
+Chapter 5, when they depended on the number  argument:
+Listing 6.6: Original Container Method Takes Number Argument
+6.2. Making Sense of Conditionals
+Page 143 1 class  Bottles
+ 2   # ...
+ 3   def container (number)
+ 4     if number == 1
+ 5       "bottle"
+ 6     else
+ 7       "bottles"
+ 8     end
+ 9   end
+10   # ...
+11 end
+Chapter 5 argued that instead of injecting an objec t and conditionally supplying it with behavior,
+you should instead arrange code such that you can m erely forward the message to the injected
+object. The code below shows, hypothetically, how t hat might look:
+Listing 6.7: Wishful Container Method
+1 class  Bottles
+2   #...
+3   def container (smarter_number)
+4     smarter_number .container
+5   end
+6   #...
+7 end
+And indeed, Chapter 5 introduced a method very much  like the one shown above. In that
+chapter, a Bottles  container(number)  forwarding method appeared early in the refactorin g
+and lived a brief (but useful) life. Ultimately, th e code was changed to cache BottleNumber s
+inside the Bottles  verse  method, rendering all of the forwarding methods ob solete, and
+leading to their deletion.
+So, Chapter 5 held forth against conditionals, reco gnized the dependency on a repeatedly-passed
+argument, identified the Primitive Obsession  code smell, and extracted the BottleNumber  class
+to cure the obsession.
+Extracting BottleNumber  certainly removed the conditionals from Bottles , but they didn’t
+disappear: they just moved  to the newly extracted class. While slightly impro ved in that the
+methods now send the number  message rather than than taking a number  argument, they all
+(excepting to_s ) still contain conditionals. These conditionals ch aracterize the class, and make
+Switch Statement  the most identifiable code smell.
+Fowler offers several curative refactoring recipes.  The two main contenders are Replace
+Conditional with State/Strategy  and Replace Conditional with Polymorphism .
+The Replace Conditional with State/Strategy  recipe removes conditionals by dispersing their
+branches into new, smaller objects, one of which is  later selected and plugged back in at runtime.
+This recipe results in a code arrangement known as composition .
+The Replace Conditional with Polymorphism  recipe removes conditionals by creating one class to
+hold the defaults of the conditionals (the false  branches), and adding subclasses for each
+specialization (the true  branches of the various conditions). It then choos es one of these new
+objects to plug back in at runtime. This recipe sol ves the conditional problem using inheritance .
+6.3. Replacing Conditionals with Polymorphism
+Page 144You can be forgiven if you find the above descripti ons very similar—they are. Both recipes result
+in new objects that hold logic harvested from the b ranches of the conditionals. The main
+difference is that the Polymorphism  recipe uses inheritance, and the State/Strategy  recipe does
+not.
+Replace Conditional with State/Strategy  produces interesting results, and you are encourag ed to
+experiment with that recipe on your own. However, Replace Conditional with Polymorphism
+leads to a code arrangement that’s felicitous for t he six-pack problem, and so will be followed in
+the next section.
+The previous assertion that one recipe leads to bet ter results than another may have piqued your
+curiosity. Had you been working this problem alone,  how would you have known which to
+choose?
+Skilled programmers are good at picking what best t o do next. For many problems, they can
+immediately identify the code smell that will be mo st fruitful to resolve. They have excellent
+judgement. Their decision-making process looks intu itive and effortless, but also inimitable,
+which makes their actions simultaneously inspiring and disheartening. It’s as if they have a
+secret understanding of the underlying patterns of code, one not granted to mere mortals.
+Despite appearances, these programmers weren’t born  with magical talents. Their powerful
+intuition isn’t innate—it’s the result of a lifetim e of coding experiments. Their present-day
+actions are informed by a diverse body of knowledge  gained piecemeal, over time. Their deep
+familiarity with many varieties of code entanglemen ts allows them to unconsciously map
+appropriate solutions onto common problems, often w ithout the necessity of first writing code.
+They know what’s right before  they do it.
+Or at least they do, sometimes. They also know that  they don’t know everything. This belief in
+their own fallibility lends them caution. Skilled p rogrammers do what’s right when they intuit
+the truth, but otherwise they engage in careful, pr ecise, reproducible, and reversible coding
+experiments. You are encouraged to do the same.
+The best way to figure out what will happen if you follow competing recipes is to try it . If battling
+this problem alone, tentatively identify Switch Statement  as the code smell, look up the curative
+refactorings, and then, speculatively, try them all . Evaluate the results. Choose one and proceed,
+or revert all and try again.
+Practice builds  intuition. Do it enough, and you’ll seem magical t oo.
+6.3. Replacing Conditionals with Polymorphism
+It’s now time for the object-oriented miracle that turns condition-laden classes into sets of
+independent objects.
+This miracle relies on "polymorphism," a word which  combines "poly" (many) with "morphs"
+(forms). In OO, polymorphism refers to the idea of having many different kinds of objects that
+respond to the same message. Senders  of the message needn’t care with which of the poss ible
+6.3.1. Dismembering Conditionals
+Page 145receivers they are communicating. Polymorphism allo ws senders to depend on the message
+while remaining ignorant of the type, or class, of the receiver. Senders don’t care wha t receivers
+are; instead, they depend on what receivers do.
+6.3.1. Dismembering Conditionals
+The current code is not polymorphic. Not only does Bottles 's verse  method explicitly
+reference the concrete BottleNumber  class, but BottleNumber  itself contains many methods
+comprised of conditionals that return varying resul ts. If this code did rely on polymorphism, the
+logic in those conditionals would be dispersed acro ss several different kinds of objects, and
+verse  would be ignorant of BottleNumber 's existence.
+Polymorphism, by definition , involves more than one kind of object, so changin g from a
+procedural to a polymorphic code arrangement will i ncrease the overall number of classes. This,
+in turn, will force you to add new code that is awa re of the existence of these new classes, and
+that understands which class works for what conditi on. Thus, as conditionals disappear from
+BottleNumber , new dependencies will arise. These new dependenci es can make a mess of code,
+and so are managed carefully in the examples that f ollow.
+With that, onward with removing conditionals. Recal l that BottleNumber  contains the following
+methods:
+Listing 6.8: BottleNumber Concepts
+1 class  BottleNumber
+2   def to_s
+3   def quantity
+4   def container
+5   def action
+6   def pronoun
+7   def successor
+8 end
+These methods serve as a list of bottle-ish concept s. The method implementations (with the
+exception of to_s ) share the following shape:
+Listing 6.9: BottleNumber Conditional Shape
+ 1 class  BottleNumber
+ 2   # ...
+ 3   def quantity
+ 4     if number == 0
+ 5       "no more"
+ 6     else
+ 7       number .to_s
+ 8     end
+ 9   end
+10   # ...
+11 end
+Methods like the above were created by following th e Flocking Rules , and then simplified during
+the Extract Class  refactoring. This conditional represents an extrem ely stable landing point. Once
+you get code into this shape, it’s time to celebrat e—the problem is nearly solved.
+6.3.1. Dismembering Conditionals
+Page 146BottleNumber  represents a smart, bottle-ish kind of number. Its  logic is correct in most cases
+for most numbers, but not yet in every case for all . A few specific  numbers are not yet smart
+enough. The consistency of the code makes it easy t o see just which numbers are lacking. The
+code extract below contains a very broad hint:
+Listing 6.10: Some Numbers Are Special
+ 1 class  BottleNumber
+ 2   # ...
+ 3   def quantity
+ 4     if number == 0
+ 5   # ...
+ 6   def container
+ 7     if number == 1
+ 8   # ...
+ 9   def action
+10     if number == 0
+11   # ...
+12   def pronoun
+13     if number == 1
+14   # ...
+15   def successor
+16     if number == 0
+17   # ...
+18 end
+The above makes it clear that 0 and 1 are special, and need to be smarter. The fact that  this is so
+visible is a tribute to the benefits of checking for equality .
+This code is reminiscent of primitive obsession. He re, however, the fixation is on a specific
+instance of Integer  (0 or 1) rather than on the Integer  class as a whole. Obsessions are usually
+cured by extracting a class, and if you suspect tha t class extraction is called for here, you are
+correct.
+Each conditional supplies specific  behavior in its true  branch and generalized  behavior in its
+false . If you were to go into the methods and delete eve rything but the bodies of the false
+branches, what remained in BottleNumber  would work for all numbers except  for 0 and 1.
+Doing so, of course, would break the tests, but at least it would leave BottleNumber  itself free of
+conditionals.
+Removing the conditionals without breaking the test s requires a process that carefully and
+systematically moves the code from each true  branch into a new object, rather than willy-nilly
+deleting it. The specific logic for 0 needs to be isolated in a class of its own, as doe s the logic for 1.
+Also, as these new classes come into existence, som e additional code will have to be written to
+choose the correct class based on the value of number .
+This transition is safely accomplished by the Replace Conditional With Polymorphism  recipe. To
+begin, choose one of the values being explicitly te sted for in one of the conditionals. All things
+being equal, it’s reasonable to start with 0.
+Next, decide on a name for the bottle number class that will stand in for a smarter 0. For reasons
+that will eventually become clear, it’s expedient t o name this new class BottleNumber0 .
+6.3.1. Dismembering Conditionals
+Page 147Having made these decisions, the next step is to cr eate BottleNumber0  as an empty subclass of
+BottleNumber . Here’s that code:
+Listing 6.11: Empty BottleNumber0 Class
+1 class  BottleNumber0  < BottleNumber
+2 end
+As previously stated, this recipe uses inheritance.  Modern object-oriented programming is biased
+towards preferring composition over inheritance. Ho wever, this bias shouldn’t be taken to mean
+that the use of inheritance is banned. The current recipe calls for it, and for the problem at hand,
+inheritance supplies a straightforward, cost-effect ive solution.
+Next, copy (not cut!) one of the methods that obses ses on 0 from BottleNumber  to
+BottleNumber0 . The quantity  method is chosen here:
+Listing 6.12: BottleNumber0 Duplicates Quantity Method
+ 1 class  BottleNumber
+ 2   # ...
+ 3   def quantity
+ 4     if number == 0
+ 5       "no more"
+ 6     else
+ 7       number .to_s
+ 8     end
+ 9   end
+10   # ...
+11 end
+12 
+13 class  BottleNumber0  < BottleNumber
+14   def quantity
+15     if number == 0
+16       "no more"
+17     else
+18       number .to_s
+19     end
+20   end
+21 end
+Continuing, remove the part of BottleNumber0 's quantity  method that isn’t about 0. This
+means you’ll need to delete everything but the body  of the true  branch, as shown here:
+Listing 6.13: BottleNumber0 Returns Correct Result
+1 class  BottleNumber0  < BottleNumber
+2   def quantity
+3     "no more"
+4   end
+5 end
+BottleNumber0  plays the bottle number role just as accurately as does BottleNumber .
+Unfortunately, despite the fact that there are now two equally valid players of this role, the
+current verse  method is willing to use only one of them. It is t ightly coupled to BottleNumber ,
+which it explicitly references twice, as shown belo w:
+Listing 6.14: Verse Method Knows BottleNumber Class Name
+6.3.2. Manufacturing Objects
+Page 1481 class  Bottles
+2   # ...
+3   def verse (number)
+4     bottle_number      = BottleNumber .new(number)
+5     next_bottle_number = BottleNumber .new(bottle_number .successor)
+6     # ...
+7   end
+8 end
+Lines 4 and 5 above both create instances of BottleNumber . Now that you’re breaking
+conditionals apart, in some cases you now actually need an instance of BottleNumber0 .
+One way to ensure the right kind  of bottle number is to alter the code to select th e class based on
+the value of number , as does this next example:
+bottle_number = 
+  (number == 0 ? BottleNumber0  : BottleNumber ).new(number) 
+ 
+succ = bottle_number .successor
+next_bottle_number = 
+  (succ   == 0 ? BottleNumber0  : BottleNumber ).new(succ)
+This works, but it’s certainly not optimal. It intr oduces a new, duplicated conditional into an
+exercise whose entire point is to remove them. This  change would be counterproductive.
+Instead, now that more than one class plays the rol e of bottle number, you need shared logic to
+choose the correct one.
+6.3.2. Manufacturing Objects
+When several classes play a common role, some code,  somewhere, must know how to choose the
+right role-playing class for any specific contingen cy. This choosing  very often involves a
+conditional, which should exist in one and only one  place. Code like this is said to "manufacture"
+an instance of the right kind of object, and so is commonly referred to as a factory . Chapter 7
+takes on factories in greater detail, but for now t hink of a factory as a method whose job is to
+return the right role-playing object.
+When a factory exists for a role, the factory has s ole responsibility for creating objects to play
+that role. The factory’s purpose is to isolate the names of the concrete classes, and to hide the
+logic needed to choose the correct one. After creat ing a factory, you may not refer to the names
+of these classes, or duplicate this choosing logic,  in other parts of your application.
+Now that BottleNumber0  exists, you need a bottle number factory. The firs t step is to do a small
+refactoring to isolate the creation of bottle numbe rs in a single method of Bottles .
+Here’s the new method:
+Listing 6.15: Simple Bottle Number Factory
+1 class  Bottles
+2   # ...
+3   def bottle_number_for (number)
+4     BottleNumber .new(number)
+5   end
+6 end
+6.3.2. Manufacturing Objects
+Page 149The bottle_number_for  method inserts a level of indirection between the desire for a
+BottleNumber  and its creation. It introduces a seam into the co de, which makes it possible to
+change how the factory works without fear of breaki ng its invokers. It is the factory’s
+responsibility to manufacture the right object, and  the responsibility of all other code to query
+the factory for bottle numbers.
+Once bottle_number_for  exists, the verse  method can be changed to invoke it, as shown here:
+Listing 6.16: Verse Method Knows About the Factory
+1 class  Bottles
+2   # ...
+3   def verse (number)
+4     bottle_number      = bottle_number_for(number)
+5     next_bottle_number = bottle_number_for(bottle_number .successor)
+6     # ...
+7   end
+8   # ...
+9 end
+The bottle_number_for  method has assumed responsibility for manufacturin g bottle
+numbers. So far this has been a straightforward ref actoring, but now that the new method is in
+place, you can extend its behavior.
+The following example changes the factory to take t he value of number  into account when
+choosing which kind of bottle number to return:
+Listing 6.17: Factory Method
+ 1 class  Bottles
+ 2   # ...
+ 3   def bottle_number_for (number)
+ 4     if number == 0
+ 5       BottleNumber0 .new(number)
+ 6     else
+ 7       BottleNumber .new(number)
+ 8     end
+ 9   end
+10 end
+The above code works, but it’s not perfect. The pro blem is that the branches of the conditional
+combine things that differ ( BottleNumber0  and BottleNumber ) with things that remain the
+same ( .new(number) ). This conflation forces the reader to study the c ode to discern the
+difference.
+The following alternative takes a different tack:
+Listing 6.18: If Statements Return Objects
+ 1 class  Bottles
+ 2   # ...
+ 3   def bottle_number_for (number)
+ 4     if number == 0
+ 5       BottleNumber0
+ 6     else
+ 7       BottleNumber
+ 8     end.new(number)
+6.3.2. Manufacturing Objects
+Page 150 9   end
+10 end
+You may find the code above surprising, and it must  be acknowledged, some style guides
+expressly forbid this syntax. However, if you think  of the if..end  block as just another bit of
+code that returns an object, it becomes reasonable to imagine sending .new(number)  to the
+result of that block. Expressing code in this way d oubles down on the idea that everything is an
+object.
+The nice thing about this version is that it isolat es the things that vary, which highlights the
+difference between the conditions. If you adopt thi s syntax, you’ll find it useful in many
+situations, and familiarity will eventually make it  feel normal.
+Now that verse  is invoking the factory to get the appropriate bot tle number, you can remove
+everything but the default ( false  branch) from BottleNumber 's quantity  method.
+Here’s the resulting code:
+Listing 6.19: BottleNumber Quantity Method Reduced to Default
+1 class  BottleNumber
+2   # ...
+3   def quantity
+4     number .to_s
+5   end
+6   # ...
+7 end
+At this point, the tests should still pass. The fac t that they do proves that the factory is
+manufacturing the correct bottle number for every s ituation.
+To briefly review, BottleNumber 's quantity  method initially held a conditional that checked t o
+see if number  was equal to 0. This conditional supplied general behavior in its  false  branch and
+behavior specifically for 0 in its true  branch. The presence of this conditional indicated  the need
+for a new class to stand in for 0.
+BottleNumber  was subclassed with BottleNumber0 , into which the quantity  method was
+copied. Here’s a reminder of the situation at that point:
+Listing 6.20: BottleNumber0 With Duplicated Quantity Method
+ 1 class  BottleNumber
+ 2   # ...
+ 3   def quantity
+ 4     if number == 0
+ 5       "no more"
+ 6     else
+ 7       number .to_s
+ 8     end
+ 9   end
+10   # ...
+11 end
+12 
+13 class  BottleNumber0  < BottleNumber
+14   def quantity
+6.3.2. Manufacturing Objects
+Page 15115     if number == 0
+16       "no more"
+17     else
+18       number .to_s
+19     end
+20   end
+21 end
+The next goal was to reduce the subclass' condition al to its true  branch, and the superclass' to its
+false . The subclass was changed without incident, but al tering the superclass would have
+caused the tests to fail. This pending failure expo sed the need for a factory to choose between
+these classes. So the bottle_number_for  factory method was created, after which the tests
+again passed.
+The resulting code is repeated below:
+Listing 6.21: Factory Chooses Polymorphic Object
+ 1 class  Bottles
+ 2   # ...
+ 3   def verse (number)
+ 4     bottle_number      = bottle_number_for(number)
+ 5     next_bottle_number = bottle_number_for(bottle_number .successor)
+ 6     # ...
+ 7   end
+ 8 
+ 9   def bottle_number_for (number)
+10     if number == 0
+11       BottleNumber0
+12     else
+13       BottleNumber
+14     end.new(number)
+15   end
+16 end
+17 
+18 class  BottleNumber
+19   # ...
+20   def quantity
+21     number .to_s
+22   end
+23   # ...
+24 end
+25 
+26 class  BottleNumber0  < BottleNumber
+27   def quantity
+28     "no more"
+29   end
+30 end
+The above example illustrates the power of polymorp hism. BottleNumber  and BottleNumber0
+both play the role of bottle number. They respond to the same message s and conform to the
+same API, but implement quantity  in completely different ways.
+These classes are substitutable for one another. Wh en you invoke the factory to get a bottle
+number, you don’t need to know the class of the ret urned object. You merely trust that object to
+act like a bottle number and to respond to the mess ages you plan to send.
+6.3.3. Prevailing with Polymorphism
+Page 152This willful ignorance of type is fundamental to ob ject-oriented programming. It insulates code
+that calls a factory from changes of implementation  within that factory. By refusing to be aware
+of the classes of the objects with which you intera ct, you grant others the freedom to alter your
+code’s behavior without editing its source. In the distant future, someone could amend the
+factory to return newly introduced players of the b ottle number role, and your existing code
+would happily collaborate with these unanticipated objects.
+The quantity  method is now polymorphically implemented. It’s ti me to move on to the
+remaining conditionals.
+6.3.3. Prevailing with Polymorphism
+You’ve experienced one complete round of Replace Conditional with Polymorphism , and the
+remainder of this refactoring is just more of the s ame. Here’s a list of the recipe’s steps:
+1. Create a subclass to stand in for the value upon which you switch.
+a. Copy one method that switches on that value into the subclass.
+b. In the subclass, remove everything but the true b ranch of the conditional.
+i. At this point, create a factory if it does not yet exist, and
+ii. Add this subclass to the factory if not yet include d.
+c. In the superclass, remove everything but the fals e branch of the conditional.
+d. Repeat steps a-c until all methods that switch on  the value are dispersed.
+2. Iterate until a subclass exists for every differe nt value upon which you switch.
+Following those steps for the action  and successor  methods (both of which test for 0) results
+in the following code:
+Listing 6.22: 0 Has Its Own Class
+ 1 class  BottleNumber
+ 2   attr_reader  :number
+ 3   def initialize (number)
+ 4     @number  = number
+ 5   end
+ 6 
+ 7   def to_s
+ 8     "#{quantity } #{container }"
+ 9   end
+10 
+11   def quantity
+12     number .to_s
+13   end
+14 
+15   def container
+16     if number == 1
+17       "bottle"
+18     else
+19       "bottles"
+20     end
+21   end
+22 
+6.3.3. Prevailing with Polymorphism
+Page 15323   def action
+24     "Take #{pronoun } down and pass it around"
+25   end
+26 
+27   def pronoun
+28     if number == 1
+29       "it"
+30     else
+31       "one"
+32     end
+33   end
+34 
+35   def successor
+36     number - 1
+37   end
+38 end
+39 
+40 class  BottleNumber0  < BottleNumber
+41   def quantity
+42     "no more"
+43   end
+44 
+45   def action
+46     "Go to the store and buy some more"
+47   end
+48 
+49   def successor
+50     99
+51   end
+52 end
+The quantity , action  and successor  methods are now divided between BottleNumber  and
+BottleNumber0 . This completes the creation of a bottle number sp ecific to 0.
+The next task is to repeat this entire procedure fo r 1. As before, the first step is to create an
+empty class:
+Listing 6.23: Create the BottleNumber1 Class
+1 class  BottleNumber1  < BottleNumber
+2 end
+Next, choose one method that obsesses on 1 and copy  it to the subclass. The container  method
+is a reasonable place to start:
+Listing 6.24: Duplicate the Container Method
+ 1 class  BottleNumber
+ 2   # ...
+ 3   def container
+ 4     if number == 1
+ 5       "bottle"
+ 6     else
+ 7       "bottles"
+ 8     end
+ 9   end
+10   # ...
+11 end
+12 
+13 class  BottleNumber1  < BottleNumber
+14   def container
+6.3.3. Prevailing with Polymorphism
+Page 15415     if number == 1
+16       "bottle"
+17     else
+18       "bottles"
+19     end
+20   end
+21 end
+Next, remove everything but the true branch logic f rom the subclass:
+Listing 6.25: BottleNumber1 Returns Correct Result
+1 class  BottleNumber1  < BottleNumber
+2   def container
+3     "bottle"
+4   end
+5 end
+Now, remove everything but the false branch logic f rom the superclass:
+Listing 6.26: BottleNumber Container Method Reduced to Default
+1 class  BottleNumber
+2   # ...
+3   def container
+4     "bottles"
+5   end
+6   # ...
+7 end
+Unfortunately, the tests are now failing with:
+1 1) Failure: 
+2 BottlesTest#test_verse_1 [test/bottles_test.rb:46]: 
+3 --- expected 
+4 +++ actual 
+5 @@ -1,3 +1,3 @@ 
+6 -"1 bottle of beer on the wall, 1 bottle of beer. 
+7 +"1 bottles of beer on the wall, 1 bottles of beer. 
+8 Take it down and pass it around, no more bottles of beer on the wall. 
+9 "
+The test for verse 1 failed because it got 1 bottles  but expected 1 bottle  (lines 6 and 7 above).
+This may be confusing because you know that BottleNumber1  correctly implements
+container  to return bottle . The problem, however, is not that BottleNumber1  is wrong, but
+that the factory does not yet return it.
+As currently written, the factory must be updated e very time a new bottle number class gets
+created. The following example thus changes bottle_number_for  to return an instance of
+BottleNumber1  when the value of number  is 1:
+Listing 6.27: Factory Knows About BottleNumber1
+ 1 class  Bottles
+ 2   # ...
+ 3   def bottle_number_for (number)
+ 4     case  number
+ 5     when  0
+ 6       BottleNumber0
+6.3.3. Prevailing with Polymorphism
+Page 155 7     when  1
+ 8       BottleNumber1
+ 9     else
+10       BottleNumber
+11     end.new(number)
+12   end
+13 end
+While adding the new class, the syntax was also cha nged from if to case , for reasons previously
+discussed in the Hewing to the Plan  section of Chapter 2.
+The conditional above may be giving you a sense of deja vu. It’s reminiscent of, although not
+quite identical to, the case  statement from the original Shameless Green  solution. Think about
+why this might be as you finish the current refacto ring. The similarity will be explored at the end
+of this section.
+Now that instances of BottleNumber1  are being manufactured, the tests again pass, and you
+can move on to pronoun . Once pronoun  is resolved, the final code is as follows:
+Listing 6.28: BottleNumber Hierarchy
+ 1 class  Bottles
+ 2   def song
+ 3     verses( 99,0)
+ 4   end
+ 5 
+ 6   def verses (upper, lower)
+ 7     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+ 8   end
+ 9 
+10   def verse (number)
+11     bottle_number      = bottle_number_for(number)
+12     next_bottle_number = bottle_number_for(bottle_number .successor)
+13 
+14     "#{bottle_number } of beer on the wall, " .capitalize +
+15     "#{bottle_number } of beer. \n" +
+16     "#{bottle_number .action }, " +
+17     "#{next_bottle_number } of beer on the wall. \n"
+18   end
+19 
+20   def bottle_number_for (number)
+21     case  number
+22     when  0
+23       BottleNumber0
+24     when  1
+25       BottleNumber1
+26     else
+27       BottleNumber
+28     end.new(number)
+29   end
+30 end
+31 
+32 class  BottleNumber
+33   attr_reader  :number
+34   def initialize (number)
+35     @number  = number
+36   end
+37 
+38   def to_s
+39     "#{quantity } #{container }"
+6.3.3. Prevailing with Polymorphism
+Page 15640   end
+41 
+42   def quantity
+43     number .to_s
+44   end
+45 
+46   def container
+47     "bottles"
+48   end
+49 
+50   def action
+51     "Take #{pronoun } down and pass it around"
+52   end
+53 
+54   def pronoun
+55     "one"
+56   end
+57 
+58   def successor
+59     number - 1
+60   end
+61 end
+62 
+63 class  BottleNumber0  < BottleNumber
+64   def quantity
+65     "no more"
+66   end
+67 
+68   def action
+69     "Go to the store and buy some more"
+70   end
+71 
+72   def successor
+73     99
+74   end
+75 end
+76 
+77 class  BottleNumber1  < BottleNumber
+78   def container
+79     "bottle"
+80   end
+81 
+82   def pronoun
+83     "it"
+84   end
+85 end
+Take a minute to admire that code. While the whole is not perfect, the BottleNumber  hierarchy
+displays a pleasing symmetry that was effortlessly attained by way of a simple recipe.
+The code has undergone a number of transitions. Eac h refactoring followed a recipe, which led
+to a stable landing point, which in turn enabled th e next refactoring. This most recent transition
+arguably achieves the greatest conceptual leap by w ay of the least complicated recipe. The ease
+with which it occurred is a tribute to the efficacy  of earlier refactorings.
+This completes the Replace Conditional with Polymorphism  refactoring. If introducing
+polymorphism improved the code, this new version ou ght to tell an accurate and easily
+understood story about the domain. One way to evalu ate the story is to revisit the domain
+questions asked in Chapter 1. The original question s were:
+6.4. Transitioning Between Types
+Page 1571. How many verse variants are there?
+2. Which verses are most alike? In what way?
+3. Which verses are most different? In what way?
+4. What is the rule to determine which verse should be  sung next?
+If you examine the code in light of the above, you’ ll notice that the questions revolve around
+verse  variation, while the current code is more concerne d with bottle number  variation. The
+story the code now tells is that all verses are ali ke in some abstract way, and that within verses,
+bottle numbers vary.
+Updating the questions to reflect this more nuanced  understanding, they become:
+1. How many bottle number variants are there?
+Three.
+2. Which bottle numbers are most alike? In what way?
+Bottle numbers 2-99 are most alike.
+3. Which bottle numbers are most different? In what wa y?
+Bottle numbers 0 and 1 are different from each othe r, and from all the others. Bottle
+number 0 overrides three methods, and so is slightl y more different from the others than
+is bottle number 1.
+4. What is the rule to determine which bottle number c omes next?
+The next bottle number is the successor of the curr ent one. This concept is clearly visible
+in this code. However, one would expect a successor  to be the same type as the thing it
+succeeds, but here that’s not the case. The successor  of a bottle number is,
+disappointingly, an Integer . This seems wrong, and should be addressed.
+6.4. Transitioning Between Types
+The code now consists of a pleasing set of small ob jects with clear-cut responsibilities. However,
+there’s one persistent problem that can no longer b e ignored: the successor  methods violate
+the generalized Liskov Substitution Principle. They  make a promise that they fail to keep.
+You have every right to expect the successor of a b ottle number to act like a bottle number, but
+these successors disappoint. The successor  methods return a result so unexpected that it’s
+perilously close to being an outright lie. Instead of bottle numbers, they return Integer s, which
+you are then forced to convert into bottle numbers yourself.
+Liskov violations are insidious, and over time caus e increasing harm. As your application
+evolves, successor  might get sent from many places. Each place will h ave to know that
+successor  returns a number, and must also know how to conver t that number back into a
+bottle number. This interconnected web of duplicate d knowledge binds every sender of
+successor  to its current implementation, which inflicts depe ndencies that make code resistant
+to change.
+6.4. Transitioning Between Types
+Page 158If successor  obeyed Liskov, you could substitute the hypothetic al code on line 6 below for the
+code on line 5:
+Listing 6.29: Coding by Wishful Thinking
+ 1 class  Bottles
+ 2   # ...
+ 3   def verse (number)
+ 4     bottle_number      = bottle_number_for(number)
+ 5     next_bottle_number = bottle_number_for(bottle_number .successor)
+ 6     # next_bottle_number = bottle_number.successor
+ 7     # ...
+ 8   end
+ 9   # ...
+10 end
+On line 6 above, the successor  method returns a bottle number. This implementatio n avoids
+the Liskov violation, reduces the number of depende ncies, and simplifies the code.
+The Liskov violation on line 5 has existed for seve ral refactorings, but has been ignored in favor
+of curing other code smells. It’s instructive to re call how it originated before resolving the
+problem.
+In Chapter 4, when the successor  method was first created  in Bottles , there was no violation.
+The method was extracted from the verse  template using the Flocking Rules , and within that
+original template, the successor was indeed a numbe r. In that case, it was both reasonable and
+correct for successor  to return that number.
+In Chapter 5, the successor  method was identified as one that obsessed on the number
+argument, and so was migrated to BottleNumber  during the Extract Class  refactoring. It was at
+this point that the Liskov violation appeared. The root of the problem is that a new type
+(BottleNumber ) was introduced, but its successor  method continued to return the old type
+(Integer ).
+The Liskov violation was troubling enough in the final code example of Chapter 5 , which
+contained but one implementor and one sender of successor . Unfortunately, the refactorings in
+this chapter have exacerbated the problem. There ar e now two implementors of successor , one
+sender, and a new factory that’s in charge of bottl e number construction. Deferring the Liskov
+violation made it worse, and paradoxically, supplie d a more useful example to learn to solve.
+The current predicament stands in for the real-worl d problem of needing to change the type
+returned by a polymorphic method that has many impl ementors and many senders. Such a real-
+life difficulty could well contain so many parts th at they couldn’t all be fixed at once. The
+following technique can be used to solve type chang e problems of any size. It does this by
+making small, reliable, independent  changes over time, chipping away until eventually the entire
+issue is resolved.
+Here’s a summary of the code related to successor :
+Listing 6.30: All About Successor
+6.4. Transitioning Between Types
+Page 159 1 class  Bottles
+ 2   # ...
+ 3   def verse (number)
+ 4     bottle_number      = bottle_number_for(number)
+ 5     next_bottle_number = bottle_number_for(bottle_number .successor)
+ 6     # next_bottle_number = bottle_number.successor
+ 7 
+ 8     "#{bottle_number } of beer on the wall, " .capitalize +
+ 9     "#{bottle_number } of beer. \n" +
+10     "#{bottle_number .action }, " +
+11     "#{next_bottle_number } of beer on the wall. \n"
+12   end
+13 
+14   def bottle_number_for (number)
+15     case  number
+16     when  0
+17       BottleNumber0
+18     when  1
+19       BottleNumber1
+20     else
+21       BottleNumber
+22     end.new(number)
+23   end
+24 end
+25 
+26 class  BottleNumber
+27   # ...
+28   def successor
+29     number - 1
+30   end
+31 end
+32 
+33 class  BottleNumber0  < BottleNumber
+34   # ...
+35   def successor
+36     99
+37   end
+38 end
+On line 5 above, the verse  method knows that successor  returns a number, but wishes that it
+returned a bottle number as illustrated on line 6. The two successor  methods (lines 28 and 35)
+ought to return bottle numbers, but to do so they m ust invoke the factory, and the factory is not
+easily within their reach. And sadly, the aforement ioned difficulties are compounded by your
+ongoing determination to resolve problems via a ser ies of one-line changes.
+Alterations are needed in several places. Ultimatel y:
+1. The factory should be located such that it is rea chable by the successor  methods,
+2. the successor  methods should invoke the factory, and
+3. the verse  method should expect successor  to return a bottle number.
+That’s a fairly small list, but even so, it’s chall enging to accomplish this transition via a series o f
+one-line changes that don’t break the tests. For pr oblems of this size, you might  be successful at
+changing everything at once, but real life typicall y involves larger problems that require many
+more changes and present a much greater challenge. The following step-wise strategy is useful
+6.4. Transitioning Between Types
+Page 160because it works for problems of any size. While it  may be overkill on small ones, it is deeply
+comforting on big ones.
+In that spirit, continue on with the code. Step 1 i s to put the factory within successor 's reach.
+There are a number of options, but if you want to m ake the smallest possible change, the best
+choice is to make the factory a class method on an existing class. The most reasonable choice
+among existing classes is BottleNumber .
+The following example copies the factory into a cla ss method on BottleNumber :
+Listing 6.31: BottleNumber Class Contains Factory
+ 1 class  BottleNumber
+ 2   def self .for(number)
+ 3     case  number
+ 4     when  0
+ 5       BottleNumber0
+ 6     when  1
+ 7       BottleNumber1
+ 8     else
+ 9       BottleNumber
+10     end.new(number)
+11   end
+12   # ...
+13 end
+As you can see, here on BottleNumber  the method name has been reduced to simply for. The
+internal implementation hasn’t changed, just the na me.
+It made perfect sense to name the original method bottle_number_for . That name has two
+parts: a type ( bottle_number ), and a generic request ( for). Within Bottles , both pieces of
+information were relevant and arguably necessary. N ow that the method is moving to
+BottleNumber , there are two good reasons to simplify its name.
+First, changing the name avoids the "echo chamber" effect.
+BottleNumber.bottle_number_for  is both redundant and overly specific. It suffers from the
+same ailment as the beer  method  in Chapter 1. This name is tightly coupled to the current
+context, and tight coupling makes code resistant to  change. For example, if you someday decide
+to rename the BottleNumber  class, you’ll have to change this method name too,  or forever be
+misled.
+Second, and more abstractly, for supports polymorphism. To illustrate how, consider  to_s . As
+you’ve seen, Object  implements a default to_s , and many classes supply their own more
+specific implementation. Because all are named to_s , you can confidently send this generic
+request to any receiver.
+Imagine the consequences of including the receiver’ s type in the message name, as in
+hash_to_s , float_to_s , and, inevitably, string_to_s . Adding type information defeats
+polymorphism, and forces you to check the type of t he receiver before sending this message. This
+vastly complicates code for no good reason.
+6.4. Transitioning Between Types
+Page 161Just like to_s , for is a generic request that works fine as the name o f any factory. When factory-
+ish objects polymorphically implement for, you can send this message without regard for the
+receiver’s type. Polymorphism preserves the option of constructing applications where the
+factories themselves  are substitutable.
+Now that the for factory method exists, you can alter verse  to invoke it, as shown here:
+Listing 6.32: Verse Method Uses Factory
+1 class  Bottles
+2   # ...
+3   def verse (number)
+4     bottle_number      = BottleNumber .for(number)
+5     next_bottle_number = BottleNumber .for(bottle_number .successor)
+6     # ...
+7   end
+8   # ...
+9 end
+Lines 4 and 5 above directly invoke the factory in BottleNumber . This makes
+bottle_number_for  obsolete. That method can now be deleted.
+The factory is now easily reachable by the two successor  methods, so you’ve finished step 1.
+Step 2 requires that you change the two successor  methods to invoke the factory, but
+unfortunately, changing either one without simultan eously making all remaining changes will
+cause the tests to fail. Indeed, at this point, every  outstanding change breaks the tests.
+For example, in step 3 you’ll want to change the verse  method to read:
+  next_bottle_number = bottle_number .successor
+instead of:
+  next_bottle_number = BottleNumber .for(bottle_number .successor)
+The above, however, relies upon having completed st ep 2, which changes the successor
+methods to return bottle numbers. You can’t skip fo rward and do step 3 before step 2.
+Returning to step 2, the successor  methods can now invoke the factory. However, chang ing one
+(but not the other) to do so via:
+  BottleNumber .for( 99)
+or:
+  BottleNumber .for(number - 1)
+also causes the tests to fail.
+The root of the problem is that the verse  method expects successor  to return something that
+will work in the factory, and the factory, in turn,  expects to receive a number. If you change one
+6.4. Transitioning Between Types
+Page 162of the successor  methods to return a bottle number, then verse  will blithely pass that bottle
+number right into the bottle number factory, which breaks the tests.
+The trick to moving forward using one-undo (more on  this later) changes is to temporarily alter
+the factory to tolerate both  kinds of input. During the transitional period whe re one successor
+method returns a bottle number and the other return s an Integer , the factory will have to
+handle both types. This requires doing something th at is anathema to your object-oriented soul:
+you must change the factory to check the type of it s input argument.
+Here’s the code:
+Listing 6.33: Return Argument If Already a Bottle Number
+ 1 class  BottleNumber
+ 2   def self .for(number)
+ 3     return  number if number .kind_of?( BottleNumber )
+ 4 
+ 5     case  number
+ 6     when  0
+ 7       BottleNumber0
+ 8     when  1
+ 9       BottleNumber1
+10     else
+11       BottleNumber
+12     end.new(number)
+13   end
+14   # ...
+15 end
+The guard clause on line 3 above bounces the input argument right back out if it is already a
+bottle number . This line is needed only while the refactoring is  in progress. Once all successor
+methods return a bottle number, and all callers of successor  expect to get a bottle number
+back, line 3 can be deleted.
+If this code seems confusing, it’s because of the p ower of names. For example, what if the
+argument on line 2 above had been named number_or_bottle_number  instead of number ? In
+that case line 3 would read:
+  return  number_or_bottle_number if number_or_bottle_number .kind_of?( BottleNumber )
+This line tells a better story. Despite that, there ’s no point in actually changing the code to read
+like this. The guard clause is a temporary convenie nce that allows the factory to accept two
+different types of argument during a refactoring th at changes from one to the other. At the
+beginning and end of this refactoring, the argument  on line 2 is always a number. There’s no
+point in changing number  to number_or_bottle_number  only to then change it right back.
+Imagining this alternate name is enough to help you  understand what’s happening.
+Now that the factory handles both input types you c an continue with step 2 by altering the
+successor  methods to return a bottle number. Here’s the chan ge in BottleNumber0 :
+Listing 6.34: BottleNumber0 Successor Returns a Bottle Number
+1 class  BottleNumber0  < BottleNumber
+2   # ...
+6.4. Transitioning Between Types
+Page 1633   def successor
+4     BottleNumber .for( 99)
+5   end
+6 end
+At this point, the tests pass even though one successor  returns a number and the other returns
+a bottle number.
+Having succeeded with BottleNumber0 , you can proceed to BottleNumber , like so:
+Listing 6.35: BottleNumber Successor Returns a Bottle Number
+1 class  BottleNumber
+2   # ...
+3   def successor
+4     BottleNumber .for(number - 1)
+5   end
+6 end
+And voila, all implementors of successor  have been updated, and you’ve accomplished step 2.
+Step 3 requires changing the verse  method to expect successor  to return a bottle number. It
+should now be possible to do just that. The followi ng code gingerly tests this theory by
+uncommenting the wishful code on line 6:
+Listing 6.36: Trying Out the Wishful Code
+ 1 class  Bottles
+ 2   # ...
+ 3   def verse (number)
+ 4     bottle_number      = BottleNumber .for(number)
+ 5     next_bottle_number = BottleNumber .for(bottle_number .successor)
+ 6     next_bottle_number = bottle_number .successor
+ 7 
+ 8     "#{bottle_number } of beer on the wall, " .capitalize +
+ 9     "#{bottle_number } of beer. \n" +
+10     "#{bottle_number .action }, " +
+11     "#{next_bottle_number } of beer on the wall. \n"
+12   end
+13 end
+Line 5 above is the original code, which you hope t o delete. It sets next_bottle_number  the old
+way. Line 6 is the new code, which you’d like to ke ep. It overwrites next_bottle_number  with
+the result of the current bottle number’s successor .
+Making the transition from old code to new code by running old and new side-by-side is useful in
+situations where you’re not 100% certain you got it  right. If something blows up, it can ease
+debugging to have both variants under your eye.
+In this case, the tests continue to pass, so you ca n confidently delete line 5 above. This leaves the
+following code:
+Listing 6.37: Trusting Successor
+ 1 class  Bottles
+ 2   # ...
+ 3   def verse (number)
+6.4. Transitioning Between Types
+Page 164 4     bottle_number      = BottleNumber .for(number)
+ 5     next_bottle_number = bottle_number .successor
+ 6 
+ 7     "#{bottle_number } of beer on the wall, " .capitalize +
+ 8     "#{bottle_number } of beer. \n" +
+ 9     "#{bottle_number .action }, " +
+10     "#{next_bottle_number } of beer on the wall. \n"
+11   end
+12 end
+This is definitely an improvement. However, notice that the temporary variable
+next_bottle_number  declared on line 5 is used only in one place, on l ine 10. This presents a
+further opportunity for simplification. Temporary v ariables that are used just once can be
+removed with the Inline Temp  refactoring, which results in the following code:
+Listing 6.38: Simplified Verse Method
+ 1 class  Bottles
+ 2   # ...
+ 3   def verse (number)
+ 4     bottle_number = BottleNumber .for(number)
+ 5 
+ 6     "#{bottle_number } of beer on the wall, " .capitalize +
+ 7     "#{bottle_number } of beer. \n" +
+ 8     "#{bottle_number .action }, " +
+ 9     "#{bottle_number .successor } of beer on the wall. \n"
+10   end
+11 end
+At this point, all successor  methods return a bottle number, and all senders of  successor
+expect to receive a bottle number. The remaining is sue is that the factory still contains the guard
+clause:
+Listing 6.39: Factory With Obsolete Guard Clause
+ 1 class  BottleNumber
+ 2   def self .for(number)
+ 3     return  number if number .kind_of?( BottleNumber )
+ 4 
+ 5     case  number
+ 6     when  0
+ 7       BottleNumber0
+ 8     when  1
+ 9       BottleNumber1
+10     else
+11       BottleNumber
+12     end.new(number)
+13   end
+14   # ...
+15 end
+That guard clause is now obsolete, and can be delet ed.
+This completes the correction of the Liskov violati on in successor . Here’s a full listing of the
+code:
+Listing 6.40: Complete Listing
+ 1 class  Bottles
+ 2   def song
+6.4. Transitioning Between Types
+Page 165 3     verses( 99,0)
+ 4   end
+ 5 
+ 6   def verses (upper, lower)
+ 7     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+ 8   end
+ 9 
+10   def verse (number)
+11     bottle_number = BottleNumber .for(number)
+12 
+13     "#{bottle_number } of beer on the wall, " .capitalize +
+14     "#{bottle_number } of beer. \n" +
+15     "#{bottle_number .action }, " +
+16     "#{bottle_number .successor } of beer on the wall. \n"
+17   end
+18 end
+19 
+20 class  BottleNumber
+21   def self .for(number)
+22     case  number
+23     when  0
+24       BottleNumber0
+25     when  1
+26       BottleNumber1
+27     else
+28       BottleNumber
+29     end.new(number)
+30   end
+31 
+32   attr_reader  :number
+33   def initialize (number)
+34     @number  = number
+35   end
+36 
+37   def to_s
+38     "#{quantity } #{container }"
+39   end
+40 
+41   def quantity
+42     number .to_s
+43   end
+44 
+45   def container
+46     "bottles"
+47   end
+48 
+49   def action
+50     "Take #{pronoun } down and pass it around"
+51   end
+52 
+53   def pronoun
+54     "one"
+55   end
+56 
+57   def successor
+58     BottleNumber .for(number - 1)
+59   end
+60 end
+61 
+62 class  BottleNumber0  < BottleNumber
+63   def quantity
+64     "no more"
+65   end
+66 
+6.5. Making the Easy Change
+Page 16667   def action
+68     "Go to the store and buy some more"
+69   end
+70 
+71   def successor
+72     BottleNumber .for( 99)
+73   end
+74 end
+75 
+76 class  BottleNumber1  < BottleNumber
+77   def container
+78     "bottle"
+79   end
+80 
+81   def pronoun
+82     "it"
+83   end
+84 end
+Correcting the Liskov violation is important becaus e object-oriented programming, especially in
+dynamically-typed languages like Ruby, relies on explicit  trust in the implicit  contracts between
+objects. These implicit contracts consist of expect ations about the messages to which other
+objects respond, and presumptions about the results  those messages return. Trustworthy objects
+are a joy to work with because they always behave a s you expect.
+Untrustworthy objects, however, are a different ket tle of fish.[17] Objects that sometimes fail to
+respond to a message you plan to send, or occasiona lly return something you don’t expect, force
+you into a paranoid programming style. These untrus tworthy objects require senders of
+messages to know too much.
+When your application has code that needs knowledge  of the internals of other objects in order
+to correctly interact with them (as did successor  above), changes to those other objects might
+break your code. If you have to check the type of a n object in order to know what message to
+send, you’re forced into a conditional that lists e very concrete class with which you’re willing to
+collaborate. Doing this dooms you to changing the c onditional when you add a new class.
+Checking to see if an object responds to a message rather than checking that object’s type may
+reduce the size of this conditional, but it doesn’t  ameliorate the problem.
+All of the above are symptoms of an inability to tr ust other objects, and failures of
+trustworthiness are, at least by the current genero us interpretation of the principle, Liskov
+violations. Objects made promises that they did not  keep. In every case, the underlying cause is
+an insufficient use of polymorphism.
+Having successfully fixed the problem with successor , it’s time to return to the main issue at
+hand.
+6.5. Making the Easy Change
+The previous horizontal refactoring is complete, an d it is again time to ask if the code is open to
+the six-pack requirement. And finally, gloriously ( and only if you’re willing to disregard the
+factory for a moment) the answer is yes. Your disci pline and hard work are about to pay off.
+6.5. Making the Easy Change
+Page 167You can now meet the six-pack requirement by adding  a new class that stands in for bottle
+number 6. This new class will report its quantity a s "1" and its container, "six-pack."
+The factory is not open, and so for now must be updated to return an instance of
+BottleNumber6  when the value of number  is 6. The next chapter will explore the costs and
+benefits of making the factory open for extension.
+You have been refactoring for many chapters using p assing tests, or green, as the wall at your
+back. Now that the current arrangement of code is o pen to the six-pack requirement, it’s finally
+time to switch from refactoring mode back into TDD mode.
+At long last, it’s time to write a failing test.
+The six-pack requirement changes verses 6 and 7. Th e simplest way to generate a test failure is to
+alter the song  test to change the expected text for those verses.  Here’s that updated test:
+Listing 6.41: Test
+ 1 class  BottlesTest  < Minitest ::Test
+ 2   # ...
+ 3   def test_the_whole_song
+ 4     expected = <<~SONG
+ 5       99 bottles of beer on the wall, 99 bottles of beer .
+ 6       Take  one down and pass it around, 98 bottles of beer on the wall .
+ 7 
+ 8       # ...
+ 9 
+10       7 bottles of beer on the wall, 7 bottles of beer .
+11       Take  one down and pass it around, 1 six -pack of beer on the wall .
+12 
+13       1 six -pack of beer on the wall, 1 six -pack of beer .
+14       Take  one down and pass it around, 5 bottles of beer on the wall .
+15 
+16       # ...
+17 
+18       No more bottles of beer on the wall, no more bottles of beer .
+19       Go to the store and buy some more, 99 bottles of beer on the wall .
+20     SONG
+21     assert_equal expected, Bottles .new.song
+22   end
+23 end
+Lines 11 and 13 above now assert that verses 6 and 7 read "1 six-pack" instead of "6 bottles."
+Running that updated test results in this error:
+7 bottles of beer on the wall, 7 bottles of beer. 
+-Take one down and pass it around, 1 six-pack of beer on the wall. 
++Take one down and pass it around, 6 bottles of beer on the wall. 
+ 
+-1 six-pack of beer on the wall, 1 six-pack of beer. 
++6 bottles of beer on the wall, 6 bottles of beer. 
+Take one down and pass it around, 5 bottles of beer on the wall.
+There are two problems apparent in the error messag e. First, the output says "6" where it should
+say "1." This is the quantity  concept. Second, the output says "bottles" instead  of "six-pack." This
+is container .
+6.5. Making the Easy Change
+Page 168The BottleNumber  inheritance hierarchy provides exemplary guidance for solving these
+problems. Following the pattern of BottleNumber0  and BottleNumber1 , first create a new
+BottleNumber6  class as a subclass of BottleNumber :
+Listing 6.42: New BottleNumber6 Class
+1 class  BottleNumber6  < BottleNumber
+2 end
+Next, implement one of the necessary methods. For e xample, you could implement container
+as follows:
+Listing 6.43: BottleNumber6 Knows Container
+1 class  BottleNumber6  < BottleNumber
+2   def container
+3     "six-pack"
+4   end
+5 end
+Having made the change above, you could reasonably expect the error message to change, but
+alas, it does not:
+7 bottles of beer on the wall, 7 bottles of beer. 
+-Take one down and pass it around, 1 six-pack of beer on the wall. 
++Take one down and pass it around, 6 bottles of beer on the wall. 
+ 
+-1 six-pack of beer on the wall, 1 six-pack of beer. 
++6 bottles of beer on the wall, 6 bottles of beer. 
+Take one down and pass it around, 5 bottles of beer on the wall.
+Above, the sixth bottle still reports "bottles" as its container . The error message hasn’t changed.
+This would happen if the new BottleNumber6  weren’t being used, and that’s exactly the case.
+Because the factory isn’t yet open, creating the ne w class isn’t enough—you must also update the
+factory.
+Adding BottleNumber6  to the factory results in the following code:
+Listing 6.44: BottleNumber6 Added to Factory
+ 1 class  BottleNumber
+ 2   def self .for(number)
+ 3     case  number
+ 4     when  0
+ 5       BottleNumber0
+ 6     when  1
+ 7       BottleNumber1
+ 8     when  6
+ 9       BottleNumber6
+10     else
+11       BottleNumber
+12     end.new(number)
+13   end
+14   # ...
+15 end
+Once you update the factory, running the tests prod uces the expected error:
+6.6. Defending the Domain
+Page 169
+““7 bottles of beer on the wall, 7 bottles of beer. 
+-Take one down and pass it around, 1 six-pack of beer on the wall. 
++Take one down and pass it around, 6 six-pack of beer on the wall. 
+ 
+-1 six-pack of beer on the wall, 1 six-pack of beer. 
++6 six-pack of beer on the wall, 6 six-pack of beer. 
+Take one down and pass it around, 5 bottles of beer on the wall.
+As shown above, the container for six bottles is no w "six-pack."
+The sixth bottle’s quantity is still incorrect. Thi s is easily cured by implementing the quantity
+method as so:
+Listing 6.45: Final BottleNumber6
+1 class  BottleNumber6  < BottleNumber
+2   def quantity
+3     "1"
+4   end
+5 
+6   def container
+7     "six-pack"
+8   end
+9 end
+Having implemented quantity  and container  in BottleNumber6 , the tests now pass.
+Congratulations, you’ve met the six-pack requiremen t!
+You have been refactoring under green for many chap ters, and now, suddenly, almost abruptly,
+the outstanding requirement can be met by two one-l ine methods in a class that has nine total
+lines of code. It took several refactorings to make  the code open, but once so, the six-pack
+requirement was extraordinarily easy to fulfill.
+Kent Beck describes this entire process beautifully , and sympathetically, when he says:
+make the change easy (warning: this may be hard), then make  the easy change
+— Kent Beck
+via Twitter
+Most of this book has been concerned with making th e change easy. That hard work paid off
+here, where you made the easy change.
+6.6. Defending the Domain
+One final thought about BottleNumber6  before moving on: it may have occurred to you to m eet
+the six-pack requirement by simply overriding to_s  within BottleNumber6 . For example,
+instead of implementing quantity  and container , you could do the following:
+Listing 6.46: BottleNumber6 Knows Neither Quantity nor Container
+1 class  BottleNumber6  < BottleNumber
+2   def to_s
+3     "1 six-pack"
+6.7. Summary
+Page 1704   end
+5 end
+The above code certainly passes the six-pack tests.  This solution might seem attractive because
+it’s shorter than the previous one, and so may feel  more efficient. However, less code doesn’t
+always mean better code.
+Consider the meaning of to_s  versus that of quantity  and container . The latter two methods
+reflect fundamental concepts in this domain. These concepts exist regardless of the way your
+application uses bottle numbers.
+Extracting BottleNumber  from Bottles  decouples the idea of bottle number-ness from the "99
+Bottles of Beer" song. Bottle numbers are now indep endent objects, and ought to be freely
+useable in contexts other than those from which they were extracted . If sufficiently dissociated
+from the song, these bottle number classes could be  used in, for example, a new inventory
+system. It makes perfect sense to "Go to the store and buy some more" because a refrigerator
+reports that it contains 0 bottles of beer.
+Omitting quantity  and container  in favor of jamming "1 six-pack" directly into to_s  corrupts
+BottleNumber6  with knowledge of the inner workings of the Bottles  verse  template. The
+to_s  solution works only because BottleNumber6  knows  that verse  implicitly sends to_s . This
+expectation couples BottleNumber6  to the context in which it was discovered, and thi s coupling
+interferes with your ability to reuse the bottle nu mber classes when new contexts appear.
+Solving the proximate problem by implementing a uni que to_s  passes today’s tests but misleads
+future programmers. If you were to override to_s , your code would tell this story:
+1. BottleNumber6 's rule for deriving its string representation diff ers from that of other
+bottle numbers, and
+2. BottleNumber6  has the same quantity  and container  as its superclass.
+These claims are false, and they transfer costs fro m the present to the future.
+Clever shortcuts are a false economy. Invest in cod e that tells the truth. Just write it down.
+6.7. Summary
+The purpose of this chapter was to produce a code a rrangement that was open to the six-pack
+requirement. Not only did it succeed in fulfilling that requirement, but along the way it also
+resolved a number of other issues.
+This chapter explored the Data Clump  code smell. It replaced a Switch Statement  with a set of
+polymorphic objects, which it created using a facto ry. It corrected the Liskov violation in
+successor , and used that problem as a jumping-off point for a more general lesson about how
+to change the return types of polymorphic methods.
+The BottleNumber  for factory was straightforward and most certainly did  the job. While
+simple factories like this work great in many situa tions, they’re not best for every case. There’s a
+6.7. Summary
+Page 171whole world of different styles of factories waitin g to be explored. Therefore, on to Chapter 7.
+7.1. Contrasting the Concrete Factory with Shameless Green

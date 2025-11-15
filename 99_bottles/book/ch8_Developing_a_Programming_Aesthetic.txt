@@ -1,0 +1,1549 @@
+Page 1898. Developing a Programming Aesthetic
+Until now, most changes to the "99 Bottles" code ha ve been the result of formal refactorings.
+You’ve been an active participant in that you’ve se lected code smells to attack and picked recipes
+to follow, but the resulting code was primarily dic tated by those recipes. The process has been
+both prescriptive and proscriptive; the refactoring  recipes tell you what to do while at the same
+time forbidding you from wandering off to tinker on  tangential shiny things.
+This chapter lifts its gaze and considers a few pro blems where the solutions aren’t so clear cut.
+Sometimes neatly arranged, recipe-driven, fully wor king code remains unsatisfying because it
+feels like it isn’t quite good enough. Perhaps it r etains a bit of duplication, or has a place where
+adding another abstraction would make it easier to fulfill an anticipated requirement, or is
+implemented in a way that makes you fear for its ma intainability.
+Voluntarily altering working code costs money, and doing so declares that you believe that
+rearranging this code right now is more important t han anything else on the backlog. The
+opportunity cost of improving existing code is that  you can’t simultaneously attend to other
+urgent things.
+If you’re bothered by something in code, you likely  have an idea of what you’d prefer. The
+conundrum posed by these fuzzier situations is not in figuring out what to do, but in deciding
+whether you’re justified in doing anything at all.
+Code smells and refactoring recipes represent the d istilled judgement of many deeply
+experienced OO practitioners. Those folks wrote pil es of code, both good and bad, and over time
+noticed correlations between code arrangements and costs. Close attention to ultimate outcomes
+led them to develop a sense of what to actively do (or diligently avoid) in present code to
+preclude future pain. They developed a feeling, an "aesthetic", about the rightness of code, and
+this aesthetic guided their decisions in times of c onfusion and uncertainty.
+Over time their aesthetic sense of what was pleasin g and beneficial got codified into a set of
+rules, or heuristics. These heuristics became the c ode smells and refactoring recipes that have
+been bequeathed to you. The definitions and directi ons contained therein cover a lot of ground
+and solve many problems, but do not substitute for developing a programming aesthetic of your
+own.
+The goal of this chapter is to start you down that path.
+8.1. Appreciating the Mechanical Process
+Before diving into programming aesthetics, take a m inute to appreciate the current code. If you
+revert back to the simplest factory from Chapter 7,  it looks like this:
+Listing 8.1: Six Pack With Case Statement Factory
+ 1 class  Bottles
+ 2   def song
+ 3     verses( 99,0)
+8.1. Appreciating the Mechanical Process
+Page 190 4   end
+ 5 
+ 6   def verses (upper, lower)
+ 7     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+ 8   end
+ 9 
+10   def verse (number)
+11     bottle_number = BottleNumber .for(number)
+12 
+13     "#{bottle_number } of beer on the wall, " .capitalize +
+14     "#{bottle_number } of beer. \n" +
+15     "#{bottle_number .action }, " +
+16     "#{bottle_number .successor } of beer on the wall. \n"
+17   end
+18 end
+19 
+20 class  BottleNumber
+21   def self .for(number)
+22     case  number
+23     when  0
+24       BottleNumber0
+25     when  1
+26       BottleNumber1
+27     when  6
+28       BottleNumber6
+29     else
+30       BottleNumber
+31     end.new(number)
+32   end
+33 
+34   attr_reader  :number
+35   def initialize (number)
+36     @number  = number
+37   end
+38 
+39   def to_s
+40     "#{quantity } #{container }"
+41   end
+42 
+43   def quantity
+44     number .to_s
+45   end
+46 
+47   def container
+48     "bottles"
+49   end
+50 
+51   def action
+52     "Take #{pronoun } down and pass it around"
+53   end
+54 
+55   def pronoun
+56     "one"
+57   end
+58 
+59   def successor
+60     BottleNumber .for(number - 1)
+61   end
+62 end
+63 
+64 class  BottleNumber0  < BottleNumber
+65   def quantity
+66     "no more"
+67   end
+8.1. Appreciating the Mechanical Process
+Page 19168 
+69   def action
+70     "Go to the store and buy some more"
+71   end
+72 
+73   def successor
+74     BottleNumber .for( 99)
+75   end
+76 end
+77 
+78 class  BottleNumber1  < BottleNumber
+79   def container
+80     "bottle"
+81   end
+82 
+83   def pronoun
+84     "it"
+85   end
+86 end
+87 
+88 class  BottleNumber6  < BottleNumber
+89   def quantity
+90     "1"
+91   end
+92 
+93   def container
+94     "six-pack"
+95   end
+96 end
+This code is a tribute to the intense simplicity ac hieved by deft handling of complexity. It’s a
+testament to the efficacy of programming by identif ying smells and removing them using well-
+known refactoring recipes. Consider how the code ab ove might look had you charged forward
+from the end-point of your original 30-minutes-of-e ffort solution, or even if you’d started from
+the Incomprehensibly Concise , Speculatively General , or Concretely Abstract  implementations in
+Chapter 1. It’s terrifyingly easy to imagine soluti ons that are far more complicated and far less
+revealing of intentions.
+As you have probably long since realized, the 99 Bo ttles problem is more nuanced than it
+initially appears. Songs like "99 Bottles" are grea t for teaching deep lessons about dealing with
+complexity. The song is simple enough to be grasped  quickly, yet provides fodder for endless
+discussions about the subtle distinctions between d iffering concepts. While the finely sliced code
+above (pleasing though it is) may seem a bit grandi ose for this situation, the techniques used to
+create it scale to infinitely more difficult proble ms. Songs are great because they allow you to
+easily practice techniques that can then be used to  conquer fiendishly complex domains.
+The "99 Bottles" song, in particular, has a long hi story of being used for this purpose. Renowned
+computer scientist Donald Knuth wrote an article ov er 40 years ago titled The Complexity of
+Songs  which directly references " m Bottles of Beer on the Wall." The 99 Bottles probl em is so
+commonly tackled that there are over 1500 implementations  in various programming languages.
+The song is perfect fodder for teaching; it’s simul taneously simple enough to learn from and
+hard enough to make the lessons useful.
+This book is just one more link in a long chain. Th e story the current implementation tells is that
+all verses are alike in an abstract way, and that b ottle numbers vary within each verse. The song
+8.1. Appreciating the Mechanical Process
+Page 192and verses  methods of Bottles  accumulate individual verses. The verse  method (repeated
+below) turns a number into a bottle number and then  uses that bottle number to produce verses.
+Listing 8.2: Verse as Described With the Word And
+1 def verse (number)
+2   bottle_number = BottleNumber .for(number)
+3 
+4   "#{bottle_number } of beer on the wall, " .capitalize +
+5   "#{bottle_number } of beer. \n" +
+6   "#{bottle_number .action }, " +
+7   "#{bottle_number .successor } of beer on the wall. \n"
+8 end
+The presence of the word "and" in the previous sent ence should arouse your suspicions—it
+implies that the verse  method does two things. That pesky blank line on l ine 3 above may cause
+further concern. Programmers add blank lines to ind icate changes of topic, and changes of topic
+suggest multiple responsibilities. Blank lines smel l.
+Taken together, these misgivings might tempt you to  proactively refactor verse  into two smaller
+methods, one to convert number  into a bottle number and the other to produce the actual verse.
+Despite this very reasonable temptation, there’s a good argument for leaving verse  as is. For
+goodness' sake, the method works, it contains only six lines of code, and no one has asked for a
+new feature that would force any alterations. Break ing verse  into multiple methods would
+introduce additional message sends and add extra le vels of indirection. Increasing indirection
+makes code harder to follow.
+Perhaps it’s best to leave well enough alone and sn eak quietly away.
+In situations like this, what should you do? Is it better to voluntarily rewrite this method to
+separate the responsibilities, or should you leave it as is and see what the future brings? From a
+broader perspective, is it ever  okay to voluntarily improve code, or should you al ways restrict
+yourself to writing the minimal code dictated by a refactoring recipe or necessary to fulfill an
+explicit requirement?
+These are some of the most urgent questions for the  practical programmer. What they have in
+common is uncertainty. Choosing to make a voluntary  change places a bet that the change’s cost
+will be repaid by a future offsetting reduction. So me potential changes are such good bets that
+they should always be made, and others such long sh ots as to be consistently avoided.
+The choice about when to voluntarily change code re lies on judgement. Judgement is informed
+by past experience. Experience accumulates into an intuition about how best to act in the face of
+uncertainty. Intuition is a form of pattern matchin g performed by your unconscious mind,
+trained throughout your career on scores of code ex amples.
+Because your unconscious mind can’t talk, this is w here programming begins to feel like an art.
+Those feelings you have about the rightness of code  are likely correct, but the big super-
+computer of your unconscious mind can’t supply word s to defend them. Sadly, advocating
+changes to code based on feelings you can’t explain  is not likely to be convincing.
+8.2. Clarifying Responsibilities with Pseudocode
+Page 193Thus, while intuition helpfully supplies feelings a bout code to draw your attention to things that
+might benefit from action, it’s the job of your con scious brain to figure out how to put words on
+those feelings. These words form your programming a esthetic, or the set of principles that
+underlie and guide your work. Intuition drives acti on, justified by aesthetics, and guided by
+heuristics.
+There’s much to explore about programming aesthetic s, but having briefly pondered these
+broader questions, put them aside for now. Just in the nick of time you’re rescued by the arrival
+of a new requirement.
+Your customer wants other songs that are similar to  "99 Bottles" but contain different lyrics.
+8.2. Clarifying Responsibilities with Pseudocode
+Your first question should be "Similar in what way? " Recall the verses  method:
+Listing 8.3: Verses Counts Down
+1 def verses (upper, lower)
+2   upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+3 end
+This method is responsible for producing a range of  verses of the song. The "99 Bottles" song,
+however, is a bit special in the universe of all so ngs, and this specialness is exposed by the use of
+downto  on line 2 above. Generally songs start at the bott om and count up, but this song starts at
+the top and counts down. When your customer asks yo u to produce other songs like the "99
+Bottles" song, they’re asking you to write code to produce other songs that also count down.
+They’re asking for a variant  that can produce different verses. This means that  the code has to
+change. As you learned in Chapter 3, the first step  in deciding what code to write next is to
+consult the Open-Closed Flowchart .
+So:
+1. Is the code open to the vary the verses  requirement?
+No.
+2. Do you know how to make it open?
+Probably not.
+3. What’s the best-understood code smell?
+While it’s clear that the verse  method might be doing too much, it’s not clear how
+identifying and fixing any currently-existing code smell will help.
+Paradoxically, when faced with uncertainty about wh at to do next, it can sometimes help to sigh
+deeply, ignore everything you’ve learned, and just write a new conditional. This conditional’s
+purpose is to supply more information about the pro blem, and writing it can clarify what needs
+to change. Once you understand what should change, you can discard the conditional and write
+better code.
+8.3. Extracting the Verse
+Page 194If you were to sketch in the conditional needed to produce other kinds of verses, the verse
+method might look like this:
+Listing 8.4: Verse Contains Conditional
+ 1 def verse (number)
+ 2   # if 99_bottles_song
+ 3     bottle_number = BottleNumber .for(number)
+ 4 
+ 5     "#{bottle_number } of beer on the wall, " .capitalize +
+ 6     "#{bottle_number } of beer. \n" +
+ 7     "#{bottle_number .action }, " +
+ 8     "#{bottle_number .successor } of beer on the wall. \n"
+ 9   #
+10   # elsif unknown_song_2_verse
+11   #   ...
+12   #   assemble verse for unknown song 2
+13   #   ...
+14   # elsif unknown_song_3_verse
+15   #   ...
+16   #   assemble verse for unknown song 3
+17   #   ...
+18   # end
+19 end
+The pseudocode[19] above is commented out but it doesn’t matter that it’s not working code—the
+conditional’s mere presence helps clarify what need s to be done. In a backwards way, the
+purpose of this pseudocode is to introduce  new code smells. The verse  method above now
+contains a Switch Statement  and is a Long Function . These code smells provide a glimpse into the
+future, imparting information about what will happe n if you embark down the solve-the-
+problem-by-adding-conditionals path. The imaginary conditional provides visible,
+incontrovertible proof that nothing good will come of this.
+Now that you can anticipate the smells, you can pre emptively choose one and apply the curative
+refactoring. The function is long because of the co nditional so you can ignore that smell, leaving
+only Switch Statement . Each of the imaginary branches represents an unre lated set of lyrics, so
+the best way to cure this conditional is to apply Extract Class  to each branch.
+Discard the pseudocoded conditional and revert to t he earlier verse  method. You can think of
+the original code as one branch of an imaginary con ditional that needs to be extracted into a
+class of its own.
+8.3. Extracting the Verse
+You’ve already practiced Extract Class , back in the Extracting BottleNumber  section of chapter 5
+where a new class was created to cure the Primitive Obsession  on number . Here’s a reminder of
+that recipe:
+Choose a class name and create the new class.
+Add an attr_reader  and an initialize  method to encapsulate primitive data.
+Copy the methods from the old class to the new.
+Forward messages from the old class to the new.
+8.3. Extracting the Verse
+Page 195One by one, remove arguments from the methods in th e new class, and corresponding
+parameters from the message sends in the old class.
+The first concern, as always, is what to name the n ew class. Classes should be named for exactly
+what they are, so a class that represents a verse i n the "99 Bottles" song could reasonably be
+named BottleVerse , as shown below.
+Listing 8.5: Create BottleVerse
+1 class  BottleVerse
+2 end
+BottleVerse  needs an initialize  method that accepts a number  argument, and an
+attr_reader  to access this number. Here’s that code:
+Listing 8.6: Initialize Number
+1 class  BottleVerse
+2   attr_reader  :number
+3 
+4   def initialize (number)
+5     @number  = number
+6   end
+7 end
+You haven’t yet changed anything in Bottles#verse  so running tests at this point confirms that
+the old code still works and proves that the new BottleVerse  class is syntactically correct.
+(Note that the # in Bottles#verse  denotes that verse  is an instance method on Bottles . Had
+verse  been a class method, this would have been written Bottles .verse .)
+Because you’re creating a new class by following a refactoring recipe instead of doing TDD, you
+would normally want the new class to be fully plugg ed into the old before altering any of the
+new class’s code. The safest process is to first as semble the new class from code exactly copied
+from the old, and next to alter the old class to in voke the code in the new. Only then should you
+return to the new class to make improvements or cha nges. Working this way minimizes the
+chance that you’ll break something, and makes thing s that you do accidentally break easier to
+debug.
+The next step, then, is to copy the entire verse  method from Bottles  to BottleVerse . This
+looks like:
+Listing 8.7: Copy Verse to BottleVerse
+ 1 class  BottleVerse
+ 2   # ...
+ 3   def verse (number)
+ 4     bottle_number = BottleNumber .for(number)
+ 5 
+ 6     "#{bottle_number } of beer on the wall, " .capitalize +
+ 7     "#{bottle_number } of beer. \n" +
+ 8     "#{bottle_number .action }, " +
+ 9     "#{bottle_number .successor } of beer on the wall. \n"
+10   end
+11 end
+8.3. Extracting the Verse
+Page 196As always, run the tests after this change. They sh ould again confirm that the old code works,
+and the new code is syntactically correct.
+Now you can start integrating this new class back i nto the class from which it was extracted.
+Returning to Bottles , insert a line into its verse  method that creates an instance of
+BottleVerse  and forwards the verse  message on, as shown on line 4 below.
+Listing 8.8: Create a BottleVerse
+ 1 class  Bottles
+ 2   # ...
+ 3   def verse (number)
+ 4     BottleVerse .new(number) .verse(number)
+ 5 
+ 6     bottle_number = BottleNumber .for(number)
+ 7 
+ 8     "#{bottle_number } of beer on the wall, " .capitalize +
+ 9     "#{bottle_number } of beer. \n" +
+10     "#{bottle_number .action }, " +
+11     "#{bottle_number .successor } of beer on the wall. \n"
+12   end
+13 end
+Line 4 above executes the new code but ignores the returned verse. You can’t know if the result
+is correct, but you have  proven that the new BottleVerse  code runs without blowing up.
+The next step is to actually use that result. This is easily done by commenting out the old code, as
+shown here:
+Listing 8.9: Use Result From BottleVerse
+ 1 class  Bottles
+ 2   # ...
+ 3   def verse (number)
+ 4     BottleVerse .new(number) .verse(number)
+ 5 
+ 6     # bottle_number = BottleNumber.for(number)
+ 7 
+ 8     # "#{bottle_number} of beer on the wall, ".capitalize +
+ 9     # "#{bottle_number} of beer.\n" +
+10     # "#{bottle_number.action}, " +
+11     # "#{bottle_number.successor} of beer on the wall.\n"
+12   end
+13 end
+Running the tests confirms that you’ve successfully  extracted the BottleVerse  class.
+At this point the code works but has an annoying qu irk: line 4 above refers to number  twice. This
+is clearly redundant and should be fixed. These red undancies are echoed in BottleVerse
+(repeated below for convenience). In lockstep with Bottles , BottleVerse  must be initialized
+with number  (line 4 below), and also has a verse  method that requires a number  argument (line
+8).
+Listing 8.10: Bottle Verse From the Recipe
+ 1 class  BottleVerse
+ 2   attr_reader  :number
+ 3 
+8.4. Coding by Wishful Thinking
+Page 197 4   def initialize (number)
+ 5     @number  = number
+ 6   end
+ 7 
+ 8   def verse (number)
+ 9     bottle_number = BottleNumber .for(number)
+10 
+11     "#{bottle_number } of beer on the wall, " .capitalize +
+12     "#{bottle_number } of beer. \n" +
+13     "#{bottle_number .action }, " +
+14     "#{bottle_number .successor } of beer on the wall. \n"
+15   end
+16 end
+These redundant references are transient and exist because of the way BottleVerse  was
+extracted. The recipe allows you to extract a new c lass without breaking an existing test. In order
+to keep the tests running, you have to copy code. T he code copied to the new class has no test
+coverage so it oughtn’t be changed until it’s fully  wired-in to the old class and safely under the
+protection of the existing tests.
+This style of coding leans heavily upon the refacto ring recipes, operating in faith that they will
+eventually result in working code. Since the extrac ted class is created using a time-tested recipe,
+the class doesn’t have to be built test-first. Not that the extracted class doesn’t need tests of its
+own—it surely does, and will eventually get them—bu t the tests don’t need to be written first.
+You’re isolating existing behavior, not discovering  new behavior. In situations like this, the
+recipes supply the most straightforward and direct path to your coding goal.
+You’ve now created a BottleVerse  class that represents a verse. Granted, it still c ontains a few
+redundant copies of number , but even in its current state the Bottles  class can use it instead of
+generating verses itself.
+At this point, the standard recipe calls for cleani ng up the extraneous references to number . In
+the spirit of developing a programming aesthetic, t he next section invokes intuition and follows
+an alternative path.
+8.4. Coding by Wishful Thinking
+Trusting the Extract Class  recipe reduces coding friction by allowing you to jump right into
+extracting the BottleVerse  class, but it requires that you refrain from chang ing the copied code
+until it’s fully used. This restriction on changing  copied code often leaves redundant arguments,
+which must be subsequently dealt with.
+You likely recall encountering a similar problem du ring the BottleNumber  extraction in
+Chapter 5 where removing the redundant arguments re quired a series of meticulous steps
+(detailed in the Removing Arguments  section). It’s important to understand how to foll ow those
+detailed steps, but now that you do understand them  and can fall back on them if trouble arises,
+you can allow yourself more leeway. This section ex plores a more advanced technique that
+transforms the code in bigger steps.
+Software developers have long relied on structured speculation. Pseudocode is speculative, and
+it has already been used to reveal the code smells that would have arisen had you added a new
+8.4. Coding by Wishful Thinking
+Page 198conditional to generate other counting-down songs. That pseudocode quickly and painlessly
+revealed a shortcut to a better path.
+TDD is yet another example. Test-driving code begin s with a speculative leap—the first thing you
+do is write a test you wish would pass. Initially, of course, this test fails. You then shift
+perspectives and write the production code to pass that test. Once this succeeds, you toggle back
+into test writing mode and speculatively create the  next test. Done well, this alternating process
+streamlines the proving of ideas and produces worki ng code almost as quickly as it’s conceived.
+The seminal book Structure and Interpretation of Computer Programs ( SICP)  contains several
+references to "wishful thinking." The authors refer  to it as "a powerful strategy of synthesis."
+Like pseudocode and TDD, coding by wishful thinking  allows you to sketch software design ideas
+economically, with a low level of commitment. In ot her words, you can guess, unburdened by
+penalties for being wrong. This approach to writing  code can feel unruly and indulgent, but it’s a
+bona fide, efficient, and often elegant technique f or making progress, and can be applied right
+here.
+The echo of number  in
+BottleVerse .new(number) .verse(number)
+feels clumsy and redundant. The techniques shown in  the Removing Arguments  section of
+Chapter 5 can certainly be used to clean up this ec ho, but sometimes it makes sense to solve
+problems like this by considering the broader domai n.
+What code do you wish you had? What message should Bottles  expect to send to BottleVerse
+to get back the words in a verse? Think about this from the message sender’s point of view: What
+does Bottles  want from BottleVerse ?
+It wants lyrics.
+If Bottles  wants lyrics from BottleNumber  it should just ask, like so:
+BottleVerse .new(number) .lyrics
+Now that you’ve expressed this wish, it’s easy to m ake it come true. Revert back to the original
+Bottles#verse  method and insert the wishful code, as shown below :
+Listing 8.11: Lyrics by Wishful Thinking
+ 1 class  Bottles
+ 2   # ...
+ 3   def verse (number)
+ 4     # BottleVerse.new(number).lyrics
+ 5 
+ 6     bottle_number = BottleNumber .for(number)
+ 7 
+ 8     "#{bottle_number } of beer on the wall, " .capitalize +
+ 9     "#{bottle_number } of beer. \n" +
+10     "#{bottle_number .action }, " +
+11     "#{bottle_number .successor } of beer on the wall. \n"
+8.4. Coding by Wishful Thinking
+Page 19912   end
+13 end
+Line 4 above doesn’t yet work and so is temporarily  commented out.
+The next step is to go to BottleVerse  and rename the
+verse(number)
+method to
+lyrics
+as shown on line 3 below:
+Listing 8.12: BottleVerse Responds to Lyrics
+ 1 class  BottleVerse
+ 2   # ...
+ 3   def lyrics
+ 4     bottle_number = BottleNumber .for(number)
+ 5 
+ 6     "#{bottle_number } of beer on the wall, " .capitalize +
+ 7     "#{bottle_number } of beer. \n" +
+ 8     "#{bottle_number .action }, " +
+ 9     "#{bottle_number .successor } of beer on the wall. \n"
+10   end
+11 end
+BottleVerse  isn’t being used right now so running the tests ju st proves that this code is
+syntactically correct.
+Now return to Bottles  and uncomment the wishful line 4, as you see here:
+Listing 8.13: Get BottleVerse’s Lyrics
+ 1 class  Bottles
+ 2   # ...
+ 3   def verse (number)
+ 4     BottleVerse .new(number) .lyrics
+ 5 
+ 6     bottle_number = BottleNumber .for(number)
+ 7 
+ 8     "#{bottle_number } of beer on the wall, " .capitalize +
+ 9     "#{bottle_number } of beer. \n" +
+10     "#{bottle_number .action }, " +
+11     "#{bottle_number .successor } of beer on the wall. \n"
+12   end
+13 end
+Line 4 above executes the new BottleVerse#lyrics  method but ignores its result.
+Finally (drum roll), delete the original implementa tion from the method above. This reduces
+Bottles#verse  to:
+Listing 8.14: Verse Gets Lyrics
+8.5. Inverting Dependencies
+Page 2001 class  Bottles
+2   # ...
+3   def verse (number)
+4     BottleVerse .new(number) .lyrics
+5   end
+6 end
+The Bottles#verse  method now gets lyrics from a different class, BottleVerse .
+Coding by wishing thinking led to the discovery of a more intention-revealing interface for
+BottleVerse .
+Notice that while this technique, making multiple c hanges to BottleVerse  before using it in
+Bottles , reduces the number of refactoring steps, it also adds risk. Running the tests after each
+single-line change to BottleVerse  proves that the new code is syntactically correct,  but not that
+it actually works. Without care, you could easily w rite a big pile of buggy code before plugging
+the BottleVerse  class back into Bottles  and discovering that it doesn’t work.
+If you plug BottleVerse  into Bottles  and tests fail, the rules of refactoring say you m ust undo
+and fix the offending code. If you can’t immediatel y fix the problem, either drop back and use
+the original technique that takes smaller steps, or  TDD the new BottleVerse .
+Despite the added risks, this alternate technique c an be very efficient. It’s best used in cases
+where you’re extracting a class and want to make a few small changes. If the extracted class
+needs lots of alterations you’ll likely have better  luck TDDing it from the start. In the future, take
+the opportunity to expand your programming aestheti c by trying both techniques and paying
+attention to how your choices turn out.
+This completes the extraction of BottleVerse , a new class that responds to lyrics .
+8.5. Inverting Dependencies
+Recall that the impetus behind extracting BottleVerse  was the need to produce songs with
+other lyrics. Despite having completed the extracti on, you can’t yet fulfill this vary-the-verse
+requirement. Why not? Because Bottles  is currently stuck to BottleVerse . You have extracted
+the class, but not yet inverted the dependency.
+The Dependency Inversion Principle (DIP) contribute s the 'D' in the SOLID acronym and can be
+defined as "depend on abstractions, not concretions ." This section demystifies the principle and
+employs it to loosen the coupling between Bottles  and BottleVerse .
+Here’s a reminder of the current Bottles  and BottleVerse  classes:
+Listing 8.15: Bottles Depends on BottleVerse
+ 1 class  Bottles
+ 2   def song
+ 3     verses( 99,0)
+ 4   end
+ 5 
+ 6   def verses (upper, lower)
+ 7     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+8.5.1. Injecting Dependencies
+Page 201 8   end
+ 9 
+10   def verse (number)
+11     BottleVerse .new(number) .lyrics
+12   end
+13 end
+14 
+15 class  BottleVerse
+16   attr_reader  :number
+17 
+18   def initialize (number)
+19     @number  = number
+20   end
+21 
+22   def lyrics
+23     bottle_number = BottleNumber .for(number)
+24 
+25     "#{bottle_number } of beer on the wall, " .capitalize +
+26     "#{bottle_number } of beer. \n" +
+27     "#{bottle_number .action }, " +
+28     "#{bottle_number .successor } of beer on the wall. \n"
+29   end
+30 end
+On line 11 above the verse  method of Bottles  knows the name of the concrete BottleVerse
+class. Bottles  therefore depends on BottleVerse . Put another way, there’s a tight coupling
+between Bottles  and BottleVerse .
+This coupling has consequences, the least of which is that if the name of the BottleVerse  class
+changes, Bottles  will also have to change. Being forced to go throu gh your entire codebase and
+change a bunch of explicit references from BottleVerse  to another name would be
+inconvenient but not devastating.
+A far worse repercussion is that Bottles  can’t collaborate with any class other than
+BottleVerse . Even if you had an entire library of objects that  returned lyrics for different
+songs, and even if those objects looked just like BottleVerse  from the outside, meaning that
+they conformed to the same API, Bottles  couldn’t use them. Bottles  is glued to BottleVerse
+and can’t acquire lyrics from any other object.
+8.5.1. Injecting Dependencies
+In order for Bottles  to produce varying lyrics without resorting to a c onditional, the code has to
+be rearranged so that Bottles  can seamlessly talk to any lyrics provider. It’s time to loosen the
+coupling between Bottles  and BottleVerse .
+Bottles  depends on, or has knowledge about, two different BottleVerse -related things. It
+knows:
+1. a concretion, that is, the name of the BottleVerse  class, and
+2. an abstraction, namely, the idea that there’s an object that can provide a verse.
+Knowing the abstraction is required. It’s a fundame ntal part of Bottles 's responsibility to
+understand that objects exist that can provide vers es, and to know how to collaborate with them.
+8.5.1. Injecting Dependencies
+Page 202Bottles  has to know these things in order to do its job.
+Knowing about the concretion, on the other hand, is  completely avoidable. Bottles  doesn’t
+have to know the concrete class name BottleVerse , this name could easily be passed into
+Bottles  from the outside. Doing so not only reduces the nu mber of dependencies inside of
+Bottles , but it also opens Bottles  to an entire universe of existing and potential ly rics
+providers.
+You can think of classes that provide lyrics as pla ying a common role. The set of messages to
+which BottleVerse  responds establishes an API that defines this role . Classes that want to
+supply lyrics must conform to this API.
+Roles need names, and this role could reasonably be  named verse template . Line 4 below
+embodies the wish to depend on a player of the vers e template role rather than on the
+BottleVerse  class:
+Listing 8.16: Wishing to Decouple From BottleVerse
+1 class  Bottles
+2   # ...
+3   def verse (number)
+4     # verse_template.new(number).lyrics
+5     BottleVerse .new(number) .lyrics
+6   end
+7 end
+The wish above breaks the tests so it’s temporarily  commented out, but identifying it is
+worthwhile because its presence prompts you to writ e code to make it come true.
+Notice that the wishful code makes the smallest pos sible change by replacing the BottleVerse
+class name with the verse_template  role name. This leaves a line of code that has two  dots ('.'),
+where new(number)  is sent to verse_template , and then lyrics  is sent to the result. If these
+dots concern you, never fear; they are the topic of  the subsequent Obeying the Law of Demeter
+section. For now just recognize that changing BottleVerse  to verse_template  didn’t add any
+new dots. If you are suddenly concerned by the dots  on line 4 above but weren’t previously
+bothered by those in line 5, spend a minute trying to articulate your concern before you start
+reading the Demeter section.
+Returning to the current wish, change Bottles  so that an outside agent passes a
+verse_template  that defaults to BottleVerse  during creation (lines 4 and 5 below). Next,
+create an attr_reader  to return verse_template 's value (line 2):
+Listing 8.17: Inject a Verse Template
+1 class  Bottles
+2   attr_reader  :verse_template
+3 
+4   def initialize (verse_template : BottleVerse )
+5     @verse_template  = verse_template
+6   end
+7   # ...
+8 end
+8.5.1. Injecting Dependencies
+Page 203Now that verse_template  is being injected into Bottles , the wish should work. Return to the
+verse  method, uncomment the wishful line, run the tests,  and then delete the line that follows.
+This shrinks the body of verse  to the single line of code shown on line 17 below:
+Listing 8.18: Use the Verse Template
+ 1 class  Bottles
+ 2   attr_reader  :verse_template
+ 3 
+ 4   def initialize (verse_template : BottleVerse )
+ 5     @verse_template  = verse_template
+ 6   end
+ 7 
+ 8   def song
+ 9     verses( 99,0)
+10   end
+11 
+12   def verses (upper, lower)
+13     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+14   end
+15 
+16   def verse (number)
+17     verse_template .new(number) .lyrics
+18   end
+19 end
+20 
+21 class  BottleVerse
+22   attr_reader  :number
+23 
+24   def initialize (number)
+25     @number  = number
+26   end
+27 
+28   def lyrics
+29     bottle_number = BottleNumber .for(number)
+30 
+31     "#{bottle_number } of beer on the wall, " .capitalize +
+32     "#{bottle_number } of beer. \n" +
+33     "#{bottle_number .action }, " +
+34     "#{bottle_number .successor } of beer on the wall. \n"
+35   end
+36 end
+These changes complete the extraction and injection  of BottleVerse , but there are a few issues
+with the current code that should be acknowledged.
+First, you may be wondering why verse_template  defaults to the BottleVerse  class (line 4
+above) rather than to an instance of that class. Th is perhaps brings to mind a broader question:
+when injecting collaborators, should you inject cla sses or instances of those classes?
+Also, you just went to a fair amount of trouble to remove the hard-coded BottleVerse  class
+name from the verse  method in Bottles , and yet there’s another a place in this code wher e a
+method references a class name. On line 29 above, t he BottleVerse#lyrics  method is tightly
+coupled to BottleNumber . If knowing the concrete name of a class is a bad idea, shouldn’t this
+reference also be injected?
+Both of these questions will be addressed in the Obeying the Law of Demeter  section. For now,
+and despite these very legitimate concerns, recogni ze that the current code has been improved.
+8.5.2. Isolating Variants
+Page 204Not only has BottleVerse  been decoupled from Bottles , but you’ve also identified and
+defined a new role—verse template—for which you can  create and inject entirely new players.
+8.5.2. Isolating Variants
+Bottles  now thinks of itself as interacting with a player of the verse template role rather than a
+kind of the BottleVerse  type. Because all role players look the same from the outside, Bottles
+can treat them as if they’re identical. Bottles  can produce as many different songs as you have
+different verse templates, without itself changing.
+Bottles  is now composed  of verse_template s.
+Here’s the process used to create the verse templat e role:
+1. Identify the code you want to vary.
+2. Name the underlying concept.
+3. Extract the identified code into its own class.
+4. Inject this new role-playing object back into the  object from which it was extracted.
+5. Forward messages from the original class to the i njected object.
+Here’s an illustration. First you extracted the BottleVerse  class from Bottles  and then
+immediately re-injected it, as shown here:
+Figure 8.1: Extract and Then Inject BottleVerse
+8.5.3. Grappling with Inversion
+Page 205Now that Bottles  is being passed an object that plays a role, you c an invent and inject other
+objects to play this role. Bottles  will happily collaborate with any verse template t hat responds
+to lyrics , as illustrated below:
+Figure 8.2: Inject a Player of the Verse Template Role
+This process can be summarized in a few words: Isol ate the behavior you want to vary.
+That phrase bears repeating. It may deserve flashin g lights.
+One of the most fundamental concepts in OO is to is olate the behavior you want to vary.
+When a change is needed to a small part of your cod e, extracting and injecting a role-playing
+object opens the possibility of creating and inject ing other objects that play the same role. The
+injection point becomes a seam across which objects  interact in a loosely-coupled way. These
+seams permit applications to expand and support new  behavior without having to change
+existing code.
+Isolating the bottles variant of the verse template  opens your code to the possibility of other
+variants. It’s now possible to fulfill the current requirement by creating and injecting a new class
+that plays this role.
+8.5.3. Grappling with Inversion
+The technical name for what happened in the prior r efactoring is dependency inversion. The
+Dependency Inversion Principle (DIP) can be confusi ng because its very name contains the
+assumption that you already understand it. Webster’ s Dictionary defines invert as "to turn over,
+8.5.3. Grappling with Inversion
+Page 206to put upside down, to place in a contrary order or  direction." Inverting a dependency must
+therefore mean flipping it from one state to that s tate’s opposite. The key to understanding the
+principle is to recognize that your code should dep end on abstractions. If you stumble upon code
+that’s in the state of depending on concretions, DI P says that you should invert those
+dependencies and depend upon abstractions instead.
+Where Bottles  once had a dependency on the BottleVerse  concretion, it now has a
+dependency on the verse template abstraction. Thus the original dependency has been inverted.
+This "depend on abstractions, not on concretions" d efinition distills the essence of the more
+verbose original DIP definition from the May 1996 i ssue of C++ Report, which explained it like
+this:
+1. High-level modules should not depend upon low-lev el modules. Both should depend upon
+abstractions.
+2. Abstractions should not depend upon details. Deta ils should depend upon abstractions.
+As a service to humanity, the following paragraphs rephrase that definition using concepts from
+this code.
+First, note that the word "module" in the definitio n above does not refer to a specific language
+feature. In this definition module means an encapsu lated, named unit of functionality in a
+program. You can substitute the words "classes" or "objects" for "modules."
+Bottles  is thus the highest-level module in the code. Anot her way to think about it is that
+Bottles  is the outermost class. It’s what you started with , and at this point it’s the only class that
+has tests. The entire public API is currently defin ed in Bottles .
+Every other class was created by extracting behavio r from the high-level module Bottles . These
+extracted classes represent lower-level modules. (I f you’re feeling annoyed that the highest-level
+module in an application that produces many songs i s named Bottles , you’re probably not
+alone. It’s time to start pondering a better name. This will be addressed in Chapter 9.)
+Class names are concretions. When Bottles  contained a hardcoded reference to BottleVerse
+it depended directly on that concretion. Thus, a hi gher-level module had a concrete dependency
+on a lower-level module. It depended upon a detail rather than an abstraction.
+In terms of the current code, the official Dependen cy Inversion Principle definition can be
+rephrased as:
+1. High-level modules like Bottles  should not depend on lower-level modules like
+BottleVerse . Each should depend on abstractions.
+2. Bottles  should not depend on concrete details like the nam e of the BottleVerse  class.
+Bottles  should instead depend on an object that polymorphi cally generates song verses.
+Alternatively, using the shorter form of the DIP de finition from Chapter 3, you might say:
+8.6.1. Understanding the Law
+Page 207Bottles  should depend on the verse_template  abstraction rather than the
+BottleVerse  concretion.
+Isolating variants often requires that you invert d ependencies, and an excellent technique for
+inverting dependencies is to inject them. This sect ion isolated the BottleVerse  variant and then
+inverted the dependency by injecting BottleVerse  as a player of the verse template role.
+Bottles  depends on the verse template role. BottleVerse  plays this role. Because Bottles
+now depends upon an abstract role rather than a con crete class, you can create and inject other
+players of the verse template role without needing to change Bottles .
+You can now fulfill the requirement introduced at t he beginning of this chapter by simply
+creating and injecting a new variant that plays the  abstract verse template role but returns
+different concrete lyrics.
+Having reached this point, it seems as if you shoul d be done, but yet again it’s time to bring
+aesthetics into play.
+8.6. Obeying the Law of Demeter
+The summary of the Injecting Dependencies  section voiced concerns about a line of code that
+contained multiple dots, or message sends . Lines t hat contain many dots might violate the Law
+of Demeter (LoD) . This section defines that law, determines where i t applies, explores the
+consequences of ignoring it, and explains how to fi x violations.
+8.6.1. Understanding the Law
+Have a look at the following example:
+Listing 8.19: Verse Method Contains Many Dependencies
+1 class  Bottles
+2   # ...
+3   def verse (number)
+4     verse_template .new(number) .lyrics
+5   end
+6 end
+On line 4 above the verse  method knows:
+that verse_template  responds to new
+that new expects an argument
+that the argument to new must be a number
+that the object returned from new(number)  responds to the message lyrics
+that lyrics  returns the actual lyrics of interest
+This list enumerates many things that Bottles  knows about but doesn’t control, which means
+they’re dependencies. Dependencies are vulnerabilit ies—if their owner changes them, the effects
+of that change will roll downhill to Bottles , which might then be forced to change in turn.
+8.6.1. Understanding the Law
+Page 208Dependencies can’t be avoided but should certainly be minimized. Be alert for superfluous
+dependencies and remove them with extreme prejudice .
+None of the extra dependencies in this code are goo d, but one of them falls into an especially
+pernicious category. This code violates the Law of Demeter. The problem solved by this law is
+best explained with a new example.
+Consider the following:
+Listing 8.20: Many Hops
+1 Class  Foo
+2   def durability_of_preferred_toy_of_best_friends_pet
+3     best_friend .pet.preferred_toy .durability
+4   end
+5 end
+Note: In this and the following permutations of thi s exaggerated example, assume that the
+best_friend  dependency was injected.
+Line 3 above contains a chain of messages, ( best_friend.pet.preferred_toy.durability ),
+each of which results in an object that conforms to  a different API.
+Code like the above, sadly, is so common that this example may not seem surprising. Typical
+though it may be, describing its dependencies is aw kward. Line 3 above requires that Foo know:
+that the pet message is in the API of the object held in best_friend  ,
+that preferred_toy  is in the API of the object that the pet message returns, and
+that durability  is in the API of the object that the preferred_toy  message sent to the
+object returned by the pet message returns.
+The fact that the prior sentence is painful to read  reflects an underlying problem with the code.
+Here’s a visualization of the objects and messages:
+8.6.1. Understanding the Law
+Page 209
+Figure 8.3: Violating the Law of Demeter
+In the diagram above, Foo first sends pet to best_friend . Because best_friend  is known to
+Foo, you can think of it as a direct  collaborator. This returns an instance of Pet.
+So far so good, but the next thing Foo does is send preferred_toy  to that returned Pet object.
+Notice that Pet is not a direct collaborator of Foo; instead it’s a collaborator of Friend . This
+means that Foo has knowledge about, or depends on, its collaborat ors' collaborators.
+The process then repeats when Foo sends durability  to the Toy returned by preferred_toy .
+This message requires that Foo know about the API of Toy. Consequently, Foo has knowledge of
+its collaborators' collaborators' collaborators.
+The underlying code looks innocuous but the diagram  makes it inescapably obvious that you
+can’t have a Foo unless you can provide it with a Friend  who has a Pet who has a Toy. The
+code may produce the correct output at this moment,  but will not age well. This tight coupling
+across many objects introduces two serious problems  which are then blithely lobbed into the
+future.
+First, arranging the code in this way interferes wi th your ability to use Foo in new and
+unexpected contexts. If an unforeseen feature reque st arrives that needs Foo's behavior, you
+won’t be able to fulfill that request by merely pro viding a Foo — you’ll also need to supply a
+Friend  that has a Pet that has a Toy. These messages tightly couple Foo to a chain of different
+8.6.1. Understanding the Law
+Page 210
+““objects, all of which must be available. Nothing he re stands alone—this group of objects acts like
+a single thing and any use requires every piece.
+These consequences become obvious when you attempt to reuse Foo. Tests serve many
+purposes, one of which is to reveal how easy it is to reuse code. Tightly-coupled code is difficult
+to test. Tightly-coupled objects require adding lot s of context, all of which must be provided in
+order to run any test.
+If test setup involves creating a bunch of increasi ngly distant objects, or if you find yourself
+putting stubs in stubs, it means that the object yo u are testing is too tightly coupled to other parts
+of your application. An object that’s hard to test is attempting to warn you that it will be difficult
+to reuse.
+As bad as those consequences are, there’s a second problem here that may be worse. Satisfying a
+requirement by chaining messages together allows yo u to make code work without figuring out
+what the objects actually want. In this case, Foo is sending
+best_friend.pet.preferred_toy.durability  for a reason . That reason hasn’t been
+identified or given a name.
+This application depends on a concept, an abstracti on, that is implicit in the code. The current
+author surely understands the intention behind this  code, but future maintainers are forced into
+mind-reading and their psychic powers may be unreli able.
+Resolving this LoD violation by naming the missing concept will happen soon, but before moving
+on, there’s one final part to understanding the Law  of Demeter. It’s time to have a look at the
+Demeter’s formal definition. The Object-Oriented Programming: An Objective Sense of Style
+whitepaper defines the law as follows:
+For all classes C and for all methods M attached to C, all  objects to which M
+sends a message must be instances of classes associated with the follo wing
+classes:
+1. The argument classes of M (including C).
+2. The instance variable classes of C.
+(Objects created by M, or by functions or methods which M ca lls, and objects in
+global variables are considered as arguments of M.)
+The above is a marvel of succinct precision but its  very terseness makes it difficult to
+understand. While it’s worth having a passing famil iarity with this formal definition, now that
+you’ve seen Demeter in action, the definition can b e restated in more straightforward language.
+The Law of Demeter says that from within a method, messages should be sent only to:
+objects that are passed in as arguments to the meth od
+objects that are directly available to self
+8.6.2. Curing Demeter Violations
+Page 211Be aware that Demeter is slightly more subtle than that definition suggests. It cares about the
+APIs of the returned objects, not about each indivi dual object. Therefore, the code
+'AbCdE' .reverse .gsub( /C/, "!").downcase .chop    # -> "ed!b"
+contains many dots but is not a Demeter violation b ecause each intermediate message returns
+an object that conforms to the same API. It’s not t he number of dots that matter, but the kind of
+object returned by each message.
+The Law of Demeter effectively restricts the list o f other  objects to which an object may send a
+message. Its purpose is to reduce the coupling betw een objects. From the message-senders point
+of view, an object may talk to its neighbors but no t to its neighbor’s neighbors. Objects may only
+send messages to direct collaborators.
+8.6.2. Curing Demeter Violations
+One obvious way to cure message chains is by introd ucing message forwarding,[20] a technique
+often referred to in casual conversation as delegat ion.[21] The forwarding code for this example
+might look like the following:
+Listing 8.21: Using Forwarding to Resolve the Demeter Violation
+ 1 class  Friend
+ 2   def durability_of_preferred_toy_of_pet
+ 3     pet .durability_of_preferred_toy
+ 4   end
+ 5 end
+ 6 
+ 7 class  Pet
+ 8   def durability_of_preferred_toy
+ 9     preferred_toy .durability
+10   end
+11 end
+12 
+13 class  Toy
+14   def durability
+15     1.hour
+16   end
+17 end
+18 
+19 # Foo now only sends messages to best_friend
+20 class  Foo
+21   def durability_of_preferred_toy_of_best_friends_pet
+22     best_friend .durability_of_preferred_toy_of_pet
+23   end
+24 end
+The code in each method above obeys the Law of Deme ter by sending messages only to direct
+collaborators. The new methods in Friend  and Pet supply the hops that allow Foo to navigate to
+the duration  method of Toy without coupling itself to each intermediate objec t in that chain.
+Message forwarding definitely helps, but you can be  forgiven if you’re feeling objections along
+the lines of "Hey, that just added a bunch of new l evels of indirection without fundamentally
+changing anything." While that’s true, the coupling  between Foo and other objects has been
+loosened and the benefits of this loosening are imm ediately visible in Foo's tests. Test setup now
+8.6.2. Curing Demeter Violations
+Page 212requires supplying only a best_friend  object that can respond to
+durability_of_preferred_toy_of_pet . You no longer have to supply instances of Toy and
+Pet, or stub in stubs. Adding these forwarding message s makes Foo easier to test, which means
+it will be easier to reuse.
+Here’s an updated visualization:
+Figure 8.4: LoD Violation Cured With Forwarding
+This change certainly improved the code, but Foo still contains troubling echos of the
+application’s structural problems. While adding the  forwarding technically  decouples Foo from
+Pet and Toy, the new durability_of_preferred_toy_of_pet  message very much implies
+their continued existence. This message name is mer ely a concatenation of the object types and
+messages from the original message chain, and it st rongly suggests that Foo can only be used in
+contexts that also contain Pets and Toys.
+Forwarding messages get named like this when attemp ts to avoid Demeter violations are
+hijacked by knowledge of an application’s existing objects and messages. The trick to honoring
+the Law while simultaneously avoiding encoding the names of existing objects into the names of
+the forwarding messages is to think about design from the message senders point o f view . Foo
+wants to know the durability of the favorite toy of  the pet of their best friend for a reason, and
+the message Foo sends to best_friend  should be named to reflect Foo's desires.
+8.6.2. Curing Demeter Violations
+Page 213In this case, Foo is trying to figure out the right length of time t o schedule for a pet playdate. The
+pets generally play happily until one demolishes it s toy, so the playdate’s time-limit should be
+based on how long the toy can be expected to surviv e.
+If the message Foo sends to best_friend  is playdate_time_limit , the diagram changes to
+look like this:
+Figure 8.5: LoD Violation Cured With Abstraction
+Notice that the above diagram implies nothing about  the existence of objects other than Foo and
+Friend . As far as Foo is concerned, no other objects exist. The playdate_time_limit  message
+reflects Foo's desire to schedule a playdate, but contains no e xpectation about how the Friend
+satisfies this request.
+Once you decide on this new message name, fixing th e code is as simple as changing Foo to send
+it and Friend  to implement it, as shown on lines 13 and 2 below:
+Listing 8.22: Designing From the Message Senders POV
+ 1 class  Friend
+ 2   def playdate_time_limit
+ 3     pet .durability_of_preferred_toy
+ 4   end
+ 5 end
+ 6 
+ 7 # Pet and Toy are unchanged
+ 8 
+8.7. Identifying What The Verse Method Wants
+Page 214 9 # Foo now asks for what it wants instead of
+10 # making assumptions about its collaborators' collaborators.
+11 class  Foo
+12   def playdate_time_limit
+13     best_friend .playdate_time_limit
+14   end
+15 end
+Now that Foo is talking only to a direct collaborator instead p oking around in distant objects, it
+more easily tolerates unexpected change. If a new r equirement arises for playdates to sometimes
+involve children rather than pets, you can satisfy this requirement without changing Foo, as
+shown below.
+Listing 8.23: Some Friends Have Children Rather Than Pets
+ 1 class  FriendWithPet
+ 2   def playdate_time_limit
+ 3     pet .durability_of_preferred_toy
+ 4   end
+ 5 end
+ 6 
+ 7 class  Pet
+ 8   def durability_of_preferred_toy
+ 9     preferred_toy .durability
+10   end
+11 end
+12 
+13 class  Toy
+14   def durability
+15     3600
+16   end
+17 end
+18 
+19 class  FriendWithChild
+20   def playdate_time_limit
+21     child .tolerance_for_social_contact
+22   end
+23 end
+24 
+25 class  Child
+26   def tolerance_for_social_contact
+27     1800
+28   end
+29 end
+30 
+31 class  Foo
+32   def playdate_time_limit
+33     best_friend .playdate_time_limit
+34   end
+35 end
+In the above code, there are now two players of the  friend role, one with a pet and another with
+a child. Both polymorphically implement playdate_time_limit . The world outside of Foo has
+increased in complexity; it’s been redesigned in un anticipated and perhaps alarming ways, but
+Foo's behavior has expanded without Foo itself changing at all. These two changes, injecti ng the
+best_friend  dependency and sending a message named after what Foo wants, permit Foo to
+seamlessly collaborate with new objects and tolerat e unexpected change.
+8.7. Identifying What The Verse Method Wants
+8.7. Identifying What The Verse Method Wants
+Page 215Now that you’ve explored the definition and correct ion of Law of Demeter violations, it’s time to
+return to the problem in the Bottles  verse  method. Here’s a reminder of that code, where line
+4 contains the problem:
+Listing 8.24: Verse Method Contains Many Dependencies Redux
+1 class  Bottles
+2   # ...
+3   def verse (number)
+4     verse_template .new(number) .lyrics
+5   end
+6 end
+You may resist the idea that line 4 above violates the Law of Demeter because you know that
+verse_template  contains a class, and you’ve acquired the habit of  thinking of classes as special.
+They sometimes are, but in cases like this it’s tim e to start treating classes like regular old object s
+that just happen to respond to the new message. From the classes-are-just-objects perspec tive,
+this line of code is very much a LoD violation. Sen ding new to verse_template  returns an
+object that conforms to a different API than the or iginal verse_template  receiver. Put another
+way, the API of the object that responds to new is different from the API of the object that
+responds to lyrics . While a class and an instance of that class are c ertainly both objects, they
+are very different kinds of things.
+The rule for injecting dependencies is that you sho uld inject the thing you want to talk to. In
+other words, the receiver may directly send message s only to the injected object, not to it and all
+of its friends. The practical effect of this rule i s to prohibit the use of injected objects in messag e
+chains that violate the Law of Demeter. If new counts as a real message, and it does, then this
+rule also suggests that you should inject instances , not classes to which you are forced to send
+new and then something else—in this case, lyrics .
+The rule gets broken here because in this case it i s not possible to inject an instance of
+BottleVerse . Have a look at the entire Bottles  class (shown below) and see if you can explain
+why.
+Listing 8.25: Bottles Generates Verse Numbers
+ 1 class  Bottles
+ 2   attr_reader  :verse_template
+ 3 
+ 4   def initialize (verse_template : BottleVerse )
+ 5     @verse_template  = verse_template
+ 6   end
+ 7 
+ 8   def song
+ 9     verses( 99,0)
+10   end
+11 
+12   def verses (upper, lower)
+13     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+14   end
+15 
+16   def verse (number)
+17     verse_template .new(number) .lyrics
+18   end
+19 end
+8.7. Identifying What The Verse Method Wants
+Page 216Notice that when new is sent to verse_template  on line 17 above, number  is passed as an
+argument. One of Bottles ' responsibilities is to calculate number  (in the enumerable on line 13).
+For Bottles  to be independent of BottleVerse , BottleVerse  has to be injected. Because it’s
+impossible for outsiders to know the value of number , they can’t create and inject an instance—
+the best they can do is pass in the class in hopes that some downstream process determines the
+right number  and creates the right object.
+Peculiarities of this domain have pushed you into a  coding corner. You’d like to follow the rule
+and inject an instance of BottleVerse , but you can’t because the correct value of number  isn’t
+known until later. Injecting the class condemns you  to a Law of Demeter violation on line 17. You
+now have to decide whether it’s worthwhile to fix t his violation. This is where your
+programming aesthetic comes into play.
+The code doesn’t look that bad and future maintaine rs may not find it surprising. Many folks
+won’t even notice the problem, or may feel comforta ble ignoring it. What possible harm can
+come from leaving this violation in the code?
+One way to get a quick handle on the consequences o f a code arrangement is to attempt to test it.
+It’s long past time for these extracted classes to have their own tests. The original Bottles  tests
+are providing safety against regressions but supply ing no feedback on the evolving design. Since
+testing everything is the topic of the next chapter , for now just imagine  how you might test the
+Bottles#verse  method.
+Remember that testing is the first form of reuse, s o this mental exercise will give you a hint
+about how easy it will be to reuse Bottles  elsewhere in your application. The amount of test
+setup needed will tell you how tightly coupled Bottles  is to other objects.
+To make this exercise correspond to a real-life pro blem, pretend that lyrics  is an expensive
+operation. Your Bottles  tests should be able to confirm the correctness of  Bottles  without
+running that distant and costly code, so you’d pref er this test not execute the actual lyrics
+method of BottleVerse .
+Because of the Demeter violation, you can’t just in ject a verse_template  that has a simpler
+lyrics  implementation. Instead you have to inject a verse_template  whose new
+implementation returns a different object that cont ains the simpler lyrics  implementation.
+Already this is almost too complicated to explain, which doesn’t bode well for the tests.
+Test setup seems likely to be painful. Pain in test ing is a sign of a rigid application and an
+indication that there’s something wrong with the de sign.
+These difficulties are directly related to the Deme ter violation. If Bottles  sent lyrics  directly
+to verse_template , everything would be more straightforward.
+It’s time to make another wish. If you have a verse  template and you want its lyrics for a given
+verse number, as a dyed-in-the-wool OO practitioner  you have every right to feel entitled to send
+your lyrics(number)  request directly to the verse_template  object you have, as shown on
+line 4 below:
+8.7. Identifying What The Verse Method Wants
+Page 217Listing 8.26: Collaborate Directly With Verse Template
+1 class  Bottles
+2   # ...
+3   def verse (number)
+4     # verse_template.lyrics(number)
+5     verse_template .new(number) .lyrics
+6   end
+7 end
+If you want something, just ask for it. If the rece iver doesn’t know how to comply, teach it. Don’t
+be trapped by what’s currently true, but instead, l oosen coupling by designing  a conversation
+that embodies what the message sender wants.
+The wish in line 4 above doesn’t yet work, so for n ow it’s commented out. Having conceived it,
+it’s easy to make it come true. Add a lyrics(number)  method to the BottleVerse  class, as
+shown on lines 2-4 below:
+Listing 8.27: Teach BottleVerse About Lyrics
+1 class  BottleVerse
+2   def self .lyrics (number)
+3     new(number) .lyrics
+4   end
+5   # ...
+6 end
+This class method does two things. First, it uses f orwarding to eradicate the extra hop and
+resolve the Demeter violation. Next, it establishes  a new API for players of the verse template
+role. Objects that play this role must respond to BottleVerse.lyrics(number) .
+Inside of Bottles , the verse_template  variable is now thought of as holding a player of the
+verse template role rather than the BottleVerse  class. The BottleVerse  class name is still
+visible as the default in the initializer, but in C hapter 9 even this will fall away.
+While the lyrics  class method might sound a lot like the lyrics  instance method, don’t let the
+similarity confuse you. This new BottleVerse.lyrics(number)  message embodies the desire
+of Bottles  to get lyrics from a verse template and represents  the abstraction of what Bottles
+wants. Notice that it’s named lyrics  rather than new_lyrics ; this name is not the combination
+of the message names in the original Demeter violat ion. This message is more like
+playdate_time_limit  than durability_of_preferred_toy_of_pet .
+The instance methods of BottleVerse  are now private implementation details and have
+effectively disappeared from sight. Now that the BottleVerse.lyrics(number)  class method
+exists, you might be tempted to move the behavior f rom those private instance methods into this
+new class method. This would certainly work, and it  would reduce the amount of code. Why
+bother to create an instance of BottleVerse  at all?
+Despite the fact that earlier in this chapter, clas ses were treated as "just another object" when
+deciding if new contributed to a Demeter violation, classes are different from instances in the
+most fundamental object-oriented way. In instances,  common behavior combines with differing
+data to create objects that collaborate to form you r application.
+8.7. Identifying What The Verse Method Wants
+Page 218Putting domain behavior on the class side rather th an on the instance side places a bet that this
+domain concept will never involve data that varies.  This bet makes sense only if the value of not
+typing n e and w today is greater than the future cost of convertin g all the class methods to
+instance methods should you find that data needs to  vary.
+Since class methods resist refactoring,[22] the cost of moving domain behavior from the class to
+the instance can be very high, and can far outweigh  the paltry savings you get from avoiding
+typing new. Because you cannot know the future, you cannot co rrectly guess when to follow
+which strategy. This suggests that the most economi cal overall plan is to always create instances
+of objects. Don’t waste a minute thinking about whe ther or not to do this. Part of your
+programming aesthetic is to reflexively put domain behavior on instances.
+Now that the BottleVerse  class responds to BottleVerse.lyrics(number)  you can return to
+Bottles  and reduce the verse  to the wishful line of code, as shown below:
+Listing 8.28: Reduce Verse to the Fulfilled Wish
+1 class  Bottles
+2   # ...
+3   def verse (number)
+4     verse_template .lyrics(number)
+5   end
+6 end
+Having made that change, here’s an overview of the resulting Bottles  and BottleVerse
+classes.
+Listing 8.29: BottleVerse Class Responds to Lyrics
+ 1 class  Bottles
+ 2   attr_reader  :verse_template
+ 3 
+ 4   def initialize (verse_template : BottleVerse )
+ 5     @verse_template  = verse_template
+ 6   end
+ 7 
+ 8   def song
+ 9     verses( 99,0)
+10   end
+11 
+12   def verses (upper, lower)
+13     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+14   end
+15 
+16   def verse (number)
+17     verse_template .lyrics(number)
+18   end
+19 end
+20 
+21 class  BottleVerse
+22   def self .lyrics (number)
+23     new(number) .lyrics
+24   end
+25 
+26   attr_reader  :number
+27 
+28   def initialize (number)
+29     @number  = number
+8.8. Pushing Object Creation to the Edge
+Page 21930   end
+31 
+32   def lyrics
+33     bottle_number = BottleNumber .for(number)
+34 
+35     "#{bottle_number } of beer on the wall, " .capitalize +
+36     "#{bottle_number } of beer. \n" +
+37     "#{bottle_number .action }, " +
+38     "#{bottle_number .successor } of beer on the wall. \n"
+39   end
+40 end
+Not only has the BottleVerse  class has been extracted and injected, but the res ulting Demeter
+violation has been fixed by adding a forwarding met hod.
+Now that you understand the Law of Demeter, followi ng it should become a part of your
+programming aesthetic. Be extremely biased towards fixing violations. The overall cost of
+dealing with each transgression as it occurs is gua ranteed to be less than the ultimate cost of
+repairing the few that spiral out of control after infecting your code for several years.
+Admittedly, there are a few situations in which vio lating Demeter makes sense. For example, a
+report that prints all the relationships in your da tabase should violate Demeter rather than
+introduce a bunch of new forwarding messages. But t hese situations are exceptions. In general,
+don’t violate the Law of Demeter, and fix violation s as you come upon them.
+The above code looks quite reasonable, but studying  it should remind you of one final concern.
+Despite the efforts in this chapter to depend on ab stractions rather than concretions, line 33
+above still contains a concretion. The lyrics  method of BottleVerse  contains a hard-coded
+reference to BottleNumber . The next and final section explores alternative w ays to arrange this
+code.
+8.8. Pushing Object Creation to the Edge
+The final unresolved issue is that the lyrics  instance method in BottleVerse  directly
+references the concrete BottleNumber  class.
+Here’s a reminder of BottleVerse :
+Listing 8.30: Lyrics Instance Method Depends on BottleNumber Class
+ 1 class  BottleVerse
+ 2   def self .lyrics (number)
+ 3     new(number) .lyrics
+ 4   end
+ 5 
+ 6   attr_reader  :number
+ 7 
+ 8   def initialize (number)
+ 9     @number  = number
+10   end
+11 
+12   def lyrics
+13     bottle_number = BottleNumber .for(number)
+14 
+15     "#{bottle_number } of beer on the wall, " .capitalize +
+16     "#{bottle_number } of beer. \n" +
+17     "#{bottle_number .action }, " +
+8.8. Pushing Object Creation to the Edge
+Page 22018     "#{bottle_number .successor } of beer on the wall. \n"
+19   end
+20 end
+The above code contains a lyrics(number)  class method (line 2) and a lyrics  instance
+method (line 12). The class method is injected with  a number . This class method creates a new
+instance of BottleVerse , which it initializes with that number  and then sends lyrics  to the
+result.
+The code in the lyrics  instance method (referred to in the following as #lyrics  for clarity) is
+concerning in a number of ways.
+First, line 13 of #lyrics  knows about, or depends on, both BottleNumber  and for. It would be
+better if the method could do its job without havin g to know these things.
+Next, #lyrics  contains a blank line. This suggests a change of t opic, which in turn suggests that
+the method does more than one thing. The Blank Line  ™ code smell tells you that #lyrics
+probably violates the Single Responsibility Princip le.
+Finally, pause a minute and attempt to describe how  #lyrics  uses number . Notice that there is
+only one reference to number  in the entire method, and that the purpose of this  single reference
+is to convert number  into something else. This should make the hair on your OO neck stand up. If
+someone else knows enough to provide #lyrics  with the right number , surely that someone can
+provide the right BottleNumber  instead.
+If you consider these observations in combination, you’ll notice that they overlap. The code offset
+by the blank line contains the BottleNumber  concretion, which responds to for, and thus turns
+number  into a different object. While the three listed co ncerns might appear to reflect unrelated
+problems, each is actually a symptom of a single de sign issue. This is good news because it
+means that one fix will cure them all.
+Well-designed object-oriented applications consist of loosely-coupled objects that rely on
+polymorphism to vary behavior. Injecting dependenci es loosens coupling. Polymorphism
+isolates variant behavior into sets of interchangea ble objects that look the same from the outside
+but behave differently on the inside.
+From the point of view of the object whose collabor ators are being injected, this is perfect.
+Because these injection-receiving objects can inter act with new and unexpected collaborators
+without having to change, they are extremely flexib le. Need a new variant? Just create a new
+class to represent that variant and inject it. The receiver knows not and cares not.
+However, this way of thinking about OO introduces a  concern that hasn’t yet been fully
+addressed. Where do these injected objects get crea ted? When? And by whom?
+Applications that use dependency injection evolve, naturally and of necessity, into systems
+where object creation begins to separate from objec t use. Object creation gets pushed more
+towards the edges, towards the outside, and the obj ects themselves interact more towards the
+middle, or the inside.
+8.8. Pushing Object Creation to the Edge
+Page 221In this case, the code would be simpler if you conv erted number  to BottleNumber  at an earlier
+point in the code and just used the result later in  #lyrics . This change would move object
+creation back in the stack, more towards the edge o f this application.
+Taking a step back, consider that the current code arrangement works. You don’t have a new
+requirement. Also, despite being bound to a concret ion, the #lyrics  method is already fairly
+flexible. Because BottleNumber .for is a factory, it’s already possible to add or chan ge bottle
+number role players without breaking the #lyrics  method. The factory could manufacture new
+bottle numbers of a different type, and BottleVerse#lyrics  could happily collaborate with
+these new objects without having to change.
+Everything in the prior paragraph argues that this code is fine as is and suggests that you should
+walk away now. But there’s one more rule (or perhap s more a guideline) that belongs in your
+aesthetic about writing object-oriented code. The h ard-coded reference to the BottleNumber
+class in the #lyrics  instance method is troubling. Experienced object-o riented programmers
+know that applications most easily adapt to the unk nown future if they:
+resist giving instance methods knowledge of concret e class names, and
+seek opportunities to move the object creation towa rds the edges of the application.
+These are guidelines, not hard and fast rules, so y ou can allow yourself some leeway. This is
+especially true in cases like this where the hard-c oded reference is to a factory, so the coupling is
+already loose. Even so, you should be eternally ale rt for instance methods that reference class
+names and perpetually on the lookout for ways to re move those references.
+In this case, it’s easy to remove the BottleNumber  reference from #lyrics  while
+simultaneously pushing object creation back in the stack. By happy coincidence, fixing the
+Demeter violation in the prior section created the perfect place to convert number  into a
+BottleNumber .
+Have a look at the new wish on line 3 below:
+Listing 8.31: Inject a BottleNumber Via Wishful Thinking
+1 class  BottleVerse
+2   def self .lyrics (number)
+3     # new(BottleNumber.for(number)).lyrics
+4     new(number) .lyrics
+5   end
+6   # ...
+7 end
+Line 3 above converts number  to BottleNumber  in the same method where the BottleVerse
+instance gets created. Notice how this change begin s to group object creation and separate it
+from object use.
+This wish changes the type of the object that gets passed to BottleVerse  instances during
+initialization. As you may recall from Listing 6.33: Return Argument If Already a Bottle N umber ,
+the way to refactor through a type change is to alt er the receiving code so that it temporarily
+8.8. Pushing Object Creation to the Edge
+Page 222tolerates both the old type and the new. Line 5 bel ow does just that by tolerating both number s
+and BottleNumber s.
+Listing 8.32: Accept Number or BottleNumber
+1 class  BottleVerse
+2   # ...
+3   def lyrics
+4     bottle_number =
+5       (number .is_a?( BottleNumber ) ? number : BottleNumber .for(number))
+6     # ...
+7   end
+8 end
+Now that #lyrics  works regardless of type, you can return to the
+BottleVerse.lyrics(number)  class method and uncomment the wishful code, as sh own
+below:
+Listing 8.33: Try the Wishful Code
+1 class  BottleVerse
+2   def self .lyrics (number)
+3     new(BottleNumber .for(number)) .lyrics
+4     new(number) .lyrics
+5   end
+6   # ...
+7 end
+Running the tests proves that line 3 above executes  without blowing up. Next, delete the old code
+on 4 and run the tests again. This should work, red ucing BottleVerse  to:
+Listing 8.34: Inject a BottleNumber Into BottleVerse at Creation
+ 1 class  BottleVerse
+ 2   def self .lyrics (number)
+ 3     new(BottleNumber .for(number)) .lyrics
+ 4   end
+ 5 
+ 6   attr_reader  :number
+ 7 
+ 8   def initialize (number)
+ 9     @number  = number
+10   end
+11 
+12   def lyrics
+13     bottle_number =
+14       (number .is_a?( BottleNumber ) ? number : BottleNumber .for(number))
+15 
+16     "#{bottle_number } of beer on the wall, " .capitalize +
+17     "#{bottle_number } of beer. \n" +
+18     "#{bottle_number .action }, " +
+19     "#{bottle_number .successor } of beer on the wall. \n"
+20   end
+21 end
+Now that the new type is being injected, you can re move the temporary type check in #lyrics .
+This reduces line 13 below to the following slightl y confusing line of code.
+Listing 8.35: Remove Temporary Type Check
+8.8. Pushing Object Creation to the Edge
+Page 223 1 class  BottleVerse
+ 2   def self .lyrics (number)
+ 3     new(BottleNumber .for(number)) .lyrics
+ 4   end
+ 5 
+ 6   attr_reader  :number
+ 7 
+ 8   def initialize (number)
+ 9     @number  = number
+10   end
+11 
+12   def lyrics
+13     bottle_number = number
+14 
+15     "#{bottle_number } of beer on the wall, " .capitalize +
+16     "#{bottle_number } of beer. \n" +
+17     "#{bottle_number .action }, " +
+18     "#{bottle_number .successor } of beer on the wall. \n"
+19   end
+20 end
+The above works but contains obsolete remnants of number . This code is tantalizingly close to
+being finished, and at this point it’s tempting to jump ahead and make several changes at once.
+For example, if you were to rename number  to bottle_number  on lines 6-10 and delete lines 13-
+14, you’d be done.
+This last bit is easy if you’re willing to change e verything at once, but since this example stands
+in for bigger, real-world problems, it’s worth prac ticing how to fix these names with smaller
+changes. Before doing so, however, it’s finally tim e to amend the one-line rule.
+Instead of being restricted to one-line changes, re factoring permits one-undo  changes. The
+broadened one-undo rule allows you to use the find/ replace feature of your text editor to make
+many changes at once. If you make a swath of change s in one editor command and the tests
+continue to pass, you can go on. If any test fails,  you must undo and make a better change.
+The following examples show a simple refactoring th at renames number  to bottle_number  in
+BottleVerse . You might find it interesting to attempt bigger l eaps by changing many lines at
+once with your editor. Just remember, undo and try again if any change breaks the tests.
+For this refactoring, first add an attr_reader  to access bottle_number  (line 3 below), and
+initialize @bottle_number  to the currently injected number  variable (line 7).
+Listing 8.36: Set Bottle Number to Number
+ 1 class  BottleVerse
+ 2   # ...
+ 3   attr_reader  :number , :bottle_number
+ 4 
+ 5   def initialize (number)
+ 6     @number  = number
+ 7     @bottle_number  = number
+ 8   end
+ 9   # ...
+10 end
+8.8. Pushing Object Creation to the Edge
+Page 224Now that the bottle_number  message returns an actual bottle number, you can d elete
+bottle_number = number  and the following blank line from #lyrics , which leaves:
+Listing 8.37: Lyrics No Longer Uses a Local Variable
+ 1 class  BottleVerse
+ 2   # ...
+ 3   attr_reader  :number , :bottle_number
+ 4 
+ 5   def initialize (number)
+ 6     @number  = number
+ 7     @bottle_number  = number
+ 8   end
+ 9 
+10   def lyrics
+11     "#{bottle_number } of beer on the wall, " .capitalize +
+12     "#{bottle_number } of beer. \n" +
+13     "#{bottle_number .action }, " +
+14     "#{bottle_number .successor } of beer on the wall. \n"
+15   end
+16 end
+The only remaining task is to remove number  references from the attr_reader  and
+initialize  methods. Doing this with one-line changes is possi ble (you should try it on your
+own) but awkward enough to permit employing the one -undo technique. The following example
+introduces an alternate initialize  method.
+Listing 8.38: Wishful Initialize Methods
+ 1 class  BottleVerse
+ 2   # ...
+ 3   attr_reader  :number , :bottle_number
+ 4 
+ 5   def initialize (bottle_number)
+ 6     @bottle_number  = bottle_number
+ 7   end
+ 8 
+ 9   def initialize (number)
+10     @number  = number
+11     @bottle_number  = number
+12   end
+13   # ...
+14 end
+Once the alternate initialize  method on line 5 is proven syntactically correct b y the tests,
+activate it by deleting the original on lines 9-12.  After that, you can delete the obsolete
+attr_reader  for number  from line 3. This reduces the BottleVerse  class to:
+Listing 8.39: Consolidated Object Creation
+ 1 class  BottleVerse
+ 2   def self .lyrics (number)
+ 3     new(BottleNumber .for(number)) .lyrics
+ 4   end
+ 5 
+ 6   attr_reader  :bottle_number
+ 7 
+ 8   def initialize (bottle_number)
+ 9     @bottle_number  = bottle_number
+10   end
+11 
+8.9. Summary
+Page 22512   def lyrics
+13     "#{bottle_number } of beer on the wall, " .capitalize +
+14     "#{bottle_number } of beer. \n" +
+15     "#{bottle_number .action }, " +
+16     "#{bottle_number .successor } of beer on the wall. \n"
+17   end
+18 end
+That’s the end of this refactoring. Before moving o n to the chapter summary, ponder one last
+issue. It could be argued that BottleVerse.lyrics(number)  is doing more than one thing. Not
+only does it create two new objects, a player of th e bottle number role and an instance of the
+BottleVerse  class, but it also sends #lyrics  to one of those creations.
+If you wanted to rigorously separate object creatio n from object use, you could refactor this code
+into the following:
+Listing 8.40: Optional Separation of Creation and Use
+ 1 class  BottleVerse
+ 2   def self .for(number)
+ 3     new(BottleNumber .for(number))
+ 4   end
+ 5 
+ 6   def self .lyrics (number)
+ 7     self .for(number) .lyrics
+ 8   end
+ 9   # ...
+10 end
+The above code, however, may be more abstract and i ndirect than even your newly-expanded
+programming aesthetic requires. This separation can  be deferred until someone asks for a
+change that requires direct access to a BottleVerse  object, rather than simply requesting that
+object’s lyrics.
+8.9. Summary
+This chapter pulled the lyrics of the "99 Bottles" song out of Bottles  and put them into a new
+BottleVerse  class. It then injected an instance of BottleVerse  back into Bottles . Extracting
+BottleVerse  reduced the Bottles 's responsibilities, making it easier to understand  and
+maintain. Injecting BottleVerse  into Bottles  loosened the coupling between Bottles  and the
+outside world. Bottles  now thinks of itself as being injected with player s of the verse template
+role and will happily collaborate with any newly ar riving object as long as that object responds
+to lyrics(number) .
+The impetus behind extracting BottleVerse  was a new requirement to produce songs with
+different lyrics, that is, to vary the verse. The r efactorings in this chapter satisfied that
+requirement by following a fundamental strategy of object-oriented design: extracting the
+BottleVerse  class isolated the behavior that the new requireme nt needed to vary.
+While continuing to lean on code smells and refacto ring recipes, this chapter introduced the idea
+of a programming aesthetic. A programming aesthetic  is the set of internal heuristics that guide
+your behavior in times of uncertainty. Vague feelin gs about the rightness of code become part of
+your aesthetic once you can eloquently and convinci ngly use actual words to explain your
+8.9. Summary
+Page 226concerns and proposed improvements. A good programm ing aesthetic focuses attention on
+improvements that are likely to prove worthwhile.
+This chapter suggested five precepts that belong in  everyone’s object-oriented programming
+aesthetic:
+Put domain behavior on instances.
+Be averse to allowing instance methods to know the names of constants.
+Seek to depend on injected abstractions rather than  hard-coded concretions.
+Push object creation to the edges, expecting object s to be created in one place and used in
+another.
+Avoid Demeter violations, using the temptation to c reate them as a spur to search for
+deeper abstractions.
+The practical effect of following these precepts is  to loosen the coupling between objects. The
+code to which you would apply them generally alread y works so adherence might seem optional,
+and is certainly not free. Complying with these pre cepts will frequently increase the amount of
+code and add levels of indirection, at least in the  short term. However, these added costs are
+overwhelmingly offset by the eventual savings accru ed as a result of decoupling.
+Any application that survives will change. The only  thing of which you can be more confident is
+that you cannot predict where this change will occu r. The certainty of change coupled with the
+uncertainty of that change’s location means that yo ur best programming strategy is to strive to
+loosen the coupling of all code everywhere from the  moment of initial creation.
+Therefore, these precepts don’t attempt to guess th e future; rather, they leverage against it.
+Instead of writing code that speculatively imagines  a later need for one specific feature, they tell
+you to loosen the coupling of all code so that you can easily adapt to whatever future arrives.
+Uncertainty about the future is not a license to gu ess; it’s a directive to decouple. Your future will
+be brighter if you develop a programming aesthetic that drives you to do so.
+9.1.1. Contrasting Unit and Integration Tests

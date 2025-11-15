@@ -1,0 +1,1224 @@
+Page 222. Test Driving Shameless Green
+The previous chapter examined four solutions to the  "99 Bottles" problem, and asserted that the
+one known as Shameless Green is best. The Shameless  Green solution consists of intention-
+revealing, working software, and is the result of w riting simple code to pass a series of pre-
+supplied tests.
+The provenance of the code that was written in Chap ter 1 is obvious, but the tests appeared
+without explanation. It is now time to take a step back, and investigate how to create tests that
+lead to Shameless Green.
+2.1. Understanding Testing
+A generation ago, a handful of extreme programming (XP) practitioners began writing
+automated tests using a technique they called "test  first development." Their ideas were so
+influential that automated tests are now the norm, and these tests are often written first, in
+prelude to writing code.
+The practice of writing tests before writing code b ecame known as test-driven development
+(TDD). In its simplest form, TDD works like this:
+1. Write a test.
+Because the code does not yet exist, this test fail s. Test runners usually display failing tests
+in red.
+2. Make it run.
+Write the code to make the test pass. Test runners commonly display passing tests in
+green .
+3. Make it right.
+Each time you return to green, you can refactor any  code into a better shape, confident
+that it remains correct if the tests continue to pa ss.
+In Test-Driven Development by Example , Kent Beck describes this as the Red/Green/Refactor  cycle
+and calls it "the TDD mantra."
+The ideas of testing, and of testing first, have wo n the hearts and minds of programmers.
+However, a commitment to writing tests doesn’t make  this easy. TDD presents a never-ending
+challenge. You must repeatedly decide which test to  write next, how to arrange code so that the
+test passes, and how much refactoring to do once it  does. Each decision requires judgment and
+has consequences.
+If your TDD judgment is not yet fully developed, it ’s reasonable to temporarily adopt that of a
+master. Here’s an excellent guiding principle:
+Quick green excuses all sins.
+— Kent Beck
+2.2. Writing the First Test
+Page 23
+““Test-Driven Development by Example
+Green means safety. Green indicates that, at least as evidenced by the tests at hand, you
+understand the problem. Green is the wall at your b ack that lets you move forward with
+confidence. Getting to green quickly simplifies all  that follows.
+This chapter illustrates how to incrementally creat e tests and then use these tests to drive the
+development of code. The examples obediently follow  the Red/Green/Refactor cycle, but are
+fairly conservative. Because the initial goal is mo re about reaching green than writing perfect
+code, the refactoring step sometimes removes duplic ation and other times retains it.
+The plan is to create tests that thoroughly describ e the "99 Bottles" problem, and then to solve the
+problem with the implementation known as Shameless Green . The Shameless Green solution
+strives for maximum understandability but is genera lly unconcerned with changeability.
+Shameless Green does not assert that changeability isn’t important; it merely recognizes that
+getting to green quickly is often at odds with writ ing perfectly changeable code. This chapter
+concentrates on creating the tests and writing simp le code to pass them. Future chapters refactor
+the resulting code to improve the design.
+2.2. Writing the First Test
+The first test is often the most difficult to write . At this point, you know the least about whatever
+it is you intend to do. Your problem is a big, fuzz y, amorphous blob, and it’s challenging to reach
+in and carve off a single piece. It feels important  to choose well, because where you start informs
+how you’ll proceed, and ultimately determines where  you’ll end. The first test can therefore
+seem fraught with peril.
+Despite its apparent import, the choice you make he re hardly matters. In the beginning, you
+have ideas about the problem but actually know very  little. Your ideas may turn out to be
+correct, but it’s just as possible that time will p rove them wrong. You can’t figure out what’s right
+until you write some tests, at which time you may r ealize that the best course of action is to
+throw everything away and start over. Therefore, th e purpose of some of your tests might very
+well be to prove that they represent bad ideas. Lea rning which ideas won’t work is forward
+progress, however disappointing it may be in the mo ment.
+So, while it is important to consider the problem and to sketch ou t an overall plan before writing
+the first test, don’t overthink it. Find a starting  place and get going, in faith that as you proceed,
+the fog will clear.
+If you were to sketch out a public Application Prog ramming Interface (API) for "99 Bottles," it
+might look like this:
+verse(n)  Return the lyrics for the verse number n
+verses(a, b)  Return the lyrics for verses numbered a through b
+song  Return the lyrics for the entire song
+2.2. Writing the First Test
+Page 24This API allows others to request a single verse, a  range of verses, or the entire song.
+Now that you have a plan for the API, there are a n umber of possibilities for the first test. You
+could write a test for the entire song, for a serie s of contiguous verses, or for any single verse.
+Because the easiest way to get started is to tackle  something that you thoroughly understand, it
+makes sense to begin by testing a single verse, and  the most logical first verse to test is the first
+verse to be sung. Here’s that test, written in Mini test:
+Listing 2.1: Verse 99 Test
+ 1 class  BottlesTest  < Minitest ::Test
+ 2   def test_the_first_verse
+ 3     expected =
+ 4       "99 bottles of beer on the wall, "  +
+ 5       "99 bottles of beer. \n" +
+ 6       "Take one down and pass it around, "  +
+ 7       "98 bottles of beer on the wall. \n"
+ 8     assert_equal expected, Bottles .new.verse( 99)
+ 9   end
+10 end
+The test above is as simple as can be, but notice t hat writing it required making many decisions.
+It contains both a class name ( Bottles ) and a method name ( verse(n) ). This test assumes that
+the Bottles  class defines a verse  method that takes a number as an argument, and it asserts
+that invoking that method with an argument of 99 returns the lyrics for the 99th verse.
+This test, like all tests, contains three parts:
+Setup  Create the specific environment required for the t est.
+Do Perform the action to be tested.
+Verify  Confirm the result is as expected.
+Lines 3-7 above define the expected result and are thus part of the setup. Setup continues on line
+8, where a new bottle is created via Bottles.new . Line 8 also sends verse(99) , which is the
+action, and then verifies the result with assert_equal .
+Running that test produces this error:
+1) Error: 
+BottlesTest#test_the_first_verse: 
+NameError: uninitialized constant BottlesTest::Bottles 
+  test/bottles_test.rb:16:in `test_the_first_verse'
+TDD tells you to write the simplest code that will pass this test. In this case, your goal is to write
+only enough code to change the error message. The a bove error states that the Bottles  class
+does not yet exist, so the first step is to define it, as follows:
+Listing 2.2: Empty Class
+1 class  Bottles
+2 end
+2.2. Writing the First Test
+Page 25If you’re new to TDD, this may seem like a ridiculo usly small step. Because you wrote the test,
+you can confidently predict that running it a secon d time will now produce the following error:
+1) Error: 
+BottlesTest#test_the_first_verse: 
+NoMethodError: undefined method `verse' for #<Bottles:0x007fde360741f0> 
+  test/bottles_test.rb:16:in `test_the_first_verse'
+You can change this error message by adding a verse  method.
+Listing 2.3: Empty Method
+1 class  Bottles
+2   def verse
+3   end
+4 end
+Running the test now produces this error:
+1) Error: 
+BottlesTest#test_the_first_verse: 
+ArgumentError: wrong number of arguments (1 for 0) 
+  /Users/skm/Projects/books/99bottles/lib/bottles.rb:6:in `verse' 
+  test/bottles_test.rb:16:in `test_the_first_verse'
+The verse  method requires an argument. Notice that nothing a bout this message requires you to
+add code to the verse  method, so merely adding an argument will suffice to change the error.
+Ruby programmers by convention use _ for the name of an unused argument. This argument is
+unused, at least at this moment, so _ is a reasonable name for now.
+class  Bottles  
+  def verse (_) 
+  end
+end
+Running the test again produces the following error :
+1) Failure: 
+BottlesTest#test_the_first_verse [test/bottles_test.rb:16]: 
+--- expected 
++++ actual 
+@@ -1,3 +1 @@ 
+-"99 bottles of beer on the wall, 99 bottles of beer. 
+-Take one down and pass it around, 98 bottles of beer on the wall. 
+-" 
++nil
+There’s finally sufficient code so that the test fa ils because the output is not as expected instead
+of dying because of an exception.
+Minitest shows the difference between expected and actual output by prefixing the expected
+with '-' and the actual with '+'. Therefore, you ca n interpret the above failure as indicating that
+Minitest expected…
+"99 bottles of beer on the wall, 99 bottles of beer ." followed by a newline, followed by
+2.3. Removing Duplication
+Page 26"Take one down and pass it around, 98 bottles of be er on the wall." followed by another
+newline
+but instead got nil.
+Pay particular attention to how newlines are repres ented above. The expected output string
+contains two newlines, specified as \n in the test and shown as line breaks above. The la st
+expected line (which contains only -") represents the empty line that follows the final newline.
+Once you reach this point, it’s easy to make the te st pass; just copy the expected output into the
+verse  method:
+Listing 2.4: Verse 99 Code
+1 class  Bottles
+2   def verse (_)
+3     "99 bottles of beer on the wall, "  +
+4     "99 bottles of beer. \n" +
+5     "Take one down and pass it around, "  +
+6     "98 bottles of beer on the wall. \n"
+7   end
+8 end
+The API says that verse  takes an argument, but you can make this first tes t pass without actually
+using it. Therefore, the argument continues to be n amed "_" in line 2 above.
+Although this code passes the test, it clearly does n’t solve the entire problem. As a matter of fact,
+writing a second test will break it. While it may s eem pointless to write an obviously temporary
+and transitional bit of code, this is the essence o f TDD.
+You as the writer of tests know that the verse  method must eventually take the value of its
+argument into account, but you as the writer of cod e must act in ignorance of this fact. When
+doing TDD, you toggle between wearing two hats. Whi le in the "writing tests" hat, you keep your
+eye on the big picture and work your way forward wi th the overall plan in mind. When in the
+"writing code" hat, you pretend to know nothing oth er than the requirements specified by the
+tests at hand. Thus, although each individual test is correct, until all are written, the code is
+incomplete.
+2.3. Removing Duplication
+Now that the first test passes, you must decide wha t to test next. This next test should do the
+simplest, most useful thing that proves your existi ng code to be incorrect. While it may have
+been difficult to conceive of the first test becaus e the possibilities seem infinite, this next test i s
+often easier because it checks something relative t o the first.
+Verses 99 through 3 are nearly identical—they diffe r only in that the number changes within
+each verse. The test above already checks the high end of this range, and therefore it now makes
+sense to test the low.
+The following test for verse 3 exposes the current verse  method to be insufficient:
+2.3. Removing Duplication
+Page 27Listing 2.5: Verse 3 Test
+1 def test_another_verse
+2   expected =
+3     "3 bottles of beer on the wall, "  +
+4     "3 bottles of beer. \n" +
+5     "Take one down and pass it around, "  +
+6     "2 bottles of beer on the wall. \n"
+7   assert_equal expected, Bottles .new.verse( 3)
+8 end
+TDD requires that you pass tests by writing simple code. However, most programming problems
+have many solutions, and it’s not always clear whic h one is simplest. For example, the following
+code passes the current tests by naming the incomin g argument and adding a conditional that
+checks the value of number  and returns the correct string:
+Listing 2.6: Conditional
+ 1 def verse (number)
+ 2   if number == 99
+ 3     "99 bottles of beer on the wall, "  +
+ 4     "99 bottles of beer. \n" +
+ 5     "Take one down and pass it around, "  +
+ 6     "98 bottles of beer on the wall. \n"
+ 7   else
+ 8     "3 bottles of beer on the wall, "  +
+ 9     "3 bottles of beer. \n" +
+10     "Take one down and pass it around, "  +
+11     "2 bottles of beer on the wall. \n"
+12   end
+13 end
+At first glance, this code appears to have achieved  the ultimate in simplicity. It can produce only
+the lyrics for verses 99 and 3, and so does the abs olute minimum needed to pass the tests.
+But consider that it now contains a conditional whe re none existed before. This may cause you to
+recall the discussion on Cyclomatic Complexity  in Chapter 1. This conditional adds a new
+execution path through the code, and additional exe cution paths increase complexity. This code
+is simple in the sense that it can’t do much, but i t does that one small thing in an overly complex
+way.
+Part of the problem is that although the if statement switches on number , the true and false
+branches contain many things that don’t vary based on number . The branches do differ in that
+one says 99/98, and the other 3/2, but they are the  same for all of the other lyrics. This code
+conflates things that change with things that remai n the same, and so forces you to parse strings
+with your eyes to figure out how number  matters.
+If you were to alter the if statement to return only the things that change, t he code would look
+like this:
+Listing 2.7: Sparse Conditional
+ 1 def verse (number)
+ 2   if number == 99
+ 3     n = 99
+ 4   else
+ 5     n = 3
+2.3. Removing Duplication
+Page 28 6   end
+ 7 
+ 8   "#{n} bottles of beer on the wall, "  +
+ 9   "#{n} bottles of beer. \n" +
+10   "Take one down and pass it around, "  +
+11   "#{n - 1} bottles of beer on the wall. \n"
+12 end
+This code is still very specific to the two existin g tests—it can produce the lyrics for verses 99 and
+3, and no other. Notice, however, that it now has t wo parts. The first part (lines 2-6) contains the
+conditional, and the second (lines 8-11) contains a  template that could  correctly generate many
+verses. Lines 2-6 are still specific to the existin g tests, but now that you’ve separated the things
+that change from the things that remain the same, l ines 8-11 are generalizable to every verse
+between 99 and 3.
+If you were to continue down the "specific" path, y ou would progressively add tests for the
+verses between 97 and 4, each time altering the if statement to add a condition to check for that
+number. Following this strategy would ultimately re sult in 97 nearly identical tests and 97 nearly
+identical verses; each would differ only in the val ues of the numbers.
+The obvious alternative is to instead make the code  more general. Because the existing template
+already works for every verse between 99 and 3, you  could change this code to produce those
+verses by deleting the if statement and altering the template to refer to number , as shown here:
+Listing 2.8: Generalized Verse
+1 def verse (number)
+2   "#{number } bottles of beer on the wall, "  +
+3   "#{number } bottles of beer. \n" +
+4   "Take one down and pass it around, "  +
+5   "#{number -1} bottles of beer on the wall. \n"
+6 end
+Left to your own devices, your instinct would likel y have been to write the code above without
+bothering with the intermediate steps shown in Listing 2.6: Conditional  and Listing 2.7: Sparse
+Conditional . However, even if you would naturally have started  with this more general version,
+it’s important to understand and be able to articul ate the implications of the other
+implementation.
+The difference between the solution that adds a con ditional and the solution that adds a variable
+into a string is that in the first, as the tests ge t more specific, the code stays equally specific. E very
+verse has its own personal test and its own individ ual code; there will never be a time when the
+code can do anything which is not explicitly tested .
+However, in Listing 2.8: Generalized Verse , as the tests get more specific, the code gets more
+generic . Once the test of verse 3 is written, the code is then generalized to produce lyrics for all
+verses within the 3-99 range.
+Remember that the purpose of this chapter is to qui ckly get to Shameless Green. With that goal in
+mind, consider the above solutions and answer this question: Which is simplest?
+2.4. Tolerating Duplication
+Page 29As previously noted, metrics aren’t everything, but  they can certainly be a useful something . In
+hopes that data will help answer this question, the  following chart shows Source Lines Of Code,
+Cyclomatic Complexity and ABC metrics for the varia nts, calculated roughly with pencil and
+paper.
+Table 2.1: Metrics for Code Variants After Tests of Verse 97 and 3
+Solution SLOC Cyclomatic
+ComplexityABC
+Listing 2.6: Conditional 13 2 2.0
+Listing 2.7: Sparse
+Conditional12 2 2.8
+Listing 2.8: Generalized
+Verse6 1 0
+As you can see, as the examples progress, they get shorter, and the Cyclomatic Complexity score
+improves. The ABC score, on the other hand, gets wo rse before it gets better. You must, of course,
+take metrics with a grain of salt, but here they ca st a clear vote for replacing duplication with an
+abstraction as done in Listing 2.8: Generalized Verse .
+The next section examines a nearly identical situat ion where the choice of what to do about
+duplication is not nearly so clear-cut.
+2.4. Tolerating Duplication
+Verses 2, 1 and 0 must still be tested, and each is  unique. Having established a pattern of testing
+verses in the order that they appear, it makes sens e to next test verse 2.
+Verse 2 differs in one small way from the previous 97. The final phrase in all previous verses
+refers to " n bottles" on the wall, and thus the word "bottles" is plural. Here in verse 2, however,
+the final phrase reads "1 bottle." Therefore, in li ne 6 of the following test of verse 2, the word
+"bottle" is singular instead of plural.
+Listing 2.9: Verse 2 Test
+1 def test_verse_2
+2   expected =
+3     "2 bottles of beer on the wall, "  +
+4     "2 bottles of beer. \n" +
+5     "Take one down and pass it around, "  +
+6     "1 bottle of beer on the wall. \n"
+7   assert_equal expected, Bottles .new.verse( 2)
+8 end
+Running that test produces the following failure:
+-Take one down and pass it around, 1 bottle of beer on the wall. 
++Take one down and pass it around, 1 bottles of beer on the wall.
+2.4. Tolerating Duplication
+Page 30This failure is perfect; the test expected 1 bottle , but got 1 bottles .
+As was true with the test for verse 3, there are tw o fundamentally different ways to pass this test.
+You can add a new conditional around  the existing code, or use the value of number  in some way
+within  it.
+This next example illustrates the first possibility  by wrapping the code in a new conditional:
+Listing 2.10: Stark Conditional
+ 1 def verse (number)
+ 2   if number == 2
+ 3     "2 bottles of beer on the wall, "  +
+ 4     "2 bottles of beer. \n" +
+ 5     "Take one down and pass it around, "  +
+ 6     "1 bottle of beer on the wall. \n"
+ 7   else
+ 8     "#{number } bottles of beer on the wall, "  +
+ 9     "#{number } bottles of beer. \n" +
+10     "Take one down and pass it around, "  +
+11     "#{number -1} bottles of beer on the wall. \n"
+12   end
+13 end
+In contrast, the following alternative embeds logic  into the existing verse string:
+Listing 2.11: Conditional With Embedded Logic
+1 def verse (number)
+2   "#{number } bottles of beer on the wall, "  +
+3   "#{number } bottles of beer. \n" +
+4   "Take one down and pass it around, "  +
+5   "#{number -1} bottle #{'s' unless  (number -1) == 1} of beer "  +
+6     "on the wall. \n"
+7 end
+At first glance, these two solutions look a lot lik e the alternatives previously explored for verse 3.
+Listing 2.10: Stark Conditional  wraps the existing code in a new conditional (as d id Listing 2.6:
+Conditional ). Moreover, Listing 2.11: Conditional With Embedded Logic  amends the verse string
+(similar to Listing 2.8: Generalized Verse ).
+The choice of the best alternative for verse 3 was guided by metrics, and this might again be
+useful here. The following table shows metrics for the new examples:
+Table 2.2: Metrics for Code Variants After Test of Verse 2
+Solution SLOC Cyclomatic
+ComplexityABC
+Listing 2.10: Stark
+Conditional13 2 2
+Listing 2.11: Conditional
+With Embedded Logic7 2 2
+2.4. Tolerating Duplication
+Page 31While Listing 2.11: Conditional With Embedded Logic  is about half as long as Listing 2.10: Stark
+Conditional , both examples contain a conditional, and neither contains any assignments. As a
+result, their Cyclomatic Complexity scores are iden tical, as are their ABC scores. The only
+difference between the examples, at least as far as  the metrics are concerned, is that Listing 2.11:
+Conditional With Embedded Logic  is shorter. Shorter is often better, but, unfortun ately, not in
+this case.
+As was stated in the previous section, as tests get  more specific, code should become more
+generic. Code becomes more generic by becoming more  abstract. One way to make code more
+abstract is to DRY it out, that is, to extract dupl icate bits of code into a single method, to give th at
+method a name, and then to refer to the code by thi s new name. DRYing out code removes the
+duplication and thus reduces its overall size.
+In Listing 2.11: Conditional With Embedded Logic , the code has definitely gotten shorter. One
+would hope this happened because the code got more abstract, but sadly, this is not the case.
+Examine the new conditional (repeated below for con venience):
+1 "#{number -1} bottle #{'s' unless  (number -1) == 1} of beer "  +
+Notice that, even if an abstraction lurks here, it certainly has not been named. If forced to
+suggest a name, you might call the underlying conce pt "pluralization," asserting that the new
+conditional handles pluralization by adding an "s" to the string "bottle" when number-1  is other
+than 1.
+If pluralization is a meaningful abstraction for "9 9 Bottles," perhaps you should create a
+pluralize  method, as follows:
+  def verse  
+    #...  
+    "#{number -1} #{pluralize(number) } of beer "  
+    #...  
+  end 
+ 
+  def pluralize (number) 
+    "bottle #{'s' unless  (number -1) == 1}" 
+  end
+Unfortunately, the code above just confuses the iss ue. The concept of pluralization is a red
+herring.[7] The need for it appeared suddenly and so it feels like an important, meaningful, test-
+driven idea, but only because you’re working with i ncomplete information.
+Examine Listing 2.11: Conditional With Embedded Logic  and count the number of times the
+word "bottle" occurs, regardless of whether it’s in  singular or plural form. The fact that "bottle" is
+duplicated many times signals that there’s an under lying concept that has not yet been
+unearthed. Within the domain of the song, "bottle/b ottles" represents something important, and
+that thing is not pluralization. These words all have something in c ommon, and hiding a single
+occurrence behind pluralization logic obscures this  commonality. Making one look different will
+ultimately make it harder to see how all are the sa me.
+2.5. Hewing to the Plan
+Page 32Code like this pluralize  method gets written when programmers take the DRY principle to
+extremes, as if they’re allergic to duplication. DR Y is important but if applied too early, and with
+too much vigor, it can do more harm than good. When  faced with a situation like this, ask these
+questions:
+Does the change I’m contemplating make the code har der to understand?
+When abstractions are correct, code is easy to unde rstand. Be suspicious of any change
+that muddies the waters; this suggests an insuffici ent understanding of the problem.
+What is the future cost of doing nothing now?
+Some changes cost the same regardless of whether yo u make them now or delay them
+until later. If it doesn’t increase your costs, del ay making changes. The day may never
+come when you’re forced to make the change, or time  may provide better information
+about what the change should be. Either way, waitin g saves you money.
+When will the future arrive, or how soon will I get  more information?
+If you’re in the middle of writing a test suite, be tter information is as close as the next test.
+Squeezing all duplication out at the end of every t est is not necessary. It’s perfectly
+reasonable to tolerate a bit of duplication across several tests, hoping that coding up a
+number of slightly duplicative examples will reveal  the correct abstraction. It’s better to
+tolerate duplication than to anticipate the wrong a bstraction.
+Both Listing 2.10: Stark Conditional  and Listing 2.11: Conditional With Embedded Logic  have
+identical ABC and Cyclomatic Complexity scores. Fro m the metrics point of view, the only
+measurable difference between the examples is that Listing 2.11: Conditional With Embedded
+Logic  is shorter. Unfortunately, it isn’t shorter becaus e it contains an abstraction; it’s shorter
+because it crams lack of understanding into a very small space. This brevity makes the code
+harder to understand, and obscures the concept that  underlies "bottles."
+Writing Shameless Green means optimizing for unders tandability, not changeability, and
+patiently tolerating duplication if doing so will h elp reveal the underlying abstraction.
+Subsequent tests, or future requirements, will prov ide the exact information necessary to
+improve the code.
+Although Listing 2.10: Stark Conditional  retains some duplication, it resists creating an
+abstraction in advance of all available information , and so is the better of these two solutions.
+2.5. Hewing to the Plan
+As you’ve seen, when working towards Shameless Gree n, it makes sense sometimes to eliminate
+duplication and other times to retain it. The Shame less Green solution is optimized to be
+straightforward and intention-revealing, and it doe sn’t much concern itself with changeability or
+future maintenance. The goal is to use green to max imize your understanding of the problem
+and to unearth all available information before committing to abstrac tions.
+At some point (actually, by the end of this chapter ) you will have written a full test suite for "99
+Bottles," and a complete Shameless Green solution. Once that’s done, you’ll have two choices. You
+2.5. Hewing to the Plan
+Page 33could deploy the shameless code to production and w alk away, or you could refactor it into a
+more changeable arrangement by DRYing out duplicati on and extracting abstractions.
+Within Shameless Green, it is perfectly acceptable to create abstractions of ideas for which you
+have many unambiguous examples. For example, Listing 2.8: Generalized Verse  reduced 97
+verses to a single abstraction. Having 97 examples gives you confidence that you are seeing the
+correct abstraction, and creating that abstraction early makes the code easier to understand.
+When writing Shameless Green, you should express th e unambiguous abstractions but avoid
+grasping for the not-quite visible ones. Listing 2.11: Conditional With Embedded Logic  jammed a
+conditional inside the verse string to avoid having  to write a separate, mostly duplicate, copy of
+verse 2. In this case the new code was confusing an d there were only two examples, so here it’s
+better to take a deep breath and write down all of verse 2 while awaiting more information.
+Think of the path to Shameless Green as running on a horizontal axis. Some changes propel you
+forward along this path and help you quickly reach green, while others are speculative and
+possibly distracting tangents in a vertical directi on. You should complete the entire horizontal
+path before indulging in any vertical digressions.
+Now that you have code for verses 99-2, it makes se nse to continue along the horizontal path and
+write a test for verse 1, as follows:
+Listing 2.12: Verse 1 Test
+1 def test_verse_1
+2   expected =
+3     "1 bottle of beer on the wall, "  +
+4     "1 bottle of beer. \n" +
+5     "Take it down and pass it around, "  +
+6     "no more bottles of beer on the wall. \n"
+7    assert_equal expected, Bottles .new.verse( 1)
+8 end
+Verse 1 is different from the others in a number of  ways:
+It begins with "1 bottle" instead of "1 bottles"
+It says "Take it down" instead of "Take one down"
+It ends with "no more bottles" instead of "0 bottle s"
+While it’s possible to pass this test by adding log ic to the verse string, your experience with the
+prior example should dissuade you from choosing to do so. Verse 1 is even more special than
+was verse 2, and having decided that verse 2 was di fferent enough to justify adding a condition,
+the patient path to Shameless Green requires that y ou make the same decision in the case of
+verse 1.
+The following example adds the code for verse 1. Wh ile doing so, it converts the existing if
+statement to a case  statement:
+Listing 2.13: Verse 1 Code
+2.5. Hewing to the Plan
+Page 34 1 def verse (number)
+ 2   case  number
+ 3   when  1
+ 4     "1 bottle of beer on the wall, "  +
+ 5     "1 bottle of beer. \n" +
+ 6     "Take it down and pass it around, "  +
+ 7     "no more bottles of beer on the wall. \n"
+ 8   when  2
+ 9     "2 bottles of beer on the wall, "  +
+10     "2 bottles of beer. \n" +
+11     "Take one down and pass it around, "  +
+12     "1 bottle of beer on the wall. \n"
+13   else
+14     "#{number } bottles of beer on the wall, "  +
+15     "#{number } bottles of beer. \n" +
+16     "Take one down and pass it around, "  +
+17     "#{number -1} bottles of beer on the wall. \n"
+18   end
+19 end
+Given the prior discussion, it makes sense to add a  new branch to the conditional for verse 1, but
+this example also switched from if to case . These keywords tell a different story.
+Look at the following pseudocode and ponder the inf erences a future reader might draw. Put
+yourself in their place; imagine that you didn’t wr ite the code and that you don’t completely
+understand it. What does it mean to write if rather than case ?
+if number == 1 
+  # something
+elsif  number == 2 
+  # something else
+else  
+  # default
+end
+case  number
+when  1 
+  # something
+when  2 
+  # something else
+else  
+  # default
+end
+Use of if / elsif  implies that each subsequent condition varies in a  meaningful way. Because
+elsif  is often used to test wildly different conditions,  future readers will feel obliged to closely
+examine each one.
+In contrast, use of case  implies that every condition checks for equality a gainst an explicit value.
+While it’s true that the when  clause supports more complicated operations, the f orm above is
+most common and is the one your readers will expect . Readers of case  statements expect
+conditions to be fundamentally the same.
+In the 99 Bottles case above, the conditions are fundamentally the same. Switching from if to
+case  when you add the code for verse 1 implies this sam eness, and so is an act of kindness
+2.5. Hewing to the Plan
+Page 35towards your reader. Intention-revealing code is bu ilt from the accumulation of such thoughtful
+acts.
+The verse  method is accumulating lots of duplication, and th is may feel troubling. However, you
+are very close to having code to produce every vers e. While it may be tempting to veer onto the
+vertical path and begin DRYing out duplication, it’ s best to push forward horizontally.
+With the end in sight, the cost of finishing the ho rizontal path is low. Once it’s complete, you’ll
+have an example of every different kind of verse, a nd therefore maximal information about the
+problem. When the current code is easy to understan d, and more information is imminent, be
+shameless and scramble  towards green.
+Proceeding horizontally, then, here’s the test for verse 0:
+Listing 2.14: Verse 0 Test
+1 def test_verse_0
+2   expected =
+3     "No more bottles of beer on the wall, "  +
+4     "no more bottles of beer. \n" +
+5     "Go to the store and buy some more, "  +
+6     "99 bottles of beer on the wall. \n"
+7   assert_equal expected, Bottles .new.verse( 0)
+8 end
+Verse 0 is unique in the following ways:
+It says "No/no more bottles" instead of "0 bottles"
+It says "Go to the store and buy some more" instead  of "Take it/one down and pass it
+around"
+It ends with "99 bottles"
+At this point you will likely be unsurprised to fin d that verse 0 gets its own branch in the
+conditional, as shown here:
+Listing 2.15: Verse 0 Code
+ 1 def verse (number)
+ 2   case  number
+ 3   when  0
+ 4     "No more bottles of beer on the wall, "  +
+ 5     "no more bottles of beer. \n" +
+ 6     "Go to the store and buy some more, "  +
+ 7     "99 bottles of beer on the wall. \n"
+ 8   when  1
+ 9     "1 bottle of beer on the wall, "  +
+10     "1 bottle of beer. \n" +
+11     "Take it down and pass it around, "  +
+12     "no more bottles of beer on the wall. \n"
+13   when  2
+14     "2 bottles of beer on the wall, "  +
+15     "2 bottles of beer. \n" +
+16     "Take one down and pass it around, "  +
+17     "1 bottle of beer on the wall. \n"
+18   else
+2.6. Exposing Responsibilities
+Page 3619     "#{number } bottles of beer on the wall, "  +
+20     "#{number } bottles of beer. \n" +
+21     "Take one down and pass it around, "  +
+22     "#{number -1} bottles of beer on the wall. \n"
+23   end
+This code completes the verse  method. You now have tests for all the verse varia nts, and code to
+make each test pass.
+This implementation reveals some important concepts  in the domain. It’s easy, for example, to
+see that there are 4 basic verse variants: verse 0,  verse 1, verse 2 and verses 3-99. Also, verses 3-
+99 are so much alike that it made sense to produce them with the same bit of code.
+The other verses differ, not only from the 3-99 cas e, but also from each other. The case
+statement above makes it obvious that 0, 1 and 2 ar e special, although granted, it’s difficult to see
+in what way. You have to read the code carefully to  see how the verses are unique.
+The code is easy to understand because there aren’t  many levels of indirection. This lack of
+indirection is a direct result of the dearth of abs tractions. Following the horizontal path means
+writing code to produce every kind of verse before diverging onto tangents to DRY out small bits
+of code that the verses have in common. The goal is  to quickly maximize the number of whole
+examples before extracting abstractions from their parts.
+Now that you can produce any single verse, it’s tim e to turn your attention to producing groups
+of verses.
+2.6. Exposing Responsibilities
+The plan is for the verses(a, b)  method to take two arguments. These arguments are numbers
+that specify the range of verses for which the meth od should generate lyrics. The high-level API
+has been defined, but before writing the next test,  you must make several more precise
+decisions:
+In what order do these arguments appear? Does the f irst argument represent the first
+verse to sing, such that it is always greater than the second, or vice versa? In essence, what
+exactly do a and b represent, and how should they be named?
+Do the arguments denote an inclusive list, that is,  should you produce lyrics for the entire
+range specified?
+What actual argument values does it make most sense  to test?
+Groups of verses get sung from a higher to a lower number, so it makes sense to have the initial
+argument represent the first verse to sing, and thu s the higher number. It also seems natural to
+specify an inclusive list of verse numbers. Once yo u make these decisions, you’ve finalized this
+part of the API and can begin considering the tests .
+The first verses  test, like the first verse  test, should be the simplest thing imaginable. At the
+beginning of this chapter, when writing the initial  verse  test, it made sense to start with the first
+verse of the song. Following that pattern, here it makes sense to start in the same place, with
+2.6. Exposing Responsibilities
+Page 37verse 99. However, since the verses  method produces a sequence  of verses, it needs two
+arguments. The shortest possible sequence is two, s o it’s reasonable for this first test to be for the
+sequence from 99 to 98.
+Here’s the test:
+Listing 2.16: Verses 99 98 Test
+ 1 def test_a_couple_verses
+ 2   expected =
+ 3     "99 bottles of beer on the wall, "  +
+ 4     "99 bottles of beer. \n" +
+ 5     "Take one down and pass it around, "  +
+ 6     "98 bottles of beer on the wall. \n" +
+ 7     "\n" +
+ 8     "98 bottles of beer on the wall, "  +
+ 9     "98 bottles of beer. \n" +
+10     "Take one down and pass it around, "  +
+11     "97 bottles of beer on the wall. \n"
+12   assert_equal expected, Bottles .new.verses( 99, 98)
+13 end
+Here’s one possible way to pass that test:
+Listing 2.17: Verses 99 98 Literal
+ 1 def verses (_, _)
+ 2   "99 bottles of beer on the wall, "  +
+ 3   "99 bottles of beer. \n" +
+ 4   "Take one down and pass it around, "  +
+ 5   "98 bottles of beer on the wall. \n" +
+ 6   "\n" +
+ 7   "98 bottles of beer on the wall, "  +
+ 8   "98 bottles of beer. \n" +
+ 9   "Take one down and pass it around, "  +
+10   "97 bottles of beer on the wall. \n"
+11 end
+Although the code above clearly passes the test, ma ny programmers will find it objectionable. If
+asked to articulate the flaw, you might complain th at it duplicates code from the verse  method.
+This is certainly true. The verse  method already contains a fair amount of duplicati on, and this
+new verses  method repeats some of that existing code.
+Some duplication is tolerable during the search for  Shameless Green. However, not all
+duplication is helpful, and there’s something about  the duplication introduced above that means
+it should not be tolerated. This new code muddies rather than cl arifies the waters, and it’s
+important to understand why.
+Duplication is useful when it supplies independent,  specific examples of a general concept that
+you don’t yet understand. For example, in the prior  section, the case  statement within verse
+evolved to contain four different templates. Those templates are concrete examples of a more
+generic verse. Each supplies unique information, bu t together they point you towards the
+underlying abstraction.
+2.6. Exposing Responsibilities
+Page 38The problem with the verses  implementation above is that it does not isolate a new,
+independent example, but instead, it duplicates one  that you’ve already identified. The code to
+produce verses 99 and 98 already exists in the else  clause of the case  statement of verse
+(repeated below).
+Listing 2.18: Verse Owns the Default
+1 def verse (number)
+2   case  number
+3   # ...
+4   else
+5     "#{number } bottles of beer on the wall, "  +
+6     "#{number } bottles of beer. \n" +
+7     "Take one down and pass it around, "  +
+8     "#{number -1} bottles of beer on the wall. \n"
+9   end
+Note that Listing 2.17: Verses 99 98 Literal  is just the non-generalized version of the above
+pattern. Thus, this new code duplicates an example that already exists  and so supplies no new
+information about the problem. In addition, duplica ting this already-existing code masks the
+true responsibility of verses . This method would be more intention-revealing if this hidden
+responsibility were exposed instead of obscured.
+The verses  method is responsible for understanding its input arguments, and for knowing how
+to use these arguments to produce the correct outpu t. Its job is not to know the exact lyrics for
+any verse. Its job is, rather, to repeatedly refer this question on to the verse  method, and to
+accumulate the answers into a multi-verse string.
+Code longs to be as ignorant as possible. While it makes perfect sense for the verse  method to be
+responsible for knowing the verse templates, once verse  assumes this responsibility, other parts
+of your application should not usurp it.
+Here’s an alternative implementation of verses  that knows less but reveals more:
+Listing 2.19: Verses 99 98 Message
+1 def verses (_, _)
+2   verse( 99) + "\n" + verse( 98)
+3 end
+The story this code tells is that verses  are made up of verse s (sorry), and that there’s a
+relationship between a sequence of verses and an in dividual verse. Listing 2.17: Verses 99 98
+Literal  hid that relationship, while this example begins t o expose it.
+The code above is the simplest thing that passes th is test, but you’re probably chomping at the bit
+to do more. You are surely aware that the verses  method must ultimately produce lyrics for all
+100 verses. You recognize that the code above is in complete and therefore temporary. You know
+that the real verses  implementation will ultimately loop from upper to lower, invoking verse
+for each number and accumulating the response. Foll owing the "simplest-thing" rule here may
+feel tedious and time-consuming when the real solut ion is so obvious.
+2.6. Exposing Responsibilities
+Page 39In Chapter 28 of Test-Driven Development by Example , Kent Beck describes different ways to
+make tests pass. Three of his "Green Bar Patterns" are:
+Fake It ("Til You Make It")
+Obvious Implementation
+Triangulate
+The previous two attempts at verses  (Listing 2.17: Verses 99 98 Literal  and Listing 2.19: Verses
+99 98 Message ) are examples of Fake It  because although each implementation passes the
+current test, the tests are not yet complete. The f irst example was abandoned in favor of the
+second, but both are Fakes  because neither does everything the final spec wil l require.
+An Obvious Implementation  solution is, well, obvious, and what’s obvious her e is that the verses
+should loop from 99 down to 0, invoking verse  for each number and concatenating the results.
+When the obvious implementation is evident, it make s sense to jump straight to it. If you are
+absolutely certain of the correct implementation, t here’s no need to wear a hair shirt[8] and
+repetitively inch through a series of tiny steps.
+Notice, however, that attractive though this idea i s, it is fraught with peril. The small steps of TDD
+act to incrementally reveal the correct implementat ion. If your absolute certainty turns out to be
+wrong, skipping these incremental steps means you m iss the opportunity of being set right. An
+apparently "obvious" implementation that is actuall y an incorrect guess will cause a world of
+downstream pain.
+Fake It  style TDD may initially seem awkward and tedious, but with practice it becomes both
+natural and speedy. Developing the habit of writing  just enough code to pass the tests forces you
+to write better tests. It also provides an antidote  for the hubris of thinking you know what’s right
+when you’re actually wrong. Although it sometimes m akes sense to skip the small steps and
+jump immediately to the final solution, exercise ca ution. It’s best to save Obvious Implementation
+for very small leaps.
+The next Green Bar Pattern is Triangulate , which Beck describes as a way to "conservatively
+drive abstraction with tests." Triangulation requir es writing several tests at once, which means
+you’ll have multiple simultaneous broken tests. The  idea is to write one bit of code which makes
+all of the tests pass. Triangulation is meant to fo rce you to converge upon the correct abstraction
+in your code.
+Triangulation is such a useful idea that Shameless Green expands it from tests to code. You can
+expose a common, underlying abstraction through the  accumulation of multiple concrete
+examples. These concrete code examples often contai n some duplication, but this duplication is
+fine as long as each overall example is independent  and unique.
+Now that the verses  method works for 99 and 98, the next step is to wr ite a test that asserts it
+can generate other sequences. At this point, it mak es sense to test the other end of the range.
+Here’s a test for the verses from 2 down to 0:
+2.6. Exposing Responsibilities
+Page 40Listing 2.20: Verses 2, 1, 0 Test
+ 1 def test_a_few_verses
+ 2   expected =
+ 3     "2 bottles of beer on the wall, "  +
+ 4     "2 bottles of beer. \n" +
+ 5     "Take one down and pass it around, "  +
+ 6     "1 bottle of beer on the wall. \n" +
+ 7     "\n" +
+ 8     "1 bottle of beer on the wall, "  +
+ 9     "1 bottle of beer. \n" +
+10     "Take it down and pass it around, "  +
+11     "no more bottles of beer on the wall. \n" +
+12     "\n" +
+13     "No more bottles of beer on the wall, "  +
+14     "no more bottles of beer. \n" +
+15     "Go to the store and buy some more, "  +
+16     "99 bottles of beer on the wall. \n"
+17   assert_equal expected, Bottles .new.verses( 2, 0)
+18 end
+Once again you must choose between hard-coding a ne w special case or generalizing the code.
+For example, you could  make the test pass by explicitly adding a new cond itional to the verses
+method, like so:
+Listing 2.21: Verses Specific Ranges
+1 def verses (upper, lower)
+2   if upper == 99
+3     verse( 99) + "\n" + verse( 98)
+4   else
+5     verse( 2) + "\n" + verse( 1) + "\n" + verse( 0)
+6   end
+7 end
+Alternatively, you could alter the code to make it more abstract, as follows:
+Listing 2.22: Verses Within a Range
+1 def verses (upper, lower)
+2   upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+3 end
+This choice between a) adding a conditional or b) m aking the code more abstract should remind
+you of an earlier discussion. Back in the Removing Duplication  section, you faced the identical
+situation when altering verse  to pass the test for verse 3.
+In both cases, there are many existing examples of the problem and the underlying abstraction is
+well understood. Therefore, the arguments made in Removing Duplication  apply here just as
+they did previously.
+Relative to its alternative, Listing 2.22: Verses Within a Range  is easier to understand and just as
+cheap to implement, and you have all the informatio n you need to feel confident that it’s correct.
+It is the best solution not only because it passes the test, but also because it clearly exposes the
+responsibility of verses  to produce any range of verses. It generalizes the code, which is  the best
+choice when you are confident that you understand t he abstraction.
+2.7. Choosing Names
+Page 41Now that you can generate any sequence of verses, t he final task is to produce lyrics for the
+entire song.
+2.7. Choosing Names
+At the start of this chapter, the plan was to creat e a Bottles  class that implemented the
+following API:
+verse(n)
+verses(upper, lower)        # initially verses(a, b)
+song
+Thus far, this plan has worked swimmingly. The verse  and verses  methods are complete; it’s
+time to move on to song .
+The code to produce the entire song is quite straig htforward, as shown here:
+Listing 2.23: Song Code
+1 def song
+2   verses( 99,0)
+3 end
+This is a good time to reflect upon the API as a wh ole, and to reconsider the song  method. The
+body of song  is scarcely longer than its name. As the verses  method is already in the public API,
+users of Bottles  don’t need  the song  method at all—they could send verses(99,0)  and get
+back the same output.
+Extraneous code adds costs without providing benefi ts, and at this point, it’s quite reasonable to
+challenge the need for song . Does song  serve a purpose independent of verses , or is it
+redundant and thus a candidate for deletion?
+Answering this question requires thinking about the  problem from the message sender’s point of
+view . While it’s true that verses(99, 0)  and song  return the same output, they differ widely in
+the amount of knowledge they require from the sende r. From the sender’s point of view, it is one
+thing to know that you want all of the lyrics to th e "99 Bottles" song, but it is quite another to
+know how Bottles  produces those lyrics.
+Knowledge that one object has about another creates  a dependency. Dependencies tie objects
+together, exacerbating the cost of change. Your goa l as a message sender  is to incur a limited
+number of dependencies, and your obligation as a method provider  is to inflict few.
+The song  method imposes a single dependency; to use it, you  need only know its name.
+Using the verses  method to request the entire song, however, requir es significantly more
+knowledge. The sender must know:
+the name of the verses  method
+2.8. Revealing Intentions
+Page 42
+““that the method requires two arguments
+that the first argument is the verse on which to st art
+that the second argument is the verse on which to e nd
+that the song starts on verse 99
+that the song ends on verse 0
+This is a lot of knowledge. There are many ways in which the verses  method could change that
+would break senders of this message.
+2.8. Revealing Intentions
+Kent Beck explains the difference between intention  and implementation.
+The distinction between intention and implementation […]  allows you to
+understand a computation first in essence and later, if nec essary, in detail.
+— Kent Beck
+Implementation Patterns (p. 69)
+Here song  is the intention, and verses(99, 0)  is the implementation. There’s a big difference
+between wanting the lyrics for a range of verses, a nd wanting the lyrics for the entire song. The
+verses  method is in the public API, so it must continue t o exist, but its existence doesn’t obviate
+the need for song . Senders of the song  message want all of the verses, and they oughtn’t be
+forced to trouble themselves with details about how  this happens.
+The song  method having defended its worth, here’s the full Shameless Green for 99 Bottles.
+Listing 2.24: Shameless Green Initial
+ 1 class  Bottles
+ 2   def song
+ 3     verses( 99,0)
+ 4   end
+ 5 
+ 6   def verses (upper, lower)
+ 7     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+ 8   end
+ 9 
+10   def verse (number)
+11     case  number
+12     when  0
+13       "No more bottles of beer on the wall, "  +
+14       "no more bottles of beer. \n" +
+15       "Go to the store and buy some more, "  +
+16       "99 bottles of beer on the wall. \n"
+17     when  1
+18       "1 bottle of beer on the wall, "  +
+19       "1 bottle of beer. \n" +
+20       "Take it down and pass it around, "  +
+21       "no more bottles of beer on the wall. \n"
+22     when  2
+23       "2 bottles of beer on the wall, "  +
+24       "2 bottles of beer. \n" +
+25       "Take one down and pass it around, "  +
+2.9. Writing Cost-Effective Tests
+Page 4326       "1 bottle of beer on the wall. \n"
+27     else
+28       "#{number } bottles of beer on the wall, "  +
+29       "#{number } bottles of beer. \n" +
+30       "Take one down and pass it around, "  +
+31       "#{number -1} bottles of beer on the wall. \n"
+32     end
+33   end
+34 end
+Pleasing as this code may be, the alert reader will  have noticed that the song  method was
+introduced without first writing a test. This is a clear violation of TDD.
+Indeed, there are a number of gaps in the tests. Fo r example, there is no coverage for individual
+verses 4 through 97, and there’s no guarantee that these verses appear in the correct order.
+Bottles  now produces that correct output, and it’s temptin g to walk away at this point.
+However, doing so transfers the burden of keeping t his code running to some poor downstream
+programmer, one who has far less understanding of t he problem than you do right now.
+The next section, therefore, is concerned with tigh tening up the tests.
+2.9. Writing Cost-E ective Tests
+TDD promises straightforward, bug-free software tha t can be confidently and easily changed.
+TDD does not claim to be free, merely that its bene fits outweigh its costs.
+Belief in the value of TDD has become mainstream, a nd the pressure to follow this practice
+approaches an unspoken mandate. Acceptance of this mandate is illustrated by the fact that it’s
+common for folks who don’t  test to tender sheepish apologies. Even those who don’t test seem to
+believe they ought to do so.
+Despite this general agreement, the sad truth is th at the promise of TDD has not been universally
+fulfilled. Many applications have tests that are di fficult to understand, challenging to change, and
+prohibitively time-consuming to run. Instead of ena bling change, these tests actively impede it.
+The world is littered with test suites that are rou ndly hated by their maintainers, sometimes to
+the point of abandonment.
+A great deal of this pain originates with tests tha t are tied too closely to code. When this is true,
+every improvement to the code breaks the tests, for cing them to change in turn. Therefore, the
+first step in learning the art of testing is to und erstand how to write tests that confirm what  your
+code does without any knowledge of how  your code does it.
+This section explores the problem of test-to-code c oupling. As a reminder of the current state of
+affairs, here are the current tests:
+Listing 2.25: No Song Test
+ 1 class  BottlesTest  < Minitest ::Test
+ 2   def test_the_first_verse
+ 3     expected =
+ 4       "99 bottles of beer on the wall, "  +
+2.9. Writing Cost-Effective Tests
+Page 44 5       "99 bottles of beer. \n" +
+ 6       "Take one down and pass it around, "  +
+ 7       "98 bottles of beer on the wall. \n"
+ 8     assert_equal expected, Bottles .new.verse( 99)
+ 9   end
+10 
+11   def test_another_verse
+12     expected =
+13       "3 bottles of beer on the wall, "  +
+14       "3 bottles of beer. \n" +
+15       "Take one down and pass it around, "  +
+16       "2 bottles of beer on the wall. \n"
+17     assert_equal expected, Bottles .new.verse( 3)
+18   end
+19 
+20   def test_verse_2
+21     expected =
+22       "2 bottles of beer on the wall, "  +
+23       "2 bottles of beer. \n" +
+24       "Take one down and pass it around, "  +
+25       "1 bottle of beer on the wall. \n"
+26     assert_equal expected, Bottles .new.verse( 2)
+27   end
+28 
+29   def test_verse_1
+30     expected =
+31       "1 bottle of beer on the wall, "  +
+32       "1 bottle of beer. \n" +
+33       "Take it down and pass it around, "  +
+34       "no more bottles of beer on the wall. \n"
+35      assert_equal expected, Bottles .new.verse( 1)
+36   end
+37 
+38   def test_verse_0
+39     expected =
+40       "No more bottles of beer on the wall, "  +
+41       "no more bottles of beer. \n" +
+42       "Go to the store and buy some more, "  +
+43       "99 bottles of beer on the wall. \n"
+44     assert_equal expected, Bottles .new.verse( 0)
+45   end
+46 
+47   def test_a_couple_verses
+48     expected =
+49       "99 bottles of beer on the wall, "  +
+50       "99 bottles of beer. \n" +
+51       "Take one down and pass it around, "  +
+52       "98 bottles of beer on the wall. \n" +
+53       "\n" +
+54       "98 bottles of beer on the wall, "  +
+55       "98 bottles of beer. \n" +
+56       "Take one down and pass it around, "  +
+57       "97 bottles of beer on the wall. \n"
+58     assert_equal expected, Bottles .new.verses( 99, 98)
+59   end
+60 
+61   def test_a_few_verses
+62     expected =
+63       "2 bottles of beer on the wall, "  +
+64       "2 bottles of beer. \n" +
+65       "Take one down and pass it around, "  +
+66       "1 bottle of beer on the wall. \n" +
+67       "\n" +
+68       "1 bottle of beer on the wall, "  +
+2.10. Avoiding the Echo-Chamber
+Page 4569       "1 bottle of beer. \n" +
+70       "Take it down and pass it around, "  +
+71       "no more bottles of beer on the wall. \n" +
+72       "\n" +
+73       "No more bottles of beer on the wall, "  +
+74       "no more bottles of beer. \n" +
+75       "Go to the store and buy some more, "  +
+76       "99 bottles of beer on the wall. \n"
+77     assert_equal expected, Bottles .new.verses( 2, 0)
+78   end
+79 end
+2.10. Avoiding the Echo-Chamber
+The output of song  is a string of one hundred very similar verses. Th e method does not yet have
+a test. Programmers who want to remedy this omissio n, but who are hyper-alert to duplication,
+may be tempted to test song  like this:
+Listing 2.26: Whole Song Test Logic
+1 def test_the_whole_song
+2   bottles = Bottles .new
+3   assert_equal bottles .verses( 99, 0), bottles .song
+4 end
+The test above asserts that song  returns the same output as does verses(99, 0) . On its face,
+this seems like a great idea. The test is short, it  passes, it was easy to write, and (at least for th e
+moment, while you’re immersed in the problem) it’s easy to understand. However, this test has a
+major flaw that can cause it to toggle from "short and sweet" to "painful and costly" in the blink
+of an eye. This flaw lies dormant until something c hanges, so the benefits of writing tests like this
+accrue to the writer today, while the costs are pai d by an unfortunate maintainer in the future.
+Understanding this flaw requires being clear about song 's responsibilities. From the message
+sender’s point of view, song  is responsible for returning the lyrics for all 10 0 verses. Imagine that
+you were tasked to test this method but knew nothin g about how Bottles  was implemented.
+You would be unaware of the existence of the verses  method, and would have no choice other
+than to test song  by asserting that its output matched those lyrics.
+Asserting that song  returns the expected lyrics is very different from  asserting that song  returns
+the same thing as verses . In the first case, the song  test is independent of implementation
+details and so tolerates changes to other parts of the class without breaking. In the second case,
+the song  test is coupled to the current Bottles  implementation such that it will break if the
+signature or behavior of verses  changes, even if song  continues to return the correct lyrics .
+There’s nothing more frustrating than making a chan ge that preserves the behavior of an
+application but breaks apparently unrelated tests. If you change an implementation detail while
+retaining existing behavior and are then confronted  with a sea of red, you are right to be
+exasperated. This is completely avoidable, and a si gn that tests are too tightly coupled to code.
+Such tests impede change and increase costs.
+Not only is the above song  test too tightly-coupled to the current Bottles  implementation, it
+doesn’t even force you to write the right code. The  following badly-broken Bottles  class passes
+2.10. Avoiding the Echo-Chamber
+Page 46the test suite without actually producing the corre ct song. Notice that the verses  method below
+can only return verses 99-98, verses 2-0, or the st ring "ok."
+Listing 2.27: Badly Broken Bottles Song
+ 1 class  Bottles
+ 2   def song
+ 3     verses( 99,0)
+ 4   end
+ 5 
+ 6   def verses (upper, lower)
+ 7     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+ 8   end
+ 9 
+10   def verses (upper, lower)
+11     if upper == 99 && lower == 98
+12       verse( 99) + "\n" + verse( 98)
+13     elsif  upper == 2
+14       verse( 2) + "\n" + verse( 1) + "\n" + verse( 0)
+15     else
+16       "ok"
+17     end
+18   end
+19 
+20   def verse (number)
+21     case  number
+22     when  0
+23       "No more bottles of beer on the wall, "  +
+24       "no more bottles of beer. \n" +
+25       "Go to the store and buy some more, "  +
+26       "99 bottles of beer on the wall. \n"
+27     when  1
+28       "1 bottle of beer on the wall, "  +
+29       "1 bottle of beer. \n" +
+30       "Take it down and pass it around, "  +
+31       "no more bottles of beer on the wall. \n"
+32     when  2
+33       "2 bottles of beer on the wall, "  +
+34       "2 bottles of beer. \n" +
+35       "Take one down and pass it around, "  +
+36       "1 bottle of beer on the wall. \n"
+37     else
+38       "#{number } bottles of beer on the wall, "  +
+39       "#{number } bottles of beer. \n" +
+40       "Take one down and pass it around, "  +
+41       "#{number -1} bottles of beer on the wall. \n"
+42     end
+43   end
+44 end
+The above code exploits weaknesses in the test to g et to green without actually producing all of
+the verses. To correct this, you might be tempted t o change the song  test as follows:
+Listing 2.28: Whole Song Test Logic Again
+1 def test_the_whole_song
+2   bottles = Bottles .new
+3   expected =
+4     99.downto( 0).collect { |i| bottles .verse(i)
+5       } .join( "\n")
+6   assert_equal expected, bottles .song
+7 end
+2.10. Avoiding the Echo-Chamber
+Page 47This new test succeeds in forcing song  to produce every verse, but altering the test in t his way
+just digs a deeper hole. Consider what just happene d. The original test asserts that sending song
+produces the same result as running the code curren tly contained in song . In other words, it
+asserts that
+song
+and
+verses( 99, 0)
+return the same output.
+This new test asserts that song  produces the same result as running the code curre ntly
+contained in verses . So
+song
+and
+99.downto( 0).collect { |i| bottles .verse(i)} .join( "\n")
+return the same output.
+Notice that although this second variant forces the  production of every verse, the test continues
+to echo code from Bottles . Now, instead of asserting that the output from song  is like the
+current implementation of song , it asserts that the output of song  is like the current
+implementation of verses . This doesn’t improve the test, but just tightly c ouples the test to code
+that’s one step farther back in the stack. If that more-distant code changes, this test might break.
+There’s an obvious solution to this testing problem , one alluded to above. The song  test should
+know nothing about how the Bottles  class produces the song. The clear and unambiguous
+expectation here is that song  return the complete set of lyrics, and the best an d easiest way to
+test song  is to explicitly assert that it does.
+Here’s that test:
+Listing 2.29: Song Test
+ 1 def test_the_whole_song
+ 2   expected = <<~SONG
+ 3     99 bottles of beer on the wall, 99 bottles of beer .
+ 4     Take  one down and pass it around, 98 bottles of beer on the wall .
+ 5 
+ 6     98 bottles of beer on the wall, 98 bottles of beer .
+ 7     Take  one down and pass it around, 97 bottles of beer on the wall .
+ 8 
+ 9     97 bottles of beer on the wall, 97 bottles of beer .
+10     Take  one down and pass it around, 96 bottles of beer on the wall .
+11 
+12     # ...
+13 
+14     4 bottles of beer on the wall, 4 bottles of beer .
+15     Take  one down and pass it around, 3 bottles of beer on the wall .
+2.11. Considering Options
+Page 4816 
+17     3 bottles of beer on the wall, 3 bottles of beer .
+18     Take  one down and pass it around, 2 bottles of beer on the wall .
+19 
+20     2 bottles of beer on the wall, 2 bottles of beer .
+21     Take  one down and pass it around, 1 bottle of beer on the wall .
+22 
+23     1 bottle of beer on the wall, 1 bottle of beer .
+24     Take  it down and pass it around, no more bottles of beer on the wall .
+25 
+26     No more bottles of beer on the wall, no more bottles of beer .
+27     Go to the store and buy some more, 99 bottles of beer on the wall .
+28   SONG
+29   assert_equal expected, Bottles .new.song
+30 end
+In the listing above, the expected  string is so long that verses 96 through 5 are eli ded on line 12.
+In real life, of course, the lyrics to all 100 vers es would be explicitly detailed in this test.
+The text needed for 100 verses is fairly lengthy, a nd you may resist writing out the full string
+because of concerns about duplication.
+2.11. Considering Options
+If you find the duplication distressing, consider t he alternatives. Your choices are:
+1. Assert that the expected output matches that of som e other method.
+The first two song  test variants do this. Those tests are coupled to the current Bottles
+implementation, and so depend upon characteristics of that code.
+These dependencies mean that changes to the Bottles  code might break the song  test,
+even if there is nothing otherwise wrong with the a pplication.
+2. Assert that the expected output matches a dynamical ly generated string.
+Once you accept that the song  test should verify specific output rather than cou ple to the
+current implementation, you must decide how to crea te that output. Because song  returns
+a long, duplicative string, many programmers feel t empted, perhaps even obligated, to
+reduce this duplication by dynamically creating the  verses within the tests .
+However, reducing string duplication inside the song  test would of necessity require logic.
+This logic already exists in the Bottles  class, so the test would be forced to invoke, copy ,
+or re-implement it. Regardless of how you do it, us ing any logic here means that a change
+to Bottles  might break the song  test in an unexpected and confusing way.
+3. Assert that the expected output matches a hard-code d string.
+In this case (as in Listing 2.29: Song Test ) not only is the expected output clearly and
+unambiguously stated, but the test has no dependenc ies. These qualities combine to make
+it easy to understand and to tolerate changes in co de.
+Of these three choices, only the third is independe nt of the current implementation and so
+guaranteed to survive changes to Bottles . It may be difficult to reconcile yourself to writ ing
+down the entire lyrics string, but remember, DRYing  out the lyrics in the test would force you to
+2.12. Summary
+Page 49introduce an abstraction. Tests are not the place for abstractions—they are the place for
+concretions. Abstractions belong in code. If you in sist on reducing duplication by adding logic to
+your tests, this logic by necessity must mirror the  logic in your code. This binds the tests to
+implementation details and makes them vulnerable to  breaking every time you change the code.
+DRY is a very good idea in code, but much less usef ul in tests. When testing, the best choice is
+very often just to write it down.
+Here again is the complete Bottles  listing :
+Listing 2.30: Shameless Green
+ 1 class  Bottles
+ 2   def song
+ 3     verses( 99,0)
+ 4   end
+ 5 
+ 6   def verses (upper, lower)
+ 7     upper .downto(lower) .collect { |i| verse(i)} .join( "\n")
+ 8   end
+ 9 
+10   def verse (number)
+11     case  number
+12     when  0
+13       "No more bottles of beer on the wall, "  +
+14       "no more bottles of beer. \n" +
+15       "Go to the store and buy some more, "  +
+16       "99 bottles of beer on the wall. \n"
+17     when  1
+18       "1 bottle of beer on the wall, "  +
+19       "1 bottle of beer. \n" +
+20       "Take it down and pass it around, "  +
+21       "no more bottles of beer on the wall. \n"
+22     when  2
+23       "2 bottles of beer on the wall, "  +
+24       "2 bottles of beer. \n" +
+25       "Take one down and pass it around, "  +
+26       "1 bottle of beer on the wall. \n"
+27     else
+28       "#{number } bottles of beer on the wall, "  +
+29       "#{number } bottles of beer. \n" +
+30       "Take one down and pass it around, "  +
+31       "#{number -1} bottles of beer on the wall. \n"
+32     end
+33   end
+34 end
+The Bottles  tests and code are now complete. The tests are str aightforward, and the code is
+easy to understand.
+2.12. Summary
+Testing, done well, speeds development and lowers c osts. Unfortunately it’s also true that flawed
+tests slow you down and cost you money.
+It is worth the effort, therefore, to get good at t esting. TDD can prevent costly guesses, but only if
+you commit to writing code in small steps. Tests ca n make it safe and easy to refactor, but only if
+2.12. Summary
+Page 50they are carefully de-coupled from the current code .
+Good tests not only tell a story, but they lead, st ep by step, to a well-organized solution. The tests
+written in this chapter give rise (assuming proper restraint on the part of the programmer) to
+Shameless Green.
+The Shameless Green solution is neither clever nor extensible. Its value lies in the fact that the
+code is easy to understand, and cheap to write. If nothing ever changes, this solution is quite
+certainly good enough.
+Things get more interesting only if something needs  to change. So, on to Chapter 3, which
+introduces a new requirement, and forces you to mak e some hard decisions about the code.
+3.1. Listening to Change

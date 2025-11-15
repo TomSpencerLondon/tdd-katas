@@ -1,0 +1,737 @@
+Page 1727. Manufacturing Intelligence
+In Chapter 6, on the way to achieving blissfully op en code, you created a set of classes whose
+instances polymorphically play the role of bottle n umber. Each class in the BottleNumber
+hierarchy contains a simple set of code that repres ents the concrete implementation of a single
+bottle number variant. Gratifyingly, those classes contain no conditionals.
+And yet, the need for conditional logic did not dis appear. Some code, somewhere, has to know
+how to select the right bottle number class for any  situation. This selection happens in the
+BottleNumber .for factory . In this chapter, that simple factory launches a g reater exploration of
+factories in general.
+7.1. Contrasting the Concrete Factory with Shameless Green
+The Replace Conditional with Polymorphism  refactoring in the prior chapter resulted in a sma ll
+bottle number hierarchy. That hierarchy was open fo r extension, which made it possible to add
+six-pack behavior by simply adding a new BottleNumber6  class.
+Unfortunately, there was still one bit of code that  had to be changed before everything would
+work. The BottleNumber .for factory contained a hard-coded conditional to pick  the correct
+class, and this conditional had to be updated to in clude the new class name.
+Here’s a reminder of the resulting factory:
+Listing 7.1: Bottle Number Factory
+ 1 class  BottleNumber
+ 2   def self .for(number)
+ 3     case  number
+ 4     when  0
+ 5       BottleNumber0
+ 6     when  1
+ 7       BottleNumber1
+ 8     when  6
+ 9       BottleNumber6
+10     else
+11       BottleNumber
+12     end.new(number)
+13   end
+14   # ...
+15 end
+Pause for a minute to reflect upon the current code . The for method above contains a simple
+case  statement that chooses a class. This conditional m ay remind you of one contained in the
+original Shameless Green implementation, repeated b elow:
+Listing 7.2: Shameless Green Conditional
+ 1 def verse (number)
+ 2   case  number
+ 3   when  0
+ 4     "No more bottles of beer on the wall, "  +
+ 5     "no more bottles of beer. \n" +
+7.1. Contrasting the Concrete Factory with Shameless Green
+Page 173 6     "Go to the store and buy some more, "  +
+ 7     "99 bottles of beer on the wall. \n"
+ 8   when  1
+ 9     "1 bottle of beer on the wall, "  +
+10     "1 bottle of beer. \n" +
+11     "Take it down and pass it around, "  +
+12     "no more bottles of beer on the wall. \n"
+13   when  2
+14     "2 bottles of beer on the wall, "  +
+15     "2 bottles of beer. \n" +
+16     "Take one down and pass it around, "  +
+17     "1 bottle of beer on the wall. \n"
+18   else
+19     "#{number } bottles of beer on the wall, "  +
+20     "#{number } bottles of beer. \n" +
+21     "Take one down and pass it around, "  +
+22     "#{number -1} bottles of beer on the wall. \n"
+23   end
+24 end
+As you know, the current factory handles six-packs while the original Shameless Green did not.
+To make this comparison more meaningful, undo the l ast change you made to the factory, i.e.
+remove the 6 branch. This reverts the factory to:
+Listing 7.3: Factory Without Case 6
+ 1 class  BottleNumber
+ 2   def self .for(number)
+ 3     case  number
+ 4     when  0
+ 5       BottleNumber0
+ 6     when  1
+ 7       BottleNumber1
+ 8     else
+ 9       BottleNumber
+10     end.new(number)
+11   end
+12   # ...
+13 end
+Study the previous two listings. These conditionals  are the only ones that exist in their respective
+examples. Both Shameless Green and the current code  correctly generate the complete lyrics to
+the original song. Given that these different condi tionals produce the same variability, can you
+explain why one contains four branches, but the oth er only three?
+To answer that question, consider the case that is missing. Shameless Green has a special case for
+2, but the factory does not. Recall that the conditi onal in Shameless Green produces verses , but
+the one in the factory produces bottle numbers . Verse 2 is indeed special, but bottle number 2 is
+not. Thus, Shameless Green needs a special case for  verse 2 solely because verse 2 contains bottle
+number 1. This explains the missing branch.
+The difference in the number of branches, although highly visible, is merely an artifact of the
+specific domain of the "99 Bottles of Beer" song. H aving explained that difference away, another
+yet remains, and this one has significantly more me aning.
+The Shameless Green verse  method contains a conditional that:
+7.2. Fathoming Factories
+Page 1741. understands why you might switch ( when  0, for example), and
+2. knows the behavior needed for this case ( "No more bottles . . ." ).
+The factory for method:
+1. is similar in that it also understands the reason s for switching (again, when  0, etc) but
+2. differs in that it knows the name of the class that supplies the behavior  for the case.
+Factories don’t know what to do: instead, they know  how to choose  who does. They consolidate
+the choosing and separate the chosen. Shameless Gre en was a procedure because it combined
+these two things; the current code is object-orient ed because it breaks them apart.
+Having explored the difference between a conditiona l that supplies behavior and a conditional
+that selects an object, it’s time to take a deeper look at factories.
+7.2. Fathoming Factories
+Object-oriented applications rely on polymorphism. Polymorphism results in multiple classes
+that play a common role. The power of polymorphism is that these role-playing objects are
+interchangeable from the message sender’s point of view .
+Message senders can confidently collaborate with po lymorphic objects in faith that each
+honestly plays the common role even though they rep resent different variants. The message-
+sending object thinks of its collaborator as a play er of a role rather than a kind of a type.
+All players of a role share a common API. This API exposes a set of intentions that are public.
+Internally, each role-player also contains methods that implement these intentions in differing
+ways. The details of these alternate implementation s are invisible to the outside world.
+From the message sender’s point of view, all player s of a role are exactly the same. Message
+senders depend on the role player’s exposed intenti ons while remaining studiously ignorant of
+their detailed internal implementations. They know what their collaborators do, but refuse to be
+aware of how they do it.
+A system comprised of message senders who collabora te with role-playing objects can be
+extremely tolerant of unexpected change. For exampl e, imagine that you create a new class that
+represents a new variant of bottle number. This new  bottle number is interchangeable with
+every other one, so any class that already collabor ates with an existing bottle number will be
+able to seamlessly collaborate with this new one. T he message sender doesn’t have to change;
+from its point of view this new bottle number is th e same as all the others.
+Clearly, this system works only if message senders really do treat collaborators as if they’re
+interchangeable. If message senders are to be immun e from side-effects when adding or
+removing role-players, these senders can’t know thi ngs that are unique to specific variants.
+Message senders aren’t allowed to know the names of  the concrete variant classes, nor may they
+know the logic needed to choose between them.
+7.3. Opening the Factory
+Page 175Message senders can’t know these things, but of cou rse someone must. Knowledge of the class
+names of the variants, and of the logic necessary t o choose the correct one, can be hidden in, you
+guessed it—factories.
+A factory’s responsibility is to manufacture the ri ght object for a given role. Factories oughtn’t
+know what the variants do, they merely know how to choose the right variant for any situation.
+This choosing  usually involves a conditional, and putting this c onditional in a factory allows you
+to isolate it to a single place in your code.
+Thus, factories are where conditionals go to die. I solating conditionals in factories loosens the
+coupling between collaborating objects, which lower s the cost of change.
+Factories can be implemented in many different ways , but they tend to vary along a few
+interesting dimensions, each of which involves its own set of trade-offs. No one style of factory is
+best for every case; the right solution depends ent irely on the problem at hand. Understanding
+these dimensions, and the tradeoffs between them, a llows you to make good decisions when
+faced with competing requirements.
+Factories vary along these dimensions:
+1. The factory can be open to new variants or closed .
+2. The logic that chooses a variant can be owned by the factory or by the variant.
+3. The factory can be responsible for knowing/figuri ng out which classes are eligible to be
+manufactured or the variants can volunteer themselv es.
+The following sections explore a series of escalati ng factory solutions, paying particular attention
+to trade-offs along these dimensions.
+7.3. Opening the Factory
+Back to the matter at hand, the current factory is not open for extension because it contains a
+hard-coded conditional.
+You have likely noticed that the bottle number clas ses follow a naming convention. The default is
+BottleNumber , and the specializations suffix that name with the ir own specific value of
+number , e.g. BottleNumber0 , BottleNumber1 , and BottleNumber6 .
+This predictable pattern makes it possible for you to dynamically derive the correct bottle
+number class. You can create strings that match the  class names , and then use a tiny bit of meta-
+programming to turn these class name strings into a ctual classes.
+Here’s a simple way to accomplish this:
+Listing 7.4: Meta Programmed Class Lookup Factory
+ 1 class  BottleNumber
+ 2   def self .for(number)
+ 3     begin
+7.3. Opening the Factory
+Page 176 4       const_get ("BottleNumber #{number }")
+ 5     rescue  NameError
+ 6       BottleNumber
+ 7     end.new(number)
+ 8   end
+ 9   # ...
+10 end
+The code above produces that same output as the ori ginal factory. Having examined it, you may
+find yourself afflicted with objections. If so, you  are not alone—many folks find this example
+downright alarming. While fully acknowledging that it contains plenty of things not to like, this
+code also confers clear benefits. Therefore, please  put any objections aside for a moment and
+read the following explanation of the syntax. The p ros and cons of this approach will be
+examined afterwards.
+First, syntax. Notice that the for method now contains a begin..rescue..end  block. Within
+the begin  block on line 4 the string "BottleNumber"  gets concatenated with the number
+argument. This might  result in a string that matches a class name. Clas s names are constants in
+Ruby so the const_get  method can take this string as an argument, and at tempt to look up the
+corresponding class.
+If the class exists (as BottleNumber0 , for example, does), the begin  block returns it. If the class
+does not exist ( BottleNumber37 , et al.), const_get  throws NameError . This causes the rescue
+block to execute, which returns the BottleNumber  class.
+In its favor, this factory is open to extension. As  long as you honor the naming convention, the
+factory will cheerfully accommodate newly-added bot tle number classes without having to
+change.
+Even so, there are many things to dislike about thi s code. Here are a few common and
+thoroughly reasonable objections:
+1. This version is harder to understand than the ori ginal.
+Everyone understands how the original case  statement works, but many folks have no
+idea that it’s possible to locate a class using the  string value of its name. Some
+programmers find this code unexpected and confusing .
+2. BottleNumber0 , etc are no longer explicitly referenced in the so urce code.
+Good luck finding references to the classes whose n ames are dynamically constructed.
+Although the factory is perfectly capable of creati ng new instances of BottleNumber0 , it
+doesn’t explicitly reference this concrete class na me. Attempts to find where instances of
+this class are created by searching the source code  for BottleNumber0  are fruitless and
+therefore deeply frustrating.
+It’s also conceivable that, in an excess of cleanup  zeal, someone might delete  the
+apparently unreferenced class. If this happens with out being caught by the tests, the
+application will break at a far distant and maximal ly inconvenient time.
+3. The code uses an exception for flow control.
+7.4. Supporting Arbitrary Class Names
+Page 177Controlling the flow of a program with exceptions i s roundly condemned on the
+Internet[18] and so must be an evil to be avoided at all costs.
+4. The factory ignores bottle number classes whose n ames do not follow the convention.
+If an unsuspecting programmer innocently creates th e new class BottleNumberSix , the
+factory won’t know about it. Attempts to use this n ew class will fail silently with nary a
+hint at the underlying problem. This can lead to ex asperating debugging sessions.
+Given the list of objections, it’s logical to wonde r if opening this factory could ever be
+worthwhile. Do the benefits of openness justify the  cost of this additional complexity?
+The answer, as is true for most questions about obj ect-oriented design, is that it depends. If you
+frequently create new bottle number classes, the co st of repeatedly changing the factory might
+very well exceed that of making it open. Conversely , if you never add new bottle number classes,
+the factory won’t ever change, so there’s no justif ication for complicating the code.
+Your goal is to minimize costs, and costs are deter mined by the situation at hand. There’s no hard
+and fast rule about what’s best. It just depends.
+A factory’s fundamental job is to manufacture the c orrect player of a role. Relative to this
+responsibility, its openness is a trivial concern t hat can be tweaked over time.
+7.4. Supporting Arbitrary Class Names
+The previous example used a simple bit of meta-prog ramming to generate the right class name
+based on a convention. This, obviously, requires th at all classes be named following that
+convention.
+What if you can’t enforce a convention and must man ufacture instances of classes that have
+arbitrary names? In this situation, you could alway s return to the case  statement. That form of
+factory will work, but unfortunately it’s not open to extension and must be updated every time
+someone adds a new class. If new classes get added regularly, this is annoying and expensive.
+The case  statement factory is easy to understand because it  centralizes the necessary
+knowledge: it knows both the names of the candidate  classes and also the reason any class might
+be chosen. Having the condition ( number == 0 ) and the name of the class ( BottleNumber0 )
+close together in the factory make it easy to read the code and understand how everything
+works.
+If you like the simplicity of centralizing all know ledge in the factory but need to support
+arbitrary class names, it can be a challenge to mak e the factory open. While the following
+example doesn’t end up perfectly  open it gets most of the way there, and in many ci rcumstances
+will be good enough.
+The first step towards an open factory that both ce ntralizes knowledge and supports arbitrary
+class names is to rearrange the code to increase th e isolation of the names. You can do this by
+replacing the case  statement with a key/value lookup, as follows:
+7.4. Supporting Arbitrary Class Names
+Page 178Listing 7.5: Key/Value Lookup Factory
+1 class  BottleNumber
+2   def self .for(number)
+3     Hash .new( BottleNumber ).merge(
+4       0 => BottleNumber0 ,
+5       1 => BottleNumber1 ,
+6       6 => BottleNumber6 )[number ].new(number)
+7   end
+8   # ...
+9 end
+Line 3 above begins by creating an empty hash that defaults to BottleNumber  when a key
+lookup fails. Lines 4-6 create a second hash that c ontains all the specialized pairs. This second
+hash is merged (line 3 again) back into the origina l.
+Line 6 then sends [number]  to the combined hash. If a key of number  exists, the class name at
+that number is returned. If no matching key exists,  the default ( BottleNumber ) is returned.
+Line 6 above then ends with new(number)  which creates a new instance of the looked-up clas s.
+Shouldn’t That Be fetch ?
+If you’re a Ruby programmer, you may have expected the above code to look like this:
+{0 => BottleNumber0 , 1 => BottleNumber1 , 6 => BottleNumber6 }. 
+  fetch(number, BottleNumber ).new(number)
+The fetch  method returns the value at the number  key in the hash. As you may already know,
+fetch  takes a second argument that specifies a default t o return if the number  cannot be
+found. The example above passes BottleNumber  as the second argument, so BottleNumber  is the
+default.
+Varying syntax aside, the two examples specify the default in different places. The
+Hash.new(BottleNumber)  variant lists the default early in the line of cod e, before other
+implementation details. The fetch(number, BottleNumber)  example buries the default further
+down, behind the hash lookup code. While both examp les produce the same output, the
+first is slightly preferable in situations like thi s factory. Here, the default is extremely
+important, and declaring it up front lets it occupy  center stage.
+This default-up-front style makes sense in situatio ns where you control all aspects of the
+hash, that is, where a single method creates, suppl ies the default for, and uses the hash. Be
+aware that this is a somewhat rare combination. Whe n interacting with a hash created by
+someone else, fetch  is the better choice.
+This key/value lookup factory looks  very different from the previous two examples ( Listing 7.3:
+Factory Without Case 6  and Listing 7.4: Meta Programmed Class Lookup Factory ), but despite
+their syntactical differences these three examples are logically very similar. Each uses the value
+7.4. Supporting Arbitrary Class Names
+Page 179of number  to choose a class name. The simple case  statement, the meta-programmed class name
+selection, and the key/value lookup are simply diff erent ways to express this set of conditionals:
+If the value of number is 0, select BottleNumber0 .
+If the value of number is 1, select BottleNumber1 .
+If the value of number is 6, select BottleNumber6 .
+Otherwise, select BottleNumber .
+The case  statement factory is simple and allows arbitrary c lass names, but is closed. The meta-
+programmed factory is more complicated and requires  a class naming convention, but is open.
+The key/value factory is similar to the case  statement factory in that it allows arbitrary clas s
+names, but it’s a bit harder to read.
+It’s easy to comprehend the overall behavior of the  case  statement because it’s a simple list of "if
+this, do that" statements. This key/value version i s slightly more complicated because the data
+has been separated from the algorithm . In this example, the "this ⇒that" bits (the data) have been
+grouped together in one place (the hash) and the "i f" bits (the algorithm) moved to another (the
+[] lookup logic). When reading the code, you have to combine these two things in your own
+head in order to understand what it does.
+The benefit of this separation is that you can now think of the driving data as an entity in itself,
+separate from the choosing algorithm. The algorithm  lives in the code but you can store the data
+in an external file, or your database, and read it at initialization time. You might even create a
+nice user interface to update the database. You’ll have to update the database whenever a new
+class is added, but that’s a small price to pay for  being able to change the behavior of your
+application without altering the actual code.
+Before moving on, there’s one more difference betwe en the case  and key/value lookup code
+that’s worth noting. Take another look at those two  factory variants (repeated below for
+convenience), this time paying particular attention  to the colors used in the syntax highlighting.
+Listing 7.6: Simple Conditional Factory Redux
+ 1 class  BottleNumber
+ 2   def self .for(number)
+ 3     case  number
+ 4     when  0
+ 5       BottleNumber0
+ 6     when  1
+ 7       BottleNumber1
+ 8     when  6
+ 9       BottleNumber6
+10     else
+11       BottleNumber
+12     end.new(number)
+13   end
+14   # ...
+15 end
+Listing 7.7: Key/Value Lookup Factory Redux
+1 class  BottleNumber
+2   def self .for(number)
+3     Hash .new( BottleNumber ).merge(
+7.5. Dispersing The Choosing Logic
+Page 1804       0 => BottleNumber0 ,
+5       1 => BottleNumber1 ,
+6       6 => BottleNumber6 )[number ].new(number)
+7   end
+8   # ...
+9 end
+Notice that in the case  version, the colors alternate, while in the key/va lue version, like colors
+group more closely together. These groupings say so mething about the code.
+When the colors change constantly it means that the  code changes topics a lot. When the colors
+are more tightly grouped it means that ideas or abs tractions that are alike are close together.
+Procedures are often characterized by many changes of color. Even if you are completely
+unfamiliar with this code, you can guess that the case  statement factory is a procedure simply
+by looking at the alternating colors in the syntax highlighting. Code that is more object-oriented
+tends to group like things together, with fewer cha nges of topic. This results in more consistent
+colors as in the key/value factory.
+The upside of procedures is that simple ones (short  and without conditionals) are easy to
+understand. The downside is that complex ones (long  and with many conditionals) are costly to
+change. The most efficient, expedient way to fulfil l a new requirement may be to write a simple,
+unglamorous procedure, but if this procedure needs to change it should be converted into object-
+oriented code. Procedural code can save you money w hen used to create small, isolated features
+that never need to change, but this style of coding  will break the bank if used on large, shared
+features that are core to your domain.
+OO asks you to break code up into small, cohesive p ieces. The benefit of having smaller pieces is
+that each individual piece, relative to its procedu ral analog, is easier to understand and change.
+The corollary downside is that dividing code into m any small pieces can obscure the operation of
+the whole.
+The straightforwardness of simple procedures can ma ke them seem attractive, and indeed,
+they’re fine as long as nothing ever changes . However, if your code needs to adapt and grow, it ’s
+worth paying the toll charged by OOP .
+7.5. Dispersing The Choosing Logic
+As stated above, the three examples shown thus far all contain the same basic underlying logic.
+In each case the factory knows everything. It owns the choosing logic ( the value of number is n ), it
+knows the things that might be chosen ( the class names ), and it contains the logic to map
+between the two ( number n means class x ).
+Owning the choosing logic makes sense when it’s sim ple and stable, as in the current example.
+But it’s easy to imagine situations where the choos ing logic is far more complicated. The logic
+needed to select the right class might be long, com plex, and more closely related to the class
+being chosen than to the factory itself. If the cho osing logic changes in lockstep with code that
+lives in the class being chosen, then the choosing logic belongs in that class, not in the factory.
+7.5. Dispersing The Choosing Logic
+Page 181In this scenario, each choose-able object implement s its own method to determine if it should be
+chosen. The factory then iterates over the possible  objects and asks them  to make the decision.
+Here’s a simple, closed form of this kind of factor y:
+Listing 7.8: Dispersing the Choosing Logic
+ 1 class  BottleNumber
+ 2   def self .for(number)
+ 3     [BottleNumber6 , BottleNumber1 , BottleNumber0 , BottleNumber ].
+ 4       find { |candidate | candidate .handles?(number)} .new(number)
+ 5   end
+ 6 
+ 7   def self .handles? (number)
+ 8     true
+ 9   end
+10   # ...
+11 end
+12 
+13 class  BottleNumber0  < BottleNumber
+14   def self .handles? (number)
+15     number == 0
+16   end
+17   # ...
+18 end
+19 
+20 class  BottleNumber1  < BottleNumber
+21   def self .handles? (number)
+22     number == 1
+23   end
+24   # ...
+25 end
+26 
+27 class  BottleNumber6  < BottleNumber
+28   def self .handles? (number)
+29     number == 6
+30   end
+31   # ...
+32 end
+Each class above now implements method handles?(number) . The implementations in
+BottleNumber0 , BottleNumber1 , and BottleNumber6  (lines 15, 22 and 29) return true  when
+the number is the one they represent. The BottleNumber  implementation (line 8)
+unconditionally returns true because BottleNumber  is the default.
+The for method in BottleNumber  on line 2 iterates over a hard-coded list of class  names with
+find . The find  method yields items to a block and returns the fir st item for which that block
+evaluates to true . This code therefore manufactures an instance of t he first class on the list that
+responds true  to handles?(number) .
+This factory disperses the choosing logic into the things chosen. In this example, that logic is so
+simple that this technique is excessive, but in som e situations, choosing will involve lots of code,
+and that code will change in lockstep with the clas s being chosen. Those are the cases where this
+technique saves you money.
+The structure of this factory brings up several iss ues. First, it’s closed. Each time a new class is
+added you must update the list on line 3.
+7.6. Self-registering Candidates
+Page 182Next, since BottleNumber.handles?  always returns true , BottleNumber  must always be the
+last class on the list. If someone mistakenly adds a new class after  BottleNumber , the factory
+will never manufacture an instance of that new clas s.
+Finally, it’s possible that more than one handles?  methods would return true . The code above
+stops looking the first time a candidate answers 'M e!' but it’s possible to imagine scenarios where
+you should collect all candidates who answer yes an d give each a chance to execute. In that case
+candidates might also want to report a priority so you can sort the resultant list in the order in
+which they should go.
+The example above shows the simplest way to dispers e choosing logic. It might be all you need. If
+you’re concerned about keeping the list in order, o r need to deal with multiple candidates
+wanting to volunteer, you’ll have to write a bit mo re code.
+In each case the basic issue remains the same. If y our choosing logic is more closely related to
+the class being chosen than to the factory, the cho osing logic should be co-located in that class.
+7.6. Self-registering Candidates
+The example above disperses the choosing logic, but  the factory still has a hard-coded list of the
+candidate classes. The implementation requires that  you manually add newly created classes to
+this list. If you would like the factory to simply continue working when new candidates appear,
+you have two basic options.
+1. The factory could dynamically figure out which cl asses belong on its list, or
+2. classes who want to be on the list could explicit ly ask the factory to put them there.
+Choice #1 above is possible only if there’s somethi ng about the candidate classes that allows the
+factory to identify them, and this may not always b e true. Choice #2, however, is always an
+option. If candidates are willing to depend on know ing the name of the factory, they can assume
+responsibility for putting themselves on the list. Lists like these are often referred to as registries .
+Because choice #2 is always possible, it’s the next  example. The BottleNumber  factory below:
+1. holds onto the registry, and
+2. provides a way for candidates to add themselves t o it.
+Listing 7.9: Creating a Registry
+ 1 class  BottleNumber
+ 2   # ...
+ 3   def self .registry
+ 4     @registry  ||= []
+ 5   end
+ 6 
+ 7   def self .register (candidate)
+ 8     registry .prepend(candidate)
+ 9   end
+10 end
+7.6. Self-registering Candidates
+Page 183Line 3 above defines the registry  method, which initializes the registry to an empty  array. Line
+7 creates a register(candidate)  method, which adds candidate arguments to the fron t of this
+registry ( unshift  is aliased to prepend  as of ruby 2.5).
+Now that this registry exists, candidate classes ca n register themselves. Here’s how that looks for
+BottleNumber0  (line 2 below):
+Listing 7.10: Candidate Registration
+1 class  BottleNumber0  < BottleNumber
+2   BottleNumber .register( self )
+3   # ...
+4 end
+Once you make the above change for the other bottle  number classes ( BottleNumber1 ,
+BottleNumber6 , and BottleNumber ), the hard-coded list of candidates in the factory  can be
+replaced by a reference to the registry:
+Listing 7.11: Referring to the Registry in the Factory
+1 class  BottleNumber
+2   def self .for(number)
+3     registry .find { |candidate | candidate .handles?(number)} .new(number)
+4   end
+5   # ...
+6 end
+Here’s all the relevant code together in one listin g:
+Listing 7.12: Factory With Self Registration
+ 1 class  BottleNumber
+ 2   def self .for(number)
+ 3     registry .find { |candidate | candidate .handles?(number)} .new(number)
+ 4   end
+ 5 
+ 6   def self .registry
+ 7     @registry  ||= []
+ 8   end
+ 9 
+10   def self .register (candidate)
+11     registry .prepend(candidate)
+12   end
+13 
+14   BottleNumber .register( self )
+15   # ...
+16 end
+17 
+18 class  BottleNumber0  < BottleNumber
+19   BottleNumber .register( self )
+20   # ...
+21 end
+22 
+23 class  BottleNumber1  < BottleNumber
+24   BottleNumber .register( self )
+25   # ...
+26 end
+27 
+28 class  BottleNumber6  < BottleNumber
+29   BottleNumber .register( self )
+7.6. Self-registering Candidates
+Page 18430   # ...
+31   end
+32 end
+There are a few things to note about the listing ab ove. First, you may be wondering why the
+registration lines explicitly state the class name BottleNumber :
+BottleNumber .register( self )
+instead of omitting the name of the factory and exp ecting to inherit the register  method, like
+so:
+register( self )
+Since it omits the name of the factory, this second  example may seem as if it contains fewer
+dependencies. If fact, the previous two examples co ntain exactly the same number of
+dependencies; they just depend on different things.
+The BottleNumber.register(self)  example sends the register  message to BottleNumber
+and so depends on knowing the name of the factory. If that name later changes, this code will
+also have to change.
+The register(self)  example sends the register  method to the implicit receiver self . This
+code relies on finding register  somewhere in the class hierarchy, and so depends o n
+inheritance. If someday you move the bottle number role-playing class out of the BottleNumber
+hierarchy, you’ll have to change this line of code.
+Remember that any class that implements the BottleNumber  API can play the bottle number
+role. In the current example, BottleNumber0 , 1 and 6 use inheritance to acquire parts of this
+API, but there’s no rule that says you have to use inheritance. Your situation might be such that,
+for good reasons, it makes sense to create new clas ses that implement the entire API without
+inheriting from BottleNumber .
+Choosing between depending on a class name versus d epending on inheritance means placing a
+bet on which dependency is more stable. Is it more likely that the name of the factory will
+change, or that role players will stop using inheri tance? If you think the factory name is more
+stable than the use of inheritance, you should expl icitly direct the register  message to
+BottleNumber . If you fear that the factory name might change bu t believe that you’ll always use
+inheritance, your code should rely on finding register  in the hierarchy.
+No matter how you decide in the present, your choic e can only be a guess. Pay attention to how
+your guesses turn out and they’ll get better. One r eason experienced programmers are good at
+writing change-tolerant code is that they’ve built up a set of internal guidelines about how to
+guess well. They understand that although dependenc ies can’t be avoided, they can be
+deliberately chosen with an eye towards stability.
+This factory is now open for extension, has dispers ed the choosing logic, and allows candidates
+to register themselves. It can manufacture instance s of classes whose names it does not know, for
+reasons of which it is unaware.
+7.7. Auto-registering Candidates
+Page 1857.7. Auto-registering Candidates
+Before moving on to Chapter 8, there’s one final va riant to consider. Instead of requiring
+candidates to register themselves, you can make the  factory figure out which classes ought to get
+registered and do it for them. This requires that a ll candidates share some quality or
+characteristic that allows the factory to identify them.
+You’ve already seen a simple example of this idea i n the Opening the Factory  section, where the
+factory found candidate classes based on a string s hared by all of their names. That section used
+const_get  to find classes whose names followed a simple conv ention.
+Common names aren’t the only thing that can enable the factory to find candidate classes.
+Anything that makes candidates unique will work. Pe rhaps all candidates must implement a
+method of a particular name, or that follows a spec ific convention. Perhaps they must declare a
+certain instance variable, or have a class name tha t’s exactly 20 characters long and ends with an
+'X'. As long as the factory can find the classes th at meet the criteria (which may require getting a
+list of all objects via ObjectSpace.each_object  and writing some interesting code), the factory
+can take care of registering the candidates.
+Looking through all of ObjectSpace  is likely to be slow operation, and other programm ers
+would have to remember to follow the perhaps-not-ob vious convention, but this approach can
+work. The key idea here is that there must be somet hing about the candidate classes that allows
+them to be located by the factory.
+It just so happens that in your current code all of  the players of the bottle number role inherit
+from BottleNumber . If you’re willing to stipulate that bottle number s must always use
+inheritance, then you can write an algorithm that’s  not only fast, but also lets candidate classes
+use any name they like. You can use the inherited  hook to automatically add bottle number
+subclasses to the registry.
+The inherited  hook merits a bit of explanation. You’re well fami liar with the idea that objects
+are instances of a class. You may be less familiar with the idea that classes themselves are
+objects, and therefore must also be instances of some other class .
+This makes sense if you think about it in an "every thing is just an object" kind of way. Just as
+putting quotes around text creates an object that a cts like a string, using the class  keyword
+creates an object that acts like a class.
+The class of every string is String , and the class of every class is (sorry) Class . Put another way,
+'abc'  is an instance of the class named String , and BottleNumber  is an instance of the class
+named Class .
+Armed with this knowledge, consider the inherited  hook. This message is sent to a class when
+it gets subclassed. For example, when BottleNumber0  gets defined via
+class  BottleNumber0  < BottleNumber
+Ruby sends inherited(BottleNumber0)  to the BottleNumber  class.
+7.7. Auto-registering Candidates
+Page 186Generally, when one class inherits from another, th is message gets sent to the parent class where
+no implementation is found. Ruby then searches up t he inheritance hierarchy until it reaches
+Class  where it finds a default implementation that does nothing. This doesn’t mean the message
+is useless. It’s a hook and is meant for you to ove rride.
+BottleNumber  can implement inherited  to get notified every time a subclass appears. Thi s
+allows the factory to notice when a subclass gets c reated and automatically register it, as shown
+below:
+Listing 7.13: Expecting Inheritance
+1 class  BottleNumber
+2   # ...
+3   def self .inherited (candidate)
+4     register(candidate)
+5   end
+6   # ...
+7 end
+Once the inherited  method is defined, the factory assumes the job of registration. You can now
+remove the explicit BottleNumber.register(self)  line from every subclass .
+The BottleNumber  class itself won’t get automatically registered vi a the inherited  hook so
+you’ll need to ensure that it will. While you could  leave the existing
+BottleNumber.register(self)  line in BottleNumber , you could also remove that line and
+alter the registry  method to put BottleNumber  in the initial array, as in line 2 below:
+Listing 7.14: Initializing the Registry
+1 def self .registry
+2   @registry  ||= [BottleNumber ]
+3 end
+When you choose between having the bottle number ro le player register itself (that is, explicitly
+sending BottleNumber.register(number) ) or having the factory initialize the registry wit h
+the default role player (via @registry ||= [BottleNumber] ) you are placing another bet on
+the future. Choose between these alternatives based  on your best guess about which
+implementation is least likely to need to be change d later . Pay attention to how things turn out
+and learn something from both your right and your w rong guesses.
+Having made that final change, here’s the entire so lution:
+Listing 7.15: Auto Registering Using the Inherited Hook
+ 1 class  BottleNumber
+ 2   def self .for(number)
+ 3     registry .find { |candidate | candidate .handles?(number)} .new(number)
+ 4   end
+ 5 
+ 6   def self .registry
+ 7     @registry  ||= [BottleNumber ]
+ 8   end
+ 9 
+10   def self .register (candidate)
+11     registry .prepend(candidate)
+12   end
+7.7. Auto-registering Candidates
+Page 18713 
+14   def self .inherited (candidate)
+15     register(candidate)
+16   end
+17 
+18   def self .handles? (number)
+19     true
+20   end
+21 
+22   attr_reader  :number
+23   def initialize (number)
+24     @number  = number
+25   end
+26 
+27   def to_s
+28     "#{quantity } #{container }"
+29   end
+30 
+31   def quantity
+32     number .to_s
+33   end
+34 
+35   def container
+36     "bottles"
+37   end
+38 
+39   def action
+40     "Take #{pronoun } down and pass it around"
+41   end
+42 
+43   def pronoun
+44     "one"
+45   end
+46 
+47   def successor
+48     BottleNumber .for(number - 1)
+49   end
+50 end
+51 
+52 class  BottleNumber0  < BottleNumber
+53   def self .handles? (number)
+54     number == 0
+55   end
+56 
+57   def quantity
+58     "no more"
+59   end
+60 
+61   def action
+62     "Go to the store and buy some more"
+63   end
+64 
+65   def successor
+66     BottleNumber .for( 99)
+67   end
+68 end
+69 
+70 class  BottleNumber1  < BottleNumber
+71   def self .handles? (number)
+72     number == 1
+73   end
+74 
+75   def container
+76     "bottle"
+7.8. Summary
+Page 18877   end
+78 
+79   def pronoun
+80     "it"
+81   end
+82 end
+83 
+84 class  BottleNumber6  < BottleNumber
+85   def self .handles? (number)
+86     number == 6
+87   end
+88 
+89   def quantity
+90     "1"
+91   end
+92 
+93   def container
+94     "six-pack"
+95   end
+96 end
+7.8. Summary
+Maintainable OO code rests on polymorphism, on cons tructing applications from families of
+small, interchangeable objects that represent varia nts of a role. Instead of writing classes that
+contain a bunch of conditionals that choose behavio r, polymorphism asks you to disperse
+variants of behavior into classes of their own.
+Placing variants into separate classes eliminates t he need for conditionals inside those classes,
+but it does not completely eliminate the need for c onditionals; it just kicks the proverbial
+conditional can down the road (or back in the stack ). In every situation where a role-playing
+object is needed, some code, somewhere has to know enough to pick the right one.
+Enter factories.
+Factories are where conditionals go to die. They co ntain conditionals that select classes , and they
+isolate those conditionals in a single, easily-test ed place. They hide the names of role-playing
+classes and so allow the rest of your application t o depend on the API of a role rather than on the
+concrete names of whatever classes currently exist.
+This chapter explored the various forms a factory m ight take, and considered the trade-offs
+involved. No factory, whether open or closed, wheth er it owns the choosing logic or asks
+candidates if they should be chosen, or whether it reaches out for registrants or accept
+volunteers, is perfect for every situation. All fac tories, however, enable polymorphism and thus
+improve your code.
+8.1. Appreciating the Mechanical Process
