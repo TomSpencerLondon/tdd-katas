@@ -13,20 +13,23 @@ class Bottles
       "no more bottles of beer.\n" +
       "Go to the store and buy some more, " +
       "99 bottles of beer on the wall.\n"
-    elsif number == 1
-      "1 bottle of beer on the wall, " +
-      "1 bottle of beer.\n" +
-      "Take it down and pass it around, " +
-      "no more bottles of beer on the wall.\n"
     else
-      "#{number} bottles of beer on the wall, " +
-      "#{number} bottles of beer.\n" +
-      "Take one down and pass it around, " +
-      "#{number-1} #{container(number-1)} of beer on the wall.\n"
+      "#{quantity(number)} #{container(number)} of beer on the wall, " +
+      "#{quantity(number)} #{container(number)} of beer.\n" +
+      "#{action(number)}, " +
+      "#{quantity(number-1)} #{container(number-1)} of beer on the wall.\n"
     end
   end
 
   def container(number)
     number == 1 ? 'bottle' : 'bottles'
+  end
+
+  def quantity(number)
+    number == 0 ? 'no more' : number.to_s
+  end
+
+  def action(number)
+    number == 1 ? 'Take it down and pass it around' : 'Take one down and pass it around'
   end
 end
