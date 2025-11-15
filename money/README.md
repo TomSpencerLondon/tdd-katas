@@ -237,7 +237,7 @@ result = bank.reduce(sum_expr, "USD")  # Money(10, "USD")
 
 **Key Insight**: Composite pattern + polymorphism = expressions that can nest and evaluate themselves!
 
-### **Chapter 16: Abstraction, Finally** ⬅️ WE ARE HERE
+### **Chapter 16: Abstraction, Finally**
 **What we did**: Completed the Expression interface with `plus()` and `times()`
 **New Tests**:
 - `Sum.plus()` - Can add to a Sum: `($5 + 10 CHF) + $5 = $15`
@@ -281,6 +281,107 @@ def times(self, multiplier):
 - Test code is a "Rosetta stone for future generations" - write clearly!
 - TDD produces low cyclomatic complexity (polymorphism instead of conditionals)
 - Equal test/production code is typical in TDD
+
+### **Chapter 17: Money Retrospective** ⬅️ COMPLETE!
+**What we did**: Reflected on the entire TDD journey
+
+**Is the Code Finished?** No! And that's okay.
+- Still have duplication between `Sum.plus()` and `Money.plus()`
+- Could make Expression a class instead of interface
+- Beck: "I don't believe in 'finished'"
+- Hot paths should be rock solid; periphery can be messier
+- Use code critics (like flake8) to catch what you forget
+
+**The Power of Metaphor**: Biggest surprise!
+- Previous implementations used MoneyBag, MoneySum, Wallet metaphors
+- All implied flat collections: "2 USD + 5 CHF + 3 USD" → "5 USD + 5 CHF"
+- **Expression metaphor** freed us from merging duplicates
+- Design went in completely different direction
+- Cleaner code than Beck had ever written before
+- "What if I could rewrite everything 20 times?"
+
+**Test-Driven Metrics** (from Beck's coding session):
+- Ran tests 125 times during implementation
+- Ran tests about once per minute when actively coding
+- Only surprised by test result once (during rushed refactoring)
+- **100% statement coverage** (except debug toString)
+- **Defect insertion** (Jester): Only fake hashCode could change without breaking tests
+
+**Code Metrics**:
+| Metric | Production | Test |
+|--------|-----------|------|
+| Classes | 5 | 1 |
+| Functions | 22 | 15 |
+| Lines | 91 | 89 |
+| Cyclomatic Complexity | 1.04 | 1.0 |
+| Lines/Function | 4.1 | 5.9 |
+
+**Process**: Red-Green-Refactor in practice
+- Most changes: 1-3 steps to compile and run
+- Refactoring: Can be many steps (leptokurtotic/"fat tail" distribution)
+- Small steps keep you in control
+- Can adjust gap between tests: slow down when slippery, speed up when clear
+
+**Test Quality**:
+- TDD tests aren't sufficient for all testing needs
+- Still need: performance testing, stress testing, usability testing
+- But if defect density is low enough, testers become "communication amplifiers"
+- Coverage improves two ways:
+  1. Write more tests (test-driven developer: 6 tests, professional tester: 65 tests!)
+  2. **Simplify the code** - refactoring often removes conditionals entirely
+
+**Three Big Surprises** (that come up when teaching TDD):
+1. **Three approaches**: Fake it, triangulation, obvious implementation
+2. **Removing duplication** between test and code drives design
+3. **Control the gap** between tests - traction control for software!
+
+**Final Stats (Python Implementation)**:
+- 12 tests, all passing
+- 93% coverage
+- 4 classes (Expression, Money, Sum, Bank)
+- ~60 lines production code, ~60 lines test code
+- Cyclomatic complexity near 1.0 (no branches, just polymorphism!)
+
+**Key Learnings**:
+- Metaphor shapes design more than you think
+- TDD enables courage to refactor
+- Small steps compound into big changes
+- Tests are documentation for future maintainers
+- "Finished" is a myth - code evolves
+
+---
+
+## Summary: The Complete TDD Journey
+
+We followed Kent Beck's TDD process through 17 chapters, implementing a multi-currency money system from scratch. Here's what we built:
+
+**Final Design**:
+- `Expression` interface: Common protocol for all money-like values
+- `Money` class: Concrete currency amounts (replaced Dollar and Franc)
+- `Sum` class: Unevaluated addition (Composite pattern)
+- `Bank` class: Manages exchange rates and reduces Expressions
+
+**Key Design Patterns**:
+- **Composite Pattern**: Money (leaf) and Sum (composite) both implement Expression
+- **Strategy Pattern**: Bank encapsulates exchange rate algorithms
+- **Factory Methods**: `Money.dollar()` and `Money.franc()` hide construction
+- **Value Objects**: Immutable Money objects with value-based equality
+- **Polymorphic Dispatch**: No type checking, just polymorphic `reduce()`
+
+**TDD Techniques Learned**:
+1. **Fake It Till You Make It**: Start with hardcoded values, generalize incrementally
+2. **Triangulation**: Use multiple tests to force proper generalization
+3. **Obvious Implementation**: Type in the solution when it's clear
+4. **Remove Duplication**: Between test and code to drive design
+5. **Test List**: Maintain to-do list, cross off as you go
+6. **Small Steps**: Keep the gap between tests small when uncertain
+7. **Refactoring**: Bold changes enabled by comprehensive tests
+
+**The Red-Green-Refactor Rhythm**:
+1. **Red**: Write a failing test
+2. **Green**: Make it pass quickly (commit sins!)
+3. **Refactor**: Remove duplication and improve design
+4. **Repeat**: Small, safe steps accumulate
 
 ## Setup
 
