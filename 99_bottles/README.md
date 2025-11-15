@@ -198,7 +198,96 @@ end
 
 **Status**: 5 tests passing (verses 99, 3, 2, 1, 0)
 **Key Learning**: Make it work first! We'll refactor in later chapters.
-**Next**: Chapter 3 - Unearthing Concepts (identifying abstractions to extract)
+
+---
+
+### **Chapter 3: Unearthing Concepts** ⬅️ WE ARE HERE
+
+**The New Requirement**: Output "1 six-pack" where it currently says "6 bottles"
+
+**Key Concepts Introduced:**
+- **Open/Closed Principle**: Code should be open for extension, closed for modification
+- **Code Smells**: Identified Duplicated Code and Switch Statements
+- **Flocking Rules**: Systematic approach to refactoring
+  1. Select the things that are most alike
+  2. Find the smallest difference between them
+  3. Make the simplest change to remove that difference
+
+**Refactoring Journey:**
+
+**Step 1: Add song() and verses() methods**
+- ✅ `song()`: Returns full song (verses 99 to 0)
+- ✅ `verses(upper, lower)`: Returns range of verses joined with newlines
+- Preparing for later refactoring
+
+**Step 2: Extract container() - Remove verse 2 special case**
+- ✅ Applied Flocking Rules: Compared else branch with verse 2
+- ✅ Found smallest difference: "bottle" vs "bottles"
+- ✅ Extracted `container(number)` method
+- ✅ Result: else branch now handles verse 2 correctly!
+- Reduced from 4 branches to 3 branches
+
+**Step 3: Extract quantity() and action() - Remove verse 1 special case**
+- ✅ Compared else branch with verse 1
+- ✅ Found differences: "Take it down" vs "Take one down", "no more" vs number
+- ✅ Extracted `quantity(number)`: handles "no more" vs number.to_s
+- ✅ Extracted `action(number)`: handles "Take it down" vs "Take one down"
+- ✅ Generalized else branch to use all helper methods
+- ✅ Result: Reduced from 3 branches to 2 branches!
+
+**Current Implementation:**
+```ruby
+class Bottles
+  def song
+    verses(99, 0)
+  end
+
+  def verses(upper, lower)
+    upper.downto(lower).collect { |i| verse(i) }.join("\n")
+  end
+
+  def verse(number)
+    if number == 0
+      "No more bottles of beer on the wall, " +
+      "no more bottles of beer.\n" +
+      "Go to the store and buy some more, " +
+      "99 bottles of beer on the wall.\n"
+    else
+      "#{quantity(number)} #{container(number)} of beer on the wall, " +
+      "#{quantity(number)} #{container(number)} of beer.\n" +
+      "#{action(number)}, " +
+      "#{quantity(number-1)} #{container(number-1)} of beer on the wall.\n"
+    end
+  end
+
+  def container(number)
+    number == 1 ? 'bottle' : 'bottles'
+  end
+
+  def quantity(number)
+    number == 0 ? 'no more' : number.to_s
+  end
+
+  def action(number)
+    number == 1 ? 'Take it down and pass it around' : 'Take one down and pass it around'
+  end
+end
+```
+
+**What We Achieved:**
+- **Before**: 4 conditional branches (verse 0, 1, 2, else) with lots of duplication
+- **After**: 2 conditional branches (verse 0, else) with extracted helper methods
+- **Verses 1-99** all handled by single else branch using polymorphic helper methods
+- **Verse 0** still special (completely different structure)
+
+**Key Learnings:**
+- **Flocking Rules work!** We didn't need to know the final design upfront
+- **Abstractions emerged** from systematic application of simple rules
+- **Small steps are safe** - tests passed after every change
+- **Faith in the process** - nibbling away at code smells reveals the path forward
+
+**Status**: 6 tests passing (including verses() test)
+**Next**: Continue refactoring - can we handle verse 0 the same way? Can we add the six-pack requirement?
 
 ---
 
