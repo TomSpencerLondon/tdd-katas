@@ -28,8 +28,11 @@ class Sum(Expression):
         self.addend = addend  # The second money being added
 
     def reduce(self, bank, to):
-        """Reduce this sum to Money by adding the amounts."""
-        amount = self.augend.amount + self.addend.amount
+        """Reduce this sum to Money by converting THEN adding."""
+        # Ch 15: Reduce each part first, then add!
+        # Example: $5 + 10 CHF → reduce($5) + reduce(10 CHF) → $5 + $5 → $10
+        amount = (self.augend.reduce(bank, to).amount +
+                  self.addend.reduce(bank, to).amount)
         return Money(amount, to)
 
 

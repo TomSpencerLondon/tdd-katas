@@ -90,3 +90,14 @@ def test_reduce_money_different_currency():
 def test_identity_rate():
     """Test that converting USD to USD has rate of 1."""
     assert 1 == Bank().rate("USD", "USD")
+
+
+# Chapter 15: Mixed Currencies - THE BIG ONE!
+def test_mixed_addition():
+    """Test $5 + 10 CHF = $10 USD (with exchange rate 2:1)."""
+    five_bucks = Money.dollar(5)
+    ten_francs = Money.franc(10)
+    bank = Bank()
+    bank.add_rate("CHF", "USD", 2)  # 2 CHF = 1 USD
+    result = bank.reduce(five_bucks.plus(ten_francs), "USD")
+    assert Money.dollar(10) == result  # $5 + (10 CHF / 2) = $10

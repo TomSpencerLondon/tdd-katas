@@ -104,12 +104,138 @@ Each chapter demonstrates specific TDD techniques and design insights:
 **Added**: `__str__` for better test output
 **Key Insight**: Tests tell us if our refactoring works - ask the computer, don't just reason!
 
-### **Chapter 11: The Root of All Evil** ⬅️ WE ARE HERE
-**What we're doing**: Delete Dollar and Franc subclasses entirely!
+### **Chapter 11: The Root of All Evil**
+**What we did**: Deleted Dollar and Franc subclasses entirely!
 **Why Possible**: Subclasses only have constructors now
 **Change**: Factory methods return `Money` directly
 **Tests to Delete**: Redundant tests that no longer add value
 **Key Insight**: As design evolves, some tests become redundant. Delete them!
+
+### **Chapter 12: Addition, Finally**
+**What we did**: Started implementing addition with Expression pattern
+**Test**: `$5 + $5 = $10` (simpler than `$5 + 10 CHF`)
+**New Concepts**:
+- **Expression** - Interface for anything that can be reduced to Money
+- **Bank** - Applies exchange rates to reduce Expressions
+- `five.plus(five)` returns an Expression (not Money!)
+- `bank.reduce(sum, "USD")` converts Expression to Money
+
+**Design Decision**: Why `bank.reduce(expression, "USD")` instead of `expression.reduce("USD", bank)`?
+- Keep Expression objects simple and ignorant of the world
+- Bank is the natural place for exchange rate knowledge
+- Separates concerns: Money is value, Bank is converter
+
+**Key Insight**: Introduced "imposter" pattern - object that looks like Money but isn't!
+
+### **Chapter 13: Make It**
+**What we did**: Implemented polymorphic reduction
+**New Class**: `Sum` - represents unevaluated addition of two Expressions
+**Test**: `five.plus(five)` should return a `Sum` with `augend` and `addend`
+
+**The Composite Pattern Emerges**:
+```
+Expression (interface)
+├── Money (leaf - simple expression)
+└── Sum (composite - contains two Expressions)
+```
+
+**Why Both Inherit from Expression?**
+- **Money** = Simple expression (just an amount in a currency)
+  - `reduce()` → convert to target currency
+- **Sum** = Complex expression (combination of two expressions)
+  - `reduce()` → reduce both parts, then add
+
+**Polymorphism in Action**:
+```python
+# Bank doesn't care what kind of Expression it is!
+def reduce(self, source, to):
+    return source.reduce(self, to)  # Polymorphic call
+```
+
+Both Money and Sum implement `reduce()` differently:
+- **Money.reduce()**: Convert using exchange rate
+- **Sum.reduce()**: Reduce parts, then sum amounts
+
+**Refactoring Journey**:
+1. Started with ugly `isinstance` checks in Bank
+2. Moved reduction logic to Sum and Money
+3. Added `reduce()` to Expression interface
+4. Eliminated all type checking - pure polymorphism!
+
+**Key Insight**: "Make it work, make it right" - started ugly, refactored to elegant
+
+### **Chapter 14: Change**
+**What we did**: Implemented currency conversion!
+**Test**: `bank.reduce(Money.franc(2), "USD") == Money.dollar(1)` (with rate 2:1)
+
+**Exchange Rate System**:
+```python
+bank.add_rate("CHF", "USD", 2)  # 2 CHF = 1 USD
+```
+
+**Implementation Details**:
+- **Rate Storage**: Dictionary with `(from_currency, to_currency)` tuple keys
+- **Pair Class**: Created hashable key object for rate lookup
+- **Identity Rate**: Same currency always has rate of 1 (e.g., USD→USD)
+
+**Money.reduce() Evolution**:
+```python
+# Before: Just returned self
+def reduce(self, bank, to):
+    return self
+
+# After: Actually converts!
+def reduce(self, bank, to):
+    rate = bank.rate(self._currency, to)
+    return Money(self.amount / rate, to)
+```
+
+**Key Insight**: Passed Bank as parameter to reduce() - we "knew" we'd need it!
+
+### **Chapter 15: Mixed Currencies** ⬅️ WE ARE HERE
+**What we did**: THE BIG TEST - `$5 + 10 CHF = $10 USD`
+**Problem Found**: Sum was adding raw amounts before converting!
+```python
+# WRONG: 5 + 10 = 15 USD (oops!)
+amount = augend.amount + addend.amount
+```
+
+**The Fix**: Reduce THEN add!
+```python
+# RIGHT: reduce($5) + reduce(10 CHF) = $5 + $5 = $10
+amount = (self.augend.reduce(bank, to).amount +
+          self.addend.reduce(bank, to).amount)
+```
+
+**Recursive Reduction**:
+- Sum reduces its parts (which might be Sums themselves!)
+- Each part converts to target currency
+- Then the amounts are added
+
+**Generalization Refactoring**:
+- Changed types from `Money` to `Expression` where possible
+- Started from the edges (Sum fields) worked back to test
+- Let compiler guide us through rippling changes
+- Added `plus()` to Expression interface
+
+**The Full Picture**:
+```python
+# $5 + 10 CHF with rate 2:1
+five_bucks = Money.dollar(5)           # Money
+ten_francs = Money.franc(10)           # Money
+sum_expr = five_bucks.plus(ten_francs) # Sum(Money, Money)
+result = bank.reduce(sum_expr, "USD")  # Money(10, "USD")
+
+# What happens inside:
+# 1. bank.reduce(sum_expr, "USD") calls sum_expr.reduce(bank, "USD")
+# 2. Sum.reduce() calls:
+#    - augend.reduce(bank, "USD") → Money(5, "USD")
+#    - addend.reduce(bank, "USD") → Money(5, "USD")  [10 CHF / 2]
+# 3. Sum adds: 5 + 5 = 10
+# 4. Returns Money(10, "USD")
+```
+
+**Key Insight**: Composite pattern + polymorphism = expressions that can nest and evaluate themselves!
 
 ## Setup
 
