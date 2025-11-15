@@ -286,8 +286,42 @@ end
 - **Small steps are safe** - tests passed after every change
 - **Faith in the process** - nibbling away at code smells reveals the path forward
 
-**Status**: 6 tests passing (including verses() test)
-**Next**: Continue refactoring - can we handle verse 0 the same way? Can we add the six-pack requirement?
+**Step 4: Extract pronoun() - Further DRY**
+- ✅ Created `pronoun(number)` combining `quantity()` and `container()`
+- ✅ Eliminates repeated calls to both methods
+- ✅ Applied to verse 0 and else branch
+- Code now very DRY!
+- Note: "pronoun" may not be the perfect domain name - could be "quantity_phrase" or similar
+
+**Step 5: Implement Six-Pack Requirement - OPEN/CLOSED ACHIEVED!** ✅
+- ✅ Added special case in `pronoun()` for number == 6
+- ✅ Returns "1 six-pack" instead of "6 bottles"
+- ✅ Added tests for verse 6 and verse 7
+- **KEY**: Only modified `pronoun()` method - did NOT touch `verse()` method!
+- **This is the Open/Closed Principle in action!**
+
+**Final Implementation (Chapter 3):**
+```ruby
+def pronoun(number)
+  if number == 6
+    "1 six-pack"
+  else
+    "#{quantity(number)} #{container(number)}"
+  end
+end
+```
+
+**What Changed to Add Six-Pack:**
+- **Before refactoring**: Would need to add 2 more branches to conditional (verse 6, verse 7)
+- **After refactoring**: Only 1 line change in 1 method (`pronoun()`)
+- **Code was OPEN** to the new requirement!
+
+**Status**: 8 tests passing (including verse 6 and verse 7)
+**Chapter 3 Complete!** Successfully demonstrated:
+- Flocking Rules remove duplication systematically
+- Abstractions emerge from process, not upfront design
+- Open/Closed Principle makes code extensible
+**Next**: Chapter 4 - Practicing Horizontal Refactoring (or continue polishing Chapter 3)
 
 ---
 
