@@ -1,4 +1,12 @@
 class Bottles
+  def song
+    verses(99, 0)
+  end
+
+  def verses(upper, lower)
+    upper.downto(lower).collect { |i| verse(i) }.join("\n")
+  end
+
   def verse(number)
     if number == 0
       "No more bottles of beer on the wall, " +
