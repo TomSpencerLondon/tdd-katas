@@ -1,0 +1,1 @@
+Object subclass: #Counter	instanceVariableNames: 'count'	classVariableNames: ''	package: 'MyCounter'!
