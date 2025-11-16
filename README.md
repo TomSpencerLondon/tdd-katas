@@ -90,6 +90,23 @@ This repository contains multiple coding katas, each implemented using strict TD
 
 📁 [View 99 Bottles →](99_bottles/)
 
+### 7. Counter Kata (Pharo Smalltalk)
+**Problem**: Build a simple counter with increment/decrement functionality
+**Source**: Chapter 4 from "Pharo by Example"
+**Tests**: 4 passing
+**Language**: Pharo Smalltalk
+**Key Learning**: Live programming, image-based development, extreme TDD (coding in the debugger)
+
+**What makes this special**:
+- Introduction to Pharo Smalltalk and live programming
+- Experience with image-based development (save entire state)
+- Pure object-oriented programming (everything is an object!)
+- Extreme TDD - code directly in the debugger
+- SUnit testing framework
+- Comprehensive learning resources (MOOCs, free books)
+
+📁 [View Counter →](pharo/)
+
 ## TDD Principles Demonstrated
 
 Across all katas, you'll see these principles in action:
@@ -149,6 +166,11 @@ katas/
 │   ├── README.md        # Chapter-by-chapter guide with sequence diagrams
 │   └── git history (chapters 1-9)
 │
+├── pharo/               # Counter kata (Pharo Smalltalk)
+│   ├── MyCounter/       # Exported Tonel files
+│   ├── Counter.pdf      # Tutorial reference (Chapter 4 from Pharo by Example)
+│   └── README.md        # Comprehensive guide with MOOCs and books
+│
 └── README.md           # This file
 ```
 
@@ -188,6 +210,20 @@ ruby test/countdown_song_test.rb
 for f in test/*_test.rb; do ruby "$f"; done
 ```
 
+### Pharo Kata (Counter)
+
+**In Pharo:**
+1. Open Pharo Launcher
+2. Create/open your Counter-TDD image
+3. Open Test Runner: `Cmd-O, U`
+4. Select MyCounter package
+5. Click "Run Selected" - all tests should be green!
+
+**Export code:**
+1. Right-click MyCounter package in System Browser
+2. Select "Export as Tonel"
+3. Save to `pharo/MyCounter/` directory
+
 ## Git History
 
 Each kata has a clean commit history showing the TDD journey:
@@ -210,8 +246,9 @@ git log -p
 2. **Leap Year** - Practice with conditional logic and edge cases
 3. **Fibonacci** - Experience algorithm discovery through TDD
 4. **Stats Calculator** - Master Python built-ins and simple solutions
-5. **Money** - Advanced kata: design patterns, refactoring, metaphor power
-6. **99 Bottles** - Master kata: refactoring journey, polymorphism, context independence
+5. **Counter (Pharo)** - Introduction to Smalltalk, live programming, and image-based development
+6. **Money** - Advanced kata: design patterns, refactoring, metaphor power
+7. **99 Bottles** - Master kata: refactoring journey, polymorphism, context independence
 
 ## Presentation Materials
 
@@ -270,6 +307,14 @@ Perfect for:
 - **Context independence**: CountdownSong works for ANY countdown song, not just bottles
 - **Power of naming**: Bottles → CountdownSong revealed hidden generality
 
+### Counter (Pharo Smalltalk)
+- **Live programming**: Change code while it's running, see immediate results
+- **Image-based development**: Entire working state saved in .image files
+- **Pure OO**: Everything is an object, even classes
+- **Message passing**: Objects communicate via messages (selectors)
+- **Extreme TDD**: Code directly in the debugger when tests fail
+- **SUnit framework**: Pharo's built-in unit testing framework
+
 ## Statistics
 
 | Kata | Tests | Coverage | Commits | Lines of Code | Language |
@@ -280,7 +325,8 @@ Perfect for:
 | Stats Calculator | 10 | 100% | 10 | 11 | Python |
 | Money | 12 | 93% | 17+ | ~60 | Python |
 | 99 Bottles | 12 | 100% | 9+ | ~145 | Ruby |
-| **Total** | **66** | **~99%** | **58+** | **~251** | **2 languages** |
+| Counter | 4 | 100% | 1+ | ~15 | Pharo |
+| **Total** | **70** | **~99%** | **59+** | **~266** | **3 languages** |
 
 ## Technologies Used
 
@@ -295,6 +341,12 @@ Perfect for:
 - **Language**: Ruby 2.6+
 - **Testing**: Minitest (built-in)
 - **Book**: "99 Bottles of OOP" by Sandi Metz, Katrina Owen, and TJ Stankus
+
+### Pharo Kata
+- **Language**: Pharo Smalltalk 9.0+
+- **Testing**: SUnit (built-in)
+- **IDE**: Pharo Launcher, System Browser, Test Runner
+- **Resources**: Free MOOCs (http://mooc.pharo.org), Free books (http://books.pharo.org)
 
 ## Contributing
 
