@@ -1533,6 +1533,12 @@ puts monkeys.song
 
 ### **Sequence Diagrams: How Classes Interact**
 
+> **💡 Viewing the Diagrams:**
+> - **On GitHub**: Diagrams render automatically - just view this file on GitHub!
+> - **Locally in VS Code**: Install the "Markdown Preview Mermaid Support" extension
+> - **Other editors**: Look for Mermaid preview plugins/extensions
+> - **Online**: Copy the mermaid code to https://mermaid.live for live preview
+
 **Diagram 1: Generating a Single Verse (verse 6)**
 
 ```mermaid
