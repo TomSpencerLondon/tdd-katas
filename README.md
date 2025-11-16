@@ -107,6 +107,33 @@ This repository contains multiple coding katas, each implemented using strict TD
 
 📁 [View Counter →](pharo/)
 
+### 8. String Calculator Kata (Roy Osherove's TDD Classic)
+**Problem**: Build a string calculator with custom delimiters, validation, and state tracking
+**Source**: Roy Osherove's TDD Kata collection
+**Tests**: 13 passing
+**Assertions**: 19
+**Language**: Ruby
+**Key Learning**: Incremental TDD, regex patterns, building from scratch test-first
+
+**What makes this special**:
+- Classic kata for learning pure TDD workflow
+- Build from absolute zero (no existing code)
+- Each feature adds complexity incrementally
+- Advanced regex pattern matching (scan with capture groups)
+- Dynamic delimiter parsing (supports any delimiter, any length, multiple delimiters)
+- State tracking with instance variables
+- Exception-driven development
+
+**Features implemented**:
+- Custom delimiters: `//;\n1;2` → `3`
+- Variable-length delimiters: `//[***]\n1***2***3` → `6`
+- Multiple delimiters: `//[*][%]\n1*2%3` → `6`
+- Negative number exceptions with all negatives listed
+- Ignore numbers > 1000
+- Call count tracking
+
+📁 [View String Calculator →](string_calculator/)
+
 ## TDD Principles Demonstrated
 
 Across all katas, you'll see these principles in action:
@@ -171,6 +198,12 @@ katas/
 │   ├── Counter.pdf      # Tutorial reference (Chapter 4 from Pharo by Example)
 │   └── README.md        # Comprehensive guide with MOOCs and books
 │
+├── string_calculator/   # String Calculator kata (Roy Osherove's classic)
+│   ├── lib/             # Ruby source code
+│   ├── test/            # Minitest tests
+│   ├── String+Calculator+Kata+v1.pdf  # Original kata instructions
+│   └── README.md        # Complete implementation guide
+│
 └── README.md           # This file
 ```
 
@@ -195,18 +228,17 @@ pytest --cov=src --cov-report=term-missing
 ptw
 ```
 
-### Ruby Kata (99 Bottles)
+### Ruby Katas (99 Bottles, String Calculator)
 
 ```bash
 # Navigate to the kata directory
-cd 99_bottles
+cd 99_bottles  # or string_calculator
 
 # Run tests
-ruby test/bottles_test.rb
-ruby test/bottle_verse_test.rb
-ruby test/countdown_song_test.rb
+ruby test/bottles_test.rb            # 99 Bottles
+ruby test/string_calculator_test.rb  # String Calculator
 
-# Or run all tests
+# Or run all tests (99 Bottles)
 for f in test/*_test.rb; do ruby "$f"; done
 ```
 
@@ -246,9 +278,10 @@ git log -p
 2. **Leap Year** - Practice with conditional logic and edge cases
 3. **Fibonacci** - Experience algorithm discovery through TDD
 4. **Stats Calculator** - Master Python built-ins and simple solutions
-5. **Counter (Pharo)** - Introduction to Smalltalk, live programming, and image-based development
-6. **Money** - Advanced kata: design patterns, refactoring, metaphor power
-7. **99 Bottles** - Master kata: refactoring journey, polymorphism, context independence
+5. **String Calculator** - Build from scratch with TDD, regex patterns, incremental complexity
+6. **Counter (Pharo)** - Introduction to Smalltalk, live programming, and image-based development
+7. **Money** - Advanced kata: design patterns, refactoring, metaphor power
+8. **99 Bottles** - Master kata: refactoring journey, polymorphism, context independence
 
 ## Presentation Materials
 
@@ -315,6 +348,14 @@ Perfect for:
 - **Extreme TDD**: Code directly in the debugger when tests fail
 - **SUnit framework**: Pharo's built-in unit testing framework
 
+### String Calculator (Roy Osherove's Classic)
+- **Pure TDD workflow**: Every feature driven by failing test first
+- **Regex mastery**: scan() with capture groups, dynamic pattern building
+- **Incremental complexity**: Start simple, add features one at a time
+- **Exception-driven development**: Tests drive validation logic
+- **State tracking**: Instance variables maintain call count
+- **String parsing**: Multiple delimiters of any length
+
 ## Statistics
 
 | Kata | Tests | Coverage | Commits | Lines of Code | Language |
@@ -326,7 +367,8 @@ Perfect for:
 | Money | 12 | 93% | 17+ | ~60 | Python |
 | 99 Bottles | 12 | 100% | 9+ | ~145 | Ruby |
 | Counter | 4 | 100% | 1+ | ~15 | Pharo |
-| **Total** | **70** | **~99%** | **59+** | **~266** | **3 languages** |
+| String Calculator | 13 | 100% | 1+ | ~43 | Ruby |
+| **Total** | **83** | **~99%** | **71+** | **~309** | **3 languages** |
 
 ## Technologies Used
 
@@ -337,10 +379,12 @@ Perfect for:
 - **Git Hooks**: pre-commit
 - **Presentation**: python-pptx, reportlab
 
-### Ruby Kata
+### Ruby Katas
 - **Language**: Ruby 2.6+
 - **Testing**: Minitest (built-in)
-- **Book**: "99 Bottles of OOP" by Sandi Metz, Katrina Owen, and TJ Stankus
+- **Books/Sources**:
+  - "99 Bottles of OOP" by Sandi Metz, Katrina Owen, and TJ Stankus
+  - Roy Osherove's TDD Kata collection
 
 ### Pharo Kata
 - **Language**: Pharo Smalltalk 9.0+
