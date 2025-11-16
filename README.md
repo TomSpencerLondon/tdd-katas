@@ -322,5 +322,4 @@ This project is open source and available for educational purposes.
 
 ---
 
-**Generated with**: [Claude Code](https://claude.com/claude-code)  
 **Last Updated**: November 2025

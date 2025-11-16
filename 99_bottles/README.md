@@ -1691,6 +1691,5 @@ sequenceDiagram
 
 **Based on**: "99 Bottles of OOP" by Sandi Metz
 **Implementation**: Ruby (original book uses Ruby)
-**Generated with**: [Claude Code](https://claude.com/claude-code)
 **Author**: Tom Spencer
 **Date**: November 2025
