@@ -215,11 +215,17 @@ git log -p
 
 ## Presentation Materials
 
-Each kata includes:
+**Python katas** (FizzBuzz, Leap Year, Fibonacci, Stats Calculator) include:
 - **PowerPoint presentation** - Ready for meetups/teaching
 - **PDF guide** - Detailed walkthrough
 - **Presentation script** - Speaking notes and Q&A
 - **Summary document** - Journey breakdown
+
+**Ruby/Advanced katas** (Money, 99 Bottles) include:
+- **Chapter-by-chapter documentation** - Following the original books
+- **Sequence diagrams** (99 Bottles) - Visual class interaction flows
+- **Detailed README** - Complete journey documentation
+- **Code comments** - Inline explanations of design decisions
 
 Perfect for:
 - Teaching TDD to teams
