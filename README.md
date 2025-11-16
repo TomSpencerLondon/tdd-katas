@@ -65,6 +65,31 @@ This repository contains multiple coding katas, each implemented using strict TD
 
 📁 [View Money Kata →](money/)
 
+### 6. 99 Bottles Kata (Sandi Metz's OOP Classic)
+**Problem**: Generate the "99 Bottles of Beer" song with proper OO design
+**Chapters**: 9 chapters from Sandi Metz's "99 Bottles of OOP"
+**Tests**: 12 passing (7 unit + 3 integration + 2 generic)
+**Language**: Ruby
+**Key Learning**: Shameless duplication → Refactoring → Polymorphism → Context independence
+
+**What makes this special**:
+- Follows Sandi Metz's refactoring journey step-by-step
+- Auto-registering factory pattern with Ruby's `inherited` hook
+- Dependency Inversion and Law of Demeter in action
+- Generic CountdownSong abstraction (works for any countdown song!)
+- Complete sequence diagrams showing class interactions
+- Journey from 1 monolithic class → 7 well-designed classes
+
+**Chapters covered**:
+- Ch 1-2: Shameless Green (get it working first)
+- Ch 3-5: Remove duplication, extract classes, achieve polymorphism
+- Ch 6: Extract BottleNumber hierarchy
+- Ch 7: Auto-registering factory (Open/Closed Principle)
+- Ch 8: Dependency Inversion, Law of Demeter
+- Ch 9: Proper testing, context independence
+
+📁 [View 99 Bottles →](99_bottles/)
+
 ## TDD Principles Demonstrated
 
 Across all katas, you'll see these principles in action:
@@ -117,12 +142,19 @@ katas/
 │   ├── PRESENTATION_SUMMARY.md  # Complete presentation deck
 │   └── git history (17+ commits showing design evolution)
 │
+├── 99_bottles/          # 99 Bottles kata (Sandi Metz's classic)
+│   ├── lib/             # Ruby source code
+│   ├── test/            # Minitest unit and integration tests
+│   ├── book/            # Sandi Metz's chapter text
+│   ├── README.md        # Chapter-by-chapter guide with sequence diagrams
+│   └── git history (chapters 1-9)
+│
 └── README.md           # This file
 ```
 
 ## Quick Start
 
-Each kata has its own virtual environment and dependencies. To run any kata:
+### Python Katas (FizzBuzz, Leap Year, Fibonacci, Stats Calculator, Money)
 
 ```bash
 # Navigate to the kata directory
@@ -139,6 +171,21 @@ pytest --cov=src --cov-report=term-missing
 
 # Run tests in watch mode
 ptw
+```
+
+### Ruby Kata (99 Bottles)
+
+```bash
+# Navigate to the kata directory
+cd 99_bottles
+
+# Run tests
+ruby test/bottles_test.rb
+ruby test/bottle_verse_test.rb
+ruby test/countdown_song_test.rb
+
+# Or run all tests
+for f in test/*_test.rb; do ruby "$f"; done
 ```
 
 ## Git History
@@ -164,6 +211,7 @@ git log -p
 3. **Fibonacci** - Experience algorithm discovery through TDD
 4. **Stats Calculator** - Master Python built-ins and simple solutions
 5. **Money** - Advanced kata: design patterns, refactoring, metaphor power
+6. **99 Bottles** - Master kata: refactoring journey, polymorphism, context independence
 
 ## Presentation Materials
 
@@ -208,24 +256,39 @@ Perfect for:
 - **Design emerges**: Composite pattern emerged from tests, not planned upfront
 - **Refactoring with confidence**: Tests enabled deleting entire classes safely
 
+### 99 Bottles (Sandi Metz's Classic)
+- **Shameless Green first**: Get it working with duplication, refactor later
+- **Auto-registering factory**: Ruby's `inherited` hook enables Open/Closed Principle
+- **Dependency Inversion**: Depend on abstractions (verse_template role), not concretions
+- **Law of Demeter**: Only talk to direct collaborators, use forwarding methods
+- **Context independence**: CountdownSong works for ANY countdown song, not just bottles
+- **Power of naming**: Bottles → CountdownSong revealed hidden generality
+
 ## Statistics
 
-| Kata | Tests | Coverage | Commits | Lines of Code |
-|------|-------|----------|---------|---------------|
-| FizzBuzz | 10 | 100% | 10+ | ~20 |
-| Leap Year | 13 | 100% | 7 | 8 |
-| Fibonacci | 9 | 100% | 5 | 7 |
-| Stats Calculator | 10 | 100% | 10 | 11 |
-| Money | 12 | 93% | 17+ | ~60 |
-| **Total** | **54** | **~98%** | **49+** | **~106** |
+| Kata | Tests | Coverage | Commits | Lines of Code | Language |
+|------|-------|----------|---------|---------------|----------|
+| FizzBuzz | 10 | 100% | 10+ | ~20 | Python |
+| Leap Year | 13 | 100% | 7 | 8 | Python |
+| Fibonacci | 9 | 100% | 5 | 7 | Python |
+| Stats Calculator | 10 | 100% | 10 | 11 | Python |
+| Money | 12 | 93% | 17+ | ~60 | Python |
+| 99 Bottles | 12 | 100% | 9+ | ~145 | Ruby |
+| **Total** | **66** | **~99%** | **58+** | **~251** | **2 languages** |
 
 ## Technologies Used
 
+### Python Katas
 - **Language**: Python 3.10+
 - **Testing**: pytest, pytest-cov, pytest-watch
 - **Linting**: flake8
 - **Git Hooks**: pre-commit
 - **Presentation**: python-pptx, reportlab
+
+### Ruby Kata
+- **Language**: Ruby 2.6+
+- **Testing**: Minitest (built-in)
+- **Book**: "99 Bottles of OOP" by Sandi Metz, Katrina Owen, and TJ Stankus
 
 ## Contributing
 
