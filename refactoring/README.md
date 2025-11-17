@@ -175,6 +175,71 @@ sequenceDiagram
 - Movie and Rental are just "dumb" data holders
 - All logic is centralized in one long method
 
+---
+
+## Refactoring Steps - Detailed Progress
+
+### Step 1: Extract Method - `amount_for` ✅
+
+**Book Reference**: Chapter 1, pages 136-161
+
+**What we did:**
+Extracted the case statement that calculates charges into a separate `amount_for` method.
+
+**Why?**
+> "When I look at a long method like that, I am looking to decompose the method into smaller pieces. Smaller pieces of code tend to make things more manageable."
+
+**Analysis of variables:**
+- `element` - not modified, pass as parameter ✅
+- `this_amount` - modified, return it ✅
+
+**Code Changes:**
+
+```ruby
+# BEFORE - in statement method:
+this_amount = 0
+
+# determine amounts for each line
+case element.movie.price_code
+when Movie::REGULAR
+  this_amount += 2
+  this_amount += (element.days_rented - 2) * 1.5 if element.days_rented > 2
+when Movie::NEW_RELEASE
+  this_amount += element.days_rented * 3
+when Movie::CHILDRENS
+  this_amount += 1.5
+  this_amount += (element.days_rented - 3) * 1.5 if element.days_rented > 3
+end
+
+# AFTER - extracted method:
+this_amount = amount_for(element)
+
+# New method added:
+def amount_for(element)
+  this_amount = 0
+  case element.movie.price_code
+  when Movie::REGULAR
+    this_amount += 2
+    this_amount += (element.days_rented - 2) * 1.5 if element.days_rented > 2
+  when Movie::NEW_RELEASE
+    this_amount += element.days_rented * 3
+  when Movie::CHILDRENS
+    this_amount += 1.5
+    this_amount += (element.days_rented - 3) * 1.5 if element.days_rented > 3
+  end
+  this_amount
+end
+```
+
+**Test Results:** ✅ 8 runs, 8 assertions, 0 failures
+
+**Impact:**
+- Statement method is shorter and more focused
+- Pricing logic is isolated and can be tested independently
+- First step toward better organization
+
+---
+
 ## The First Step: Build Tests (Chapter 1, page 104-107)
 
 > "Whenever I do refactoring, the first step is always the same. I need to build a solid set of tests for that section of code."
