@@ -8,7 +8,7 @@ This kata follows the video rental example from the book's opening chapter. You'
 
 ## Current Progress
 
-**Status**: ✅ Step 5 - Extract Frequent Renter Points Complete (Commit: 2264cab)
+**Status**: ✅ Step 6 - Replace Temps with Query Methods Complete (Commit: [pending])
 
 | Step | Status | Refactoring | Git Commit |
 |------|--------|-------------|------------|
@@ -18,8 +18,8 @@ This kata follows the video rental example from the book's opening chapter. You'
 | 3 | ✅ | Move Method: `Rental#charge` | 27e8f3e |
 | 4 | ✅ | Replace Temp with Query: `this_amount` | 153b7df |
 | 5 | ✅ | Extract/Move: Frequent Renter Points | 2264cab |
-| 6 | 🔄 | Replace Temps: `total_charge`, `total_frequent_renter_points` | - |
-| 7 | ⬜ | Move Methods to Movie | - |
+| 6 | ✅ | Replace Temps: `total_charge`, `total_frequent_renter_points` | [pending] |
+| 7 | 🔄 | Move Methods to Movie | - |
 | 8 | ⬜ | Replace Type Code with State/Strategy | - |
 
 **Tests**: 8 runs, 8 assertions, 0 failures ✅
@@ -475,6 +475,95 @@ frequent_renter_points += element.frequent_renter_points
 - **Encapsulation**: Movie-specific rules stay with movie-related objects
 
 **See Figures 1.4-1.7** (book pages 353-391) for sequence diagrams showing this change.
+
+### Step 6: Replace Temps with Query Methods - `total_charge` and `total_frequent_renter_points` ✅
+
+**Book Reference**: Chapter 1, pages 398-449
+
+**What we did:**
+Created two query methods to replace the temporary variables `total_amount` and `frequent_renter_points`. This is the **BIG PAYOFF** - now HTML statements become trivial!
+
+**Why?**
+> "Temporary variables can be a problem. They are useful only within their own routine, and thus they encourage long, complex routines."
+
+These query methods:
+- Can be reused by ANY statement format (ASCII, HTML, XML, etc.)
+- Make the code more modular
+- Enable easy extraction of `html_statement` with NO duplication
+
+**Code Changes:**
+
+```ruby
+# BEFORE - Customer.rb:
+def statement
+  total_amount, frequent_renter_points = 0, 0
+  result = "Rental Record for #{@name}\n"
+  @rentals.each do |element|
+    frequent_renter_points += element.frequent_renter_points
+    result += "\t" + element.movie.title + "\t" + element.charge.to_s + "\n"
+    total_amount += element.charge
+  end
+  result += "Amount owed is #{total_amount}\n"
+  result += "You earned #{frequent_renter_points} frequent renter points"
+  result
+end
+
+# AFTER - Customer.rb:
+def statement
+  result = "Rental Record for #{@name}\n"
+  @rentals.each do |element|
+    result += "\t" + element.movie.title + "\t" + element.charge.to_s + "\n"
+  end
+  result += "Amount owed is #{total_charge}\n"
+  result += "You earned #{total_frequent_renter_points} frequent renter points"
+  result
+end
+
+private
+
+def total_charge
+  @rentals.inject(0) { |sum, rental| sum + rental.charge }
+end
+
+def total_frequent_renter_points
+  @rentals.inject(0) { |sum, rental| sum + rental.frequent_renter_points }
+end
+```
+
+**Ruby's `inject` method** (book pages 431-434):
+The book shows a longer version with explicit loops, then refactors to use Ruby's Collection Closure Method `inject`:
+- `inject(0)` starts with 0 as the accumulator
+- `{ |sum, rental| sum + rental.charge }` adds each rental's charge to the sum
+- Returns the final total
+
+**Test Results:** ✅ 8 runs, 8 assertions, 0 failures
+
+**Impact - THE BIG WIN:**
+
+Now we can easily write `html_statement` with NO duplication:
+
+```ruby
+def html_statement
+  result = "<h1>Rentals for <em>#{@name}</em></h1><p>\n"
+  @rentals.each do |element|
+    result += "\t" + element.movie.title + ": " + element.charge.to_s + "<br>\n"
+  end
+  result += "<p>You owe <em>#{total_charge}</em><p>\n"
+  result += "On this rental you earned <em>#{total_frequent_renter_points}</em> frequent renter points<p>"
+  result
+end
+```
+
+**Notice:**
+- Different formatting, same calculations
+- No copy-paste of calculation logic
+- Changes to pricing rules only need to change Rental, not Customer
+- This is what the whole refactoring was building toward!
+
+**See Figures 1.8-1.11** (book pages 469-503) for before/after class and sequence diagrams.
+
+**Book quote (page 524):**
+> "By extracting the calculations I can create the html_statement method and reuse all of the calculation code that was in the original statement method. I didn't copy and paste, so if the calculation rules change I have only one place in the code to go to."
 
 ---
 
