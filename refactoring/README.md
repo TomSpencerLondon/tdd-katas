@@ -8,13 +8,13 @@ This kata follows the video rental example from the book's opening chapter. You'
 
 ## Current Progress
 
-**Status**: ✅ Step 0 - Starting Point Complete (Commit: 7293cd8)
+**Status**: ✅ Step 1 - Extract Method Complete (Commit: dc8d2c7)
 
 | Step | Status | Refactoring | Git Commit |
 |------|--------|-------------|------------|
 | 0 | ✅ | **Starting Point** - Initial code with tests | 7293cd8 |
-| 1 | ⬜ | Extract Method: `amount_for` | - |
-| 2 | ⬜ | Rename Variables for clarity | - |
+| 1 | ✅ | Extract Method: `amount_for` | dc8d2c7 |
+| 2 | 🔄 | Rename Variables for clarity | - |
 | 3 | ⬜ | Move Method: `Rental#charge` | - |
 | 4 | ⬜ | Replace Temp with Query: `this_amount` | - |
 | 5 | ⬜ | Extract/Move: Frequent Renter Points | - |
@@ -237,6 +237,56 @@ end
 - Statement method is shorter and more focused
 - Pricing logic is isolated and can be tested independently
 - First step toward better organization
+
+### Step 2: Rename Variables ✅
+
+**Book Reference**: Chapter 1, pages 179-204
+
+**What we did:**
+Renamed variables in `amount_for` for clarity:
+- `element` → `rental` (describes what it is)
+- `this_amount` → `result` (standard convention for return value)
+
+**Why?**
+> "Good code should communicate what it is doing clearly, and variable names are a key to clear code. Never be afraid to change the names of things to improve clarity."
+
+Famous quote (page 203):
+> **"Any fool can write code that a computer can understand. Good programmers write code that humans can understand."**
+
+**Code Changes:**
+
+```ruby
+# BEFORE:
+def amount_for(element)
+  this_amount = 0
+  case element.movie.price_code
+  when Movie::REGULAR
+    this_amount += 2
+    this_amount += (element.days_rented - 2) * 1.5 if element.days_rented > 2
+  # ...
+  end
+  this_amount
+end
+
+# AFTER:
+def amount_for(rental)
+  result = 0
+  case rental.movie.price_code
+  when Movie::REGULAR
+    result += 2
+    result += (rental.days_rented - 2) * 1.5 if rental.days_rented > 2
+  # ...
+  end
+  result
+end
+```
+
+**Test Results:** ✅ 8 runs, 8 assertions, 0 failures
+
+**Impact:**
+- Code is more readable - `rental` clearly indicates we're working with a Rental object
+- `result` is a standard Ruby convention for the value to be returned
+- Small change, big improvement in clarity
 
 ---
 
