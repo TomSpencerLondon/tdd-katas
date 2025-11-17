@@ -8,15 +8,15 @@ This kata follows the video rental example from the book's opening chapter. You'
 
 ## Current Progress
 
-**Status**: ✅ Step 1 - Extract Method Complete (Commit: dc8d2c7)
+**Status**: ✅ Step 3 - Move Method Complete (Commit: [pending])
 
 | Step | Status | Refactoring | Git Commit |
 |------|--------|-------------|------------|
 | 0 | ✅ | **Starting Point** - Initial code with tests | 7293cd8 |
 | 1 | ✅ | Extract Method: `amount_for` | dc8d2c7 |
-| 2 | 🔄 | Rename Variables for clarity | - |
-| 3 | ⬜ | Move Method: `Rental#charge` | - |
-| 4 | ⬜ | Replace Temp with Query: `this_amount` | - |
+| 2 | ✅ | Rename Variables for clarity | d0ba6d0 |
+| 3 | ✅ | Move Method: `Rental#charge` | [pending] |
+| 4 | 🔄 | Replace Temp with Query: `this_amount` | - |
 | 5 | ⬜ | Extract/Move: Frequent Renter Points | - |
 | 6 | ⬜ | Replace Temps: `total_charge`, `total_frequent_renter_points` | - |
 | 7 | ⬜ | Move Methods to Movie | - |
@@ -287,6 +287,69 @@ end
 - Code is more readable - `rental` clearly indicates we're working with a Rental object
 - `result` is a standard Ruby convention for the value to be returned
 - Small change, big improvement in clarity
+
+### Step 3: Move Method - `Rental#charge` ✅
+
+**Book Reference**: Chapter 1, pages 213-277
+
+**What we did:**
+Moved the `amount_for` method from Customer to Rental, renamed it to `charge`.
+
+**Why?**
+> "This immediately raises my suspicions that the method is on the wrong object. In most cases a method should be on the object whose data it uses; thus the method should be moved to the rental."
+
+**Key Principle:** Methods should live with their data!
+
+**The Process (multi-step):**
+1. Copy code to Rental as `charge`, remove parameter (now use `movie` and `days_rented` directly)
+2. Test ✅
+3. Change Customer's `amount_for` to delegate to `rental.charge`
+4. Test ✅
+5. Replace all calls: `amount_for(element)` → `element.charge`
+6. Remove old `amount_for` method entirely
+7. Test ✅
+
+**Code Changes:**
+
+```ruby
+# NEW - Rental.rb now has charge method:
+class Rental
+  def charge
+    result = 0
+    case movie.price_code  # Notice: no rental. prefix needed!
+    when Movie::REGULAR
+      result += 2
+      result += (days_rented - 2) * 1.5 if days_rented > 2
+    when Movie::NEW_RELEASE
+      result += days_rented * 3
+    when Movie::CHILDRENS
+      result += 1.5
+      result += (days_rented - 3) * 1.5 if days_rented > 3
+    end
+    result
+  end
+end
+
+# CHANGED - Customer.rb:
+# BEFORE:
+this_amount = amount_for(element)
+
+# AFTER:
+this_amount = element.charge
+
+# REMOVED from Customer:
+# def amount_for(rental)  <-- Gone!
+```
+
+**Test Results:** ✅ 8 runs, 8 assertions, 0 failures
+
+**Impact:**
+- **Better OOP design**: Rental now has behavior, not just data
+- **Cleaner code**: No `rental.` prefix needed in charge method
+- **Responsibility**: Customer delegates calculation to Rental (Tell, Don't Ask!)
+- **Easier to test**: Can test Rental#charge independently
+
+**See Figure 1.3** (book page 264) for the new class structure.
 
 ---
 
