@@ -6,6 +6,24 @@ A hands-on refactoring exercise from Chapter 1 of "Refactoring: Ruby Edition" by
 
 This kata follows the video rental example from the book's opening chapter. You'll start with working but poorly-designed code and refactor it step-by-step to make it easier to change. The book chapter is included in [chapter_01.txt](book/chapter_01.txt) for reference.
 
+## Current Progress
+
+**Status**: ✅ Step 0 - Starting Point Complete (Commit: 7293cd8)
+
+| Step | Status | Refactoring | Git Commit |
+|------|--------|-------------|------------|
+| 0 | ✅ | **Starting Point** - Initial code with tests | 7293cd8 |
+| 1 | ⬜ | Extract Method: `amount_for` | - |
+| 2 | ⬜ | Rename Variables for clarity | - |
+| 3 | ⬜ | Move Method: `Rental#charge` | - |
+| 4 | ⬜ | Replace Temp with Query: `this_amount` | - |
+| 5 | ⬜ | Extract/Move: Frequent Renter Points | - |
+| 6 | ⬜ | Replace Temps: `total_charge`, `total_frequent_renter_points` | - |
+| 7 | ⬜ | Move Methods to Movie | - |
+| 8 | ⬜ | Replace Type Code with State/Strategy | - |
+
+**Tests**: 8 runs, 8 assertions, 0 failures ✅
+
 ## The Problem
 
 A video rental store needs to calculate customer charges and print statements. The initial code works but is hard to modify when new requirements arrive (HTML statements, changing pricing rules).
@@ -44,6 +62,42 @@ See Chapter 1 pages 2-6 in [chapter_01.txt](book/chapter_01.txt) for the full st
 - Calculates frequent renter points inline
 - Would need to be duplicated for HTML output
 - Mixes formatting with calculation
+
+### Starting Point: Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Customer
+    participant Rental
+    participant Movie
+
+    Client->>Customer: statement()
+    activate Customer
+
+    loop for each rental
+        Customer->>Rental: movie
+        Rental-->>Customer: Movie object
+        Customer->>Movie: price_code
+        Movie-->>Customer: REGULAR/NEW_RELEASE/CHILDRENS
+        Note over Customer: case statement calculates charge
+        Note over Customer: inline calculation of points
+        Customer->>Rental: days_rented
+        Rental-->>Customer: number
+        Customer->>Movie: title
+        Movie-->>Customer: string
+    end
+
+    Note over Customer: Formats and concatenates result string
+    Customer-->>Client: statement string
+    deactivate Customer
+```
+
+**Problems visible in the sequence diagram:**
+- Customer does ALL the work (charges, points, formatting)
+- Customer knows too much about Movie pricing rules
+- Movie and Rental are just "dumb" data holders
+- All logic is centralized in one long method
 
 ## The First Step: Build Tests (Chapter 1, page 104-107)
 
@@ -161,6 +215,69 @@ Is price a "state of the movie" or an "algorithm for calculating price"? Either 
 
 ## Final Structure (After All Refactorings)
 
+### Final Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Customer
+    participant Rental
+    participant Movie
+    participant Price
+
+    Client->>Customer: statement()
+    activate Customer
+
+    loop for each rental
+        Customer->>Rental: charge()
+        activate Rental
+        Rental->>Movie: charge(days_rented)
+        activate Movie
+        Movie->>Price: charge(days_rented)
+        activate Price
+        Note over Price: Polymorphic calculation<br/>(RegularPrice/NewReleasePrice/ChildrensPrice)
+        Price-->>Movie: amount
+        deactivate Price
+        Movie-->>Rental: amount
+        deactivate Movie
+        Rental-->>Customer: amount
+        deactivate Rental
+
+        Customer->>Rental: frequent_renter_points()
+        activate Rental
+        Rental->>Movie: frequent_renter_points(days_rented)
+        activate Movie
+        Movie->>Price: frequent_renter_points(days_rented)
+        activate Price
+        Note over Price: Polymorphic calculation<br/>(DefaultPrice module or override)
+        Price-->>Movie: points
+        deactivate Price
+        Movie-->>Rental: points
+        deactivate Movie
+        Rental-->>Customer: points
+        deactivate Rental
+
+        Customer->>Rental: movie.title
+        Rental-->>Customer: title
+    end
+
+    Customer->>Customer: total_charge()
+    Note over Customer: Aggregates using inject
+    Customer->>Customer: total_frequent_renter_points()
+    Note over Customer: Aggregates using inject
+
+    Note over Customer: Formats result string
+    Customer-->>Client: statement string
+    deactivate Customer
+```
+
+**Improvements visible in the final sequence diagram:**
+- **Proper delegation**: Each object handles its own data
+- **Polymorphism**: Price objects handle their specific logic (no case statements!)
+- **Tell, Don't Ask**: Customer tells rentals to calculate, doesn't ask for data to calculate itself
+- **Single Responsibility**: Each class has one clear job
+- **Open/Closed**: Easy to add new price types without modifying existing code
+
 **Key achievements:**
 - HTML statement is trivial (page 519-523) - no duplication!
 - Adding new movie types: just add a new Price class
@@ -171,39 +288,26 @@ Is price a "state of the movie" or an "algorithm for calculating price"? Either 
 - **Customer**: Manages rentals, formats statements, aggregates totals
 - **Rental**: Links movie to duration, delegates to movie
 - **Movie**: Manages title and price object, delegates to price
-- **Price classes**: Contain all pricing and points logic
+- **Price classes**: Contain all pricing and points logic (polymorphic)
 
 ## Example Final Code
 
 See chapter_01.txt pages 658-799 for the complete final code with all price classes, the DefaultPrice module, and the Movie/Rental/Customer classes.
 
-## How to Approach This Kata
+## How to Follow Along
 
-### 1. Read First (15-20 min)
-Read chapter_01.txt from the beginning through the "Comments on the Starting Program" section (pages 1-102) to understand the context and problem.
+We're working through this kata step-by-step, following the book's progression exactly. Each step will:
 
-### 2. Write Tests First (30 min)
-Before any refactoring, create comprehensive tests:
-- Test basic statement output
-- Test with various movie types and rental durations
-- Test frequent renter points calculation
-- Make tests self-checking (no manual verification)
+1. **Explain the refactoring** (from the book)
+2. **Show the code changes** (before/after)
+3. **Run tests** to verify nothing broke
+4. **Commit to git** to track our progress
+5. **Update sequence diagrams** to show OOP evolution
 
-### 3. Create Starting Code (15 min)
-Type in the initial Movie, Rental, and Customer classes from the book (pages 26-73). Make sure all tests pass!
-
-### 4. Follow the Book Step-by-Step (2-3 hours)
-Work through each refactoring in order, referring to the page numbers above:
-- Read the explanation for each step
-- Look at the before/after code examples
-- Make the change
-- **Run tests!**
-- Only proceed when tests are green
-
-### 5. Key Mindset
+### Key Mindset
 - **Trust the process** - The steps seem small, but they compound
 - **Test obsessively** - After every tiny change
-- **Read the page numbers** - The book explains the "why" beautifully
+- **Read the book references** - The page numbers explain the "why"
 - **Don't skip ahead** - Each step builds on the previous one
 
 ## Source
@@ -214,5 +318,5 @@ Work through each refactoring in order, referring to the page numbers above:
 
 ---
 
-**Status**: Ready to implement
-**Next Step**: Create initial code files and tests
+**Current Status**: ✅ Starting point complete - Ready for Step 1 (Extract Method)
+**Next**: Extract the `amount_for` method from Customer#statement
