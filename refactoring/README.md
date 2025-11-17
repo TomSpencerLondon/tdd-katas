@@ -351,6 +351,81 @@ this_amount = element.charge
 
 **See Figure 1.3** (book page 264) for the new class structure.
 
+#### Understanding "Tell, Don't Ask"
+
+This step demonstrates a crucial OOP principle: **Tell, Don't Ask**.
+
+**The Principle:** Tell objects what to do, don't ask them for data and do it yourself.
+
+**BEFORE (Ask - Procedural):**
+```ruby
+# Customer ASKS for data, then does the work itself
+price_code = element.movie.price_code
+days = element.days_rented
+# Customer knows HOW to calculate charges
+this_amount = case price_code
+  when Movie::REGULAR
+    # Customer contains the pricing logic!
+  end
+```
+
+**AFTER (Tell - Object-Oriented):**
+```ruby
+# Customer TELLS rental to do the work
+this_amount = element.charge  # Rental knows how to charge itself!
+```
+
+**Why this matters:**
+- **Encapsulation**: Rental's pricing logic stays with Rental's data
+- **Single Responsibility**: Each object is responsible for its own behavior
+- **Easier to change**: To modify pricing, change Rental, not Customer
+- **Proper OOP**: Objects aren't just data bags - they have behavior!
+
+**Fowler's phrase** "In most cases a method should be on the object whose data it uses" **IS** the Tell, Don't Ask principle in action.
+
+### Step 4: Replace Temp with Query - `this_amount` 🔄
+
+**Book Reference**: Chapter 1, pages 287-297
+
+**What "Replace Temp with Query" means:**
+
+Replace a temporary variable with a method call. Look at our current code:
+
+```ruby
+def statement
+  @rentals.each do |element|
+    this_amount = element.charge  # <-- Temporary variable!
+
+    result += "\t" + element.movie.title + "\t" + this_amount.to_s + "\n"
+    total_amount += this_amount
+  end
+end
+```
+
+`this_amount` is just holding the result of `element.charge`. We can eliminate it:
+
+```ruby
+def statement
+  @rentals.each do |element|
+    # No temp variable - call element.charge directly!
+    result += "\t" + element.movie.title + "\t" + element.charge.to_s + "\n"
+    total_amount += element.charge
+  end
+end
+```
+
+**Why eliminate temps?**
+- **Temps encourage long methods**: You can only use them in their local scope
+- **Method calls are reusable**: Can be called from anywhere
+- **Cleaner code**: Less clutter, clearer intent
+
+**"But we're calling charge() twice - isn't that inefficient?"**
+
+Fowler addresses this directly (page 300):
+> "Almost all the time extra method calls won't matter. In the rare cases they do, they can be dealt with later."
+
+**The refactoring mantra:** Focus on clarity first, optimize later with a profiler.
+
 ---
 
 ## The First Step: Build Tests (Chapter 1, page 104-107)
