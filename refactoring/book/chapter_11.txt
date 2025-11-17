@@ -1,0 +1,954 @@
+Chapter 11 
+Dealing with Generalization 
+Generalization produces its own batch of refactorings, mostly dealing with 
+moving methods around a hierarchy of inheritance, or a module hierarchy. Pull 
+Up Method and Push Down Method promote function up and down a hierar-chy, respectively. Rather than pushing down a constructor, it is often useful to use Replace Constructor with Factory Method. 
+If you have methods that have a similar outline body but vary in details, you 
+can use Form Template Method to separate the differences from the similarities. 
+In addition to moving functionality around a hierarchy, you can change the 
+hierarchy by creating new classes or modules. Extract Module, Extract Sub-class, and Introduce Inheritance all do this by forming new elements out of various points. If you find yourself with unnecessary classes or modules in your hierarchy, you can use Collapse Hierarchy or Inline Module to remove them. 
+Sometimes you find that inheritance is not the best way of handling a situa-
+tion and that you need delegation instead. Replace Inheritance with Delegation helps make this change. Sometimes life is the other way around and you have to use Replace Delegation with Hierarchy. 
+It is a good idea to use Replace Abstract Superclass with Module if you 
+never intend to directly instantiate your superclass, to better communicate this 
+intention.
+Pull Up Method 
+You have methods with identical results on subclasses. 
+Move them to the superclass.
+     
+  
+Chapter 11  Dealing with Generalization 354
+Pull Up
+Method
+Salesman
+name
+Engineer
+name
+Employee
+name
+Employee
+Engineer
+ Salesman
+Motivation
+Eliminating duplicate behavior is important. Although two duplicate methods 
+work fine as they are, they are nothing more than a breeding ground for bugs in the future. Whenever there is duplication, you face the risk that an alteration to one will not be made to the other. Usually it is difficult to find the duplicates. 
+The easiest case of using Pull Up Method occurs when the methods have the 
+same body, implying there’s been a copy and paste. Of course it’s not always as obvious as that. You could just do the refactoring and see if the tests croak, but that puts a lot of reliance on your tests. I usually find it valuable to look for the differences; often they show up behavior that I forgot to test for. 
+Often Pull Up Method comes after other steps. You see two methods in dif-
+ferent classes that can be parameterized in such a way that they end up as essen-tially the same method. In that case the smallest step is to parameterize each method separately and then generalize them. Do it in one go if you feel confi-dent enough. 
+A special case of the need for Pull Up Method occurs when you have a sub-
+class method that overrides a superclass method yet does the same thing. 
+The most awkward element of Pull Up Method is that the body of the meth-
+ods may refer to features that are on the subclass but not on the superclass. If 
+the feature is a method, you may be able to generalize the other method. You may need to change a method’s signature or create a delegating method to get this to work. 
+If you have two methods that are similar but not the same, you may be able 
+to use Form Template Method. 
+This refactoring also applies to a module hierarchy, where a method is dupli-
+cated on two or more classes that include a module. Move the methods onto the 
+module itself. 
+     
+  
+Pull Up Method 355
+Pull Up
+MethodMechanics
+1.Inspect the methods to ensure they are identical. 
+If the methods look like they do the same thing but are not identi-
+cal, use Substitute Algorithm on one of them to make them identical. 
+2.If the methods have different signatures, change the signatures to the one 
+you want to use in the superclass. 
+3.Create a new method in the superclass, copy the body of one of the meth-ods to it, and adjust. 
+4.Delete one subclass method. 
+5.Test. 
+6.Keep deleting subclass methods and testing until only the superclass method remains. 
+Example
+Consider a customer with two subclasses: regular customer and preferred cus-tomer (see Figure 11.1).
+add_bill(date, amount) last_bill_date Customer
+create_bill(date) 
+charge_for(start_date, end_date) Regular Customer
+create_bill(date) charge_for(start_date, end_date) Perferred Customer
+Figure 11.1 Regular customer and preferred customer .
+Thecreate_bill  method is identical for each class: 
+ def create_bill(date)    charge_amount = charge_for(last_bill_date, date)
+     
+  
+Chapter 11  Dealing with Generalization 356
+Push
+Down
+Method    add_bill(date, charge_amount)
+  end  
+I copy create_bill  from one of the subclasses. I then remove the  create_bill
+method from one of the subclasses and test. I then remove it from the other and 
+test (see Figure 11.2).
+charge_for(start_date, end_date) Perferred Customer
+charge_for(start_date, end_date) Regular Customer
+last_bill_date Customer
+add_bill()date, amount) 
+create_bill(date) charge_for(start_date, end_date) 
+Figure 11.2 Inheritance hierarchy after pulling the create_bill  method up to the 
+superclass.
+Push Down Method 
+Behavior on a superclass is relevant only for some of its subclasses. 
+Move it to those subclasses.
+Salesman
+quota
+Employee
+quota
+Employee
+Engineer
+ Engineer
+ Salesman
+     
+  
+Extract Module 357
+Extract 
+ModuleMotivation
+Pull Down Method is the opposite of Pull Up Method. I use it when I need to 
+move behavior from a superclass to a specific subclass, usually because it makes sense only there. You often do this when you use Extract Subclass. Pull Down Method is also used to move methods from a module onto a class that includes that module. 
+Mechanics
+1.Declare a method in all subclasses and copy the body into each subclass. 
+Use an accessor on the superclass to access any fields on the super-
+class. Make the accessor protected if public access isn’t required. 
+2.Remove method from superclass. 
+3.Test. 
+4.Remove the method from each subclass that does not need it. 
+5.Test. 
+Extract Module 
+You have duplicated behavior in two or more classes. 
+Create a new module and move the relevant behavior from the old class into the 
+module, and include the module in the class. 
+ class Bid...
+      before_save :capture_account_number      def capture_account_number      self.account_number = buyer.preferred_account_number    end  end  
+     
+  
+Chapter 11  Dealing with Generalization 358
+Extract 
+Module class Bid...
+    include AccountNumberCapture  end    module AccountNumberCapture      def self.included(klass)      klass.class_eval do        before_save :capture_account_number      end    end      def capture_account_number      self.account_number = buyer.preferred_account_number    end  end   
+Motivation
+There are a number of reasons to use Extract Module, the primary one being the 
+removal of duplication. It’s relatively straightforward to create a new module, move methods to the module, and include the module in the appropriate classes. But Extract Module should be used with care. A module should have a single responsibility, just like a class. The methods within a module should be cohe-sive: They should make sense as a group. Too often I’ve seen modules become “junk-drawers” for behavior. They are created with the noble goal of removing duplication, but over time they become bloated. The methods don’t make sense together, and it becomes difficult to find a particular piece of behavior. And when existing behavior is hard to find, identifying and removing duplication is an onerous task. A module that is difficult to name without using words like “Helper” or “Assistant” is probably doing too much. 
+So the question becomes, when do you choose Extract Module over Extract 
+Class? When we’re talking about the removal of duplication, use Extract Class whenever possible. Let’s say you have class A and class B. Behavior X is dupli-cated in A and B. If you can remove behavior X entirely from class A and B by 
+extracting the behavior to class C and having instances of A and A delegate to 
+an instance of C, then that’s great. A and B both have one less responsibility, 
+     
+  
+Extract Module 359
+Extract
+Modulethe duplication has been removed, and C is now able to be reused and tested in 
+isolation.
+If, however, behavior X only makes sense on class A and B, then Extract 
+Module is a better choice. Perhaps a framework you are using looks for the behavior on class A and B, and the introduction of delegation would be messy. 
+Mechanics
+1.Create a blank module; include the module into the original classes. 
+2.Start with the instance methods. One by one, use Pull Up Method to move the common elements to the module. 
+If you have methods in the including classes that have different 
+signatures but the same purpose, use Rename Method to get them to the same name and then use Pull Up Method. 
+If you have methods with different bodies that do the same thing, 
+you may try using Substitute Algorithm to copy one body into the other. If this works, you can then use Pull Up Method. 
+3.Test after each pull. 
+4.For class methods that you want to call directly on the module, use Move Method just as you did for the instance methods. Change the callers to call the method using the module reference. 
+5.If you have class methods that you want to call on either of the including classes, create an included hook on the module. Move the class method definitions to the included hook. 
+6.Test after each change. 
+7.Examine the methods left on the including classes. See if there are com-
+mon parts, if there are you can use Extract Method followed by Pull Up Method on the common parts. If the overall flow is similar, you may be able to use Form Template Method. 
+     
+  
+Chapter 11  Dealing with Generalization 360
+Extract
+ModuleExample
+In this example, we are using a framework that makes use of a before_save  hook to 
+perform work before the object is saved to a database. In our case, we want to 
+update an account number on both the Bid and  Sale objects before they are saved 
+to the database. 
+ class Bid...
+      before_save :capture_account_number      def capture_account_number      self.account_number = buyer.preferred_account_number    end  end    class Sale...      before_save :capture_account_number      def capture_account_number      self.account_number = buyer.preferred_account_number    end    end  
+At this point I ask myself whether I should use Extract Class or Extract Mod-
+ule. Since we want our bid and sale objects to respond to
+before_save  (so that the 
+framework can call it), we’re stuck with writing some sort of code to make Bid
+andSale respond to  before_save . We could conceivably implement  capture_account_
+number  on  Bid and  Sale, and use it to delegate to another object, but this object 
+would have to be aware of the caller so that it could set the account_number . We 
+would be delegating to an object only to have it call back to our bid and sale, 
+which is undesirable. Extract Module is the way to go. 
+Let’s start by creating an  AccountNumberCapture  module. 
+ module AccountNumberCapture
+    end  
+Next we’ll include this module into
+Bid andSale.
+ class Bid...    include AccountNumberCapture  
+     
+  
+Extract Module 361
+Extract
+Module  end
+    class Sale...    include AccountNumberCapture    end  
+We’re now ready to perform Move Method on the first (and only) instance 
+method. We remove it from  
+Bid, and add it to AccountNumberCapture .
+ module AccountNumberCapture      def capture_account_number      self.account_number = buyer.preferred_account_number    end  end  
+All going well, our tests should pass. 
+We don’t have any class methods to move—if we did, we’d have to 
+decide whether we wanted to call them directly on the module (for example, 
+AccountNumberCapture.my_class_method ), or on one of the including classes (for example, 
+Bid.my_class_method ). If we choose the former, we can move the class method in the 
+same way as we did the instance methods. But if the class method calls some-thing specific on the including class, the method has to go on the including class itself. For that, we would need an
+included  hook. The same applies to our 
+before_save  class annotation, which needs to be executed on the including class, 
+not on the AccountNumberCapture  module. We’ll need to open up the class that’s 
+including our module using class_eval  and make the call to before_save .
+ module AccountNumberCapture...
+      def self.included(klass)      klass.class_eval do        before_save :capture_account_number      end    end  
+This can be an awkward step at first if you’re not used to opening up classes in 
+this fashion, but if all goes well, the tests should pass. 
+We can then remove the duplicated methods from the  Sale class. 
+The full definition of
+AccountNumberCapture  looks like this: 
+     
+  
+Chapter 11  Dealing with Generalization 362
+Inline
+Module module AccountNumberCapture
+      def self.included(klass)      klass.class_eval do        before_save :capture_account_number      end    end      def capture_account_number      self.account_number = buyer.preferred_account_number    end  end    
+Inline Module 
+The resultant indirection of the included module is no longer worth the duplica-
+tion it is preventing. 
+Merge the module into the including class. 
+Motivation
+Modules introduce a level of indirection—to find the behavior you first have to 
+go to the class definition, find the name of the included module, and then go to the module definition. This indirection is worthwhile if you can remove duplica-tion. But if a module is no longer pulling its weight—if the level of indirection is not worth the savings in duplication—merge the module into the class that is including it. 
+Mechanics
+1.Use Push Down Method to move all the behavior out of the module onto the class that is including the module. 
+2.Test with each move. 
+3.Remove the empty module. 
+4.Test. 
+     
+  
+Extract Subclass 363
+Extract
+SubclassExtract Subclass 
+A class has features that are used only in some instances. 
+Create a subclass for that subset of features. 
+Job Item
+total price
+unit priceemployee
+Job Item
+total priceunit price
+Labor Item
+unit priceemployee
+Motivation
+The main trigger for use of Extract Subclass is the realization that a class has 
+behavior used for some instances of the class and not for others. Sometimes this is signaled by a type code, in which case you can use Replace Type Code with Polymorphism, Replace Type Code with Module Extension, or Replace Type Code with State/Strategy. Another alternative to Extract Subclass is Extract Class. This is a choice between delegation and inheritance. Extract Subclass is usually simpler to do, but it has limitations. You can’t change the class-based behavior of an object once the object is created. You can change the class-based behavior with Extract Class simply by plugging in different components. Another limitation of subclasses is that you’re also only able to represent one variation, as a given class in Ruby can only inherit from one superclass directly. If you want the class to vary in several different ways, you have to use delega-tion or module extension for all but one of them. 
+Mechanics
+1.Define a new subclass of the source class. 
+2.Look for places where the subclass should be created instead of the super-class.
+     
+  
+Chapter 11  Dealing with Generalization 364
+Extract
+SubclassIf you need conditional logic to determine which type to create, 
+consider using Replace Constructor with Factory Method. 
+3.One by one use Push Down Method to move features onto the subclass. 
+4.Look for any field that designates information now indicated by the hier-
+archy (usually a boolean or type code). Eliminate it by using Self Encap-sulate Field and replacing the getter with polymorphic constant methods. All users of this field should be refactored with Replace Conditional with Polymorphism.
+For any methods outside the class that use an accessor, consider 
+using Move Method to move the method into this class; then use Replace Conditional with Polymorphism. 
+5.Test after each push down. 
+Example
+I’ll start with a JobItem  class that determines prices for items of work at a local 
+garage:
+ class JobItem
+    def initialize(unit_price, quantity, is_labor, employee)      @unit_price = unit_price    @quantity = quantity    @is_labor = is_labor    @employee = employee    end      def total_price      unit_price * @quantity    end      def unit_price      labor? ? @employee.rate : @unit_price    end      def labor?; @is_labor end      attr_reader :quantity, :employee  
+  
+  
+     
+  
+Extract Subclass 365
+Extract
+Subclass  class Employee...
+    attr_reader :rate      def initialize(rate)      @rate = rate    end  
+I extract a
+LaborItem  subclass from this class because some of the behavior and 
+data are needed only in that case. I begin by creating the new class: 
+ class LaborItem < JobItem
+  end  
+The first thing I need is a constructor for the labor item because job item 
+does not have a no-arg constructor. For this I copy the signature of the parent 
+constructor:
+ def initialize(unit_price, quantity, is_labor, employee)
+    super  end  
+Although this may be enough to get the tests to pass, the constructor is messy; 
+some arguments are needed by the labor item, and some are not. I deal with that 
+later. 
+The next step is to look for calls to the constructor of the job item, and to 
+look for cases where the constructor of the labor item should be called instead. So statements like :
+ j1 = JobItem.new(0, 5, true, kent)  
+become
+   j1 = LaborItem.new(0, 5, true, kent)  
+Now is a good time to clean up the constructor parameter lists. I work with 
+the superclass first. I use a default value of false for
+is_labor  so that I can change 
+the callers one-by-one:  class JobItem...
+      def initialize(unit_price, quantity, is_labor=false, employee=nil)      @unit_price = unit_price    @quantity = quantity    @is_labor = is_labor    @employee = employee    end  
+Callers can now take advantage of the default values: 
+ j2 = JobItem.new(10, 15)  
+     
+  
+Chapter 11  Dealing with Generalization 366
+Extract
+SubclassOnce I’ve run the tests, I use Remove Parameter on the subclass constructor: 
+   class LaborItem
+    def initialize(quantity, employee)
+      super(0, quantity, true, employee)    end  
+Now I can start pushing down the features of the job item. I begin with the 
+methods. I start with using Push Down Method on the
+employee  attribute reader: 
+ class LaborItem...
+    attr_reader :employee    class JobItem...    attr_reader :employee  
+I can clean up the constructors so that employee is set only in the subclass into 
+which it is being pushed down: 
+ class JobItem...
+    def initialize(unit_price, quantity, is_labor=false)      @unit_price, @quantity, @is_labor = unit_price, quantity, is_labor    end      class LaborItem...    def initialize(quantity, employee)      super(0, quantity, true)      @employee = employee    end  
+The field
+@is_labor  is used to indicate information that is now inherent in the 
+hierarchy. So I can remove the field. The best way to do this is to first use Self 
+Encapsulate Field and then change the accessor to use a polymorphic constant method. A polymorphic constant method is one whereby each implementation returns a (different) fixed value: 
+ class JobItem...
+    protected  
+     
+  
+Extract Subclass 367
+Extract
+Subclass    def labor?
+      false    end    class LaborItem...    protected      def labor?      true    end  
+Then I can get rid of the
+@labor field .
+Now I can look at users of the labor?  methods. These should be refactored 
+with Replace Conditional with Polymorphism. I take the method :
+ class JobItem...
+    def unit_price      labor? ? @employee.rate : @unit_price    end  
+and replace it with 
+ class JobItem...
+    attr_reader :unit_price    class LaborItem    def unit_price      @employee.rate    end  
+Because
+unit_price  is used only by items that are nonlabor (parts job items), I can 
+use Extract Subclass on job item again to create a parts item class. When I’ve 
+done that, the job item class will not be instantiated explicitly. It will only be used as the superclass of
+LaborItem  and  PartsItem . In this case, I could use Replace 
+Abstract Superclass with Module. 
+     
+  
+Chapter 11  Dealing with Generalization 368
+Introduce
+InheritanceIntroduce Inheritance 
+You have two classes with similar features. 
+Make one of the classes a superclass and move the common features to the 
+superclass.
+Front Suspension 
+Mountain Bike
+off road ability
+ wheel circumference
+off road abilityFront Suspension 
+Mountain Bike
+@tire diameterTIRE WIDTH FACTOR@tire diameter
+TIRE WIDTH FACTOR
+wheel circumferenceoff road abilityMountain Bike
+@tire diameterTIRE WIDTH FACTOR
+wheel circumferenceoff road abilityMountain Bike
+@tire diameterTIRE WIDTH FACTOR
+Motivation
+Duplicate code is one of the principal bad things in systems. If you say things 
+in multiple places, then when it comes time to change what you say, you have more things to change than you should. 
+One form of duplicate code is two classes that do similar things in the same 
+way or similar things in different ways. Objects provide a built-in mechanism to simplify this situation with inheritance. However, you often don’t notice the commonalities until you have created some classes, in which case you need to create the inheritance structure later. 
+An alternative to Introduce Inheritance is Extract Class. The choice is essen-
+tially between inheritance and delegation. Inheritance is the simpler choice if the two classes share interface as well as behavior. If you make the wrong choice, you can always use Replace Inheritance with Delegation later. 
+If you can’t use Extract Class, consider Extract Module. If you never intend 
+to directly instantiate the superclass, the use of a module instead will better communicate this intention. If you make the wrong choice, it’s no big deal—you can always use Replace Abstract Superclass with Module later. 
+     
+  
+Introduce Inheritance 369
+Introduce
+InheritanceMechanics
+1.Choose one of the classes to be a superclass. Make the other classes 
+inherit it. 
+2.One by one, use Pull Up Method to move common elements to the super-class.
+If you have subclass methods that have different signatures but the 
+same purpose, use Rename Method to get them to the same name and then use Pull Up Method. 
+If you have methods with different bodies that do the same thing, 
+you may try using Substitute Algorithm to copy one body into the other. If this works, you can then use Pull Up Method. 
+3.Test after each pull. 
+4.Examine the methods left on the subclass. See if there are common parts, if there are you can use Extract Method followed by Pull Up Method on the common parts. If the overall flow is similar, you may be able to use Form Template Method. 
+Example
+Again we’ll use the mountain bike example. An instance of the MountainBike  class 
+has no suspension, whereas FrontSuspensionMountainBike  has front suspension: 
+ class MountainBike
+    TIRE_WIDTH_FACTOR = 6    attr_accessor :tire_diameter      def wheel_circumference       Math::PI * (@wheel_diameter + @tire_diameter)    end      def off_road_ability      @tire_diameter * TIRE_WIDTH_FACTOR    end  end  
+     
+  
+Chapter 11  Dealing with Generalization 370
+Introduce
+Inheritance  class FrontSuspensionMountainBike
+      TIRE_WIDTH_FACTOR = 6    FRONT_SUSPENSION_FACTOR = 8      attr_accessor :tire_diameter, :front_fork_travel      def wheel_circumference       Math::PI * (@wheel_diameter + @tire_diameter)    end      def off_road_ability      @tire_diameter * TIRE_WIDTH_FACTOR + @front_fork_travel *     FRONT_SUSPENSION_FACTOR    end  end  
+There are a couple of areas of commonality here. First, both kinds of bicycles 
+have the
+wheel_circumference  and  off_road_ability  calculation, as well as the  tire_diameter
+attribute and TIRE_WIDTH_FACTOR .wheel_circumference  is identical for both, whereas  off_
+road_ability  is slightly different.  FrontSuspensionMountainBike  looks like a specialization 
+ofMountainBike  so I’ll make MountainBike  the superclass: 
+ class FrontSuspensionMountainBike < MountainBike      TIRE_WIDTH_FACTOR = 6    FRONT_SUSPENSION_FACTOR = 8      attr_accessor :tire_diameter, :front_fork_travel      def wheel_circumference       Math::PI * (@wheel_diameter + @tire_diameter)    end      def off_road_ability      @tire_diameter * TIRE_WIDTH_FACTOR + @front_fork_travel *      FRONT_SUSPENSION_FACTOR    end  end  
+Now I begin to pull up features to the superclass. I can start by deleting the 
+wheel_ circumference  method,  tire_diameter , and TIRE_WIDTH_FACTOR , which are exactly the 
+     
+  
+Collapse Hierarchy 371
+Collapse
+Hierarchysame on both classes. Then I can make off_road_ability  in  FrontSuspensionMountainBike
+useMountainBike :
+ class FrontSuspensionMountainBike < MountainBike
+      FRONT_SUSPENSION_FACTOR = 8      attr_accessor :front_fork_travel      def off_road_ability      super + @front_fork_travel * FRONT_SUSPENSION_FACTOR    end    end    
+Collapse Hierarchy 
+A superclass and subclass (or module and the class that includes the module) are 
+not very different. 
+Merge them together.
+Employee
+Employee
+Salesman
+Motivation
+If you have been working for a while with a class or module hierarchy, it can 
+easily become too tangled for its own good. Refactoring the hierarchy often involves pushing methods and fields up and down the hierarchy. After you’ve done this you can well find you have a subclass or module that isn’t adding any value, so you need to merge the hierarchy together. 
+     
+  
+Chapter 11  Dealing with Generalization 372
+Form
+Template
+MethodMechanics
+We describe here the mechanics for merging an inheritance hierarchy, but the 
+refactoring is the same for modules. 
+1.Choose which class is going to be removed: the superclass or the sub-
+classes.
+2.Use Pull Up Method or Push Down Method to move all the behavior of the removed class to the class with which it is being merged. 
+3.Test with each move. 
+4.Adjust references to the class that will be removed to use the merged class.
+5.Remove the empty class. 
+6.Test. 
+Form Template Method 
+You have two methods in subclasses that perform similar steps in the same order, yet the steps are different. 
+Get the steps into methods with the same signature, so that the original methods 
+become the same. Then you can pull them up.
+     
+  
+Form Template Method 373
+Form
+TemplateMethod
+Site
+base amount() + tax amount()
+billable amountResidential Site
+base amount
+tax amountResidential Site
+base amounttax amountLifeline Site
+billable amountbase amounttax amountSite
+billable amountLifeline Sitebase = @units * @rate * 0.5 tax = base * Site:: TAX_RATE * 0.2 base + tax 
+base = @units * @rate tax = base * Site:: TAX_RATE base + tax 
+Motivation
+Inheritance is a powerful tool for eliminating duplicate behavior. Whenever we see 
+two similar methods in a subclass, we want to bring them together in a superclass. But what if they are not exactly the same? What do we do then? We still need to eliminate all the duplication we can but keep the essential differences. 
+A common case is two methods that seem to carry out broadly similar steps 
+in the same sequence, but the steps are not the same. In this case we can move the sequence to the superclass and allow polymorphism to play its role in ensur-ing the different steps do their things differently. This kind of method is called a template method [Gang of Four]. 
+In Ruby, it is also possible to Form Template Method using the extension of 
+modules. The class that extends the modules plays the role of the superclass, housing the sequence, while the modules implement the specific behavior. 
+     
+  
+Chapter 11  Dealing with Generalization 374
+Form
+Template
+MethodMechanics
+1.Decompose the methods so that all the extracted methods are either iden-
+tical or completely different. 
+2.Use Pull Up Method to pull the identical methods into the superclass (when using inheritance) or the class that extends the modules (when using module extension). 
+3.For the different methods use Rename Method so the signatures for all the methods at each step are the same. 
+This makes the original methods the same in that they all issue the 
+same set of method calls, but the subclasses/modules handle the calls dif-ferently. 
+4.Test after each signature change. 
+5.Use Pull Up Method on one of the original methods. 
+6.Test. 
+7.Remove the other methods. Test after each removal. 
+Example 1: Template Method Using Inheritance 
+I finish where I left off in Chapter 1, “Refactoring, a First Example.” I had a customer class with two methods for printing statements. The 
+ statement  method 
+prints statements in ASCII: 
+   def statement
+      result = "Rental Record for #{name}\n"      @rentals.each do |rental|        # show figures for this rental        result << "\t#{rental.movie.title}\t#{rental.charge}\n"      end      # add footer lines      result << "Amount owed is #{total_charge}\n"      result << "You earned #{total_frequent_renter_points} frequent renter\  points"      result    end  
+     
+  
+Form Template Method 375
+Form
+Template
+Methodwhile the html_statement  does them in HTML: 
+   def html_statement
+      result = "<H1>Rentals for <EM>#{name}</EM></H1><P>\n"      @rentals.each do |rental|        # show figures for this rental        result << "#{rental.movie.title}: \t#{rental.charge}<BR/>\n"      end      # add footer lines      result << "<P>You owe <EM>#{total_charge}</EM></P>\n"      result << "On this rental you earned <EM>#{total_frequent_renter_points}</\
+EM> frequent renter points</P>"    end  
+Before I can use Form Template Method I need to arrange things so that the two 
+methods are subclasses of some common superclass. I do this by using a method object [Beck] to create a separate strategy hierarchy for printing the statements (refer to Figure 11.3).
+ class Statement; end
+  class TextStatement < Statement; end  class HtmlStatement < Statement; end  
+Now I use Move Method to move the two statement methods over to the 
+subclasses:
+ class Customer
+    def statement      TextStatement.value(self)    end      def html_statement      HtmlStatement.value(self)    end  
+Customer
+Html
+Statement
+Text
+Statement
+Statement
+Figure 11.3 Using a strategy for statements .
+     
+  
+Chapter 11  Dealing with Generalization 376
+Form
+Template
+Method class TextStatement < Statement
+    def value(customer)      result = "Rental Record for #{customer.name}\n"      customer.rentals.each do |rental|        # show figures for this rental        result << "\t#{rental.movie.title}\t#{rental.charge}\n"      end      # add footer lines      result << "Amount owed is #{customer.total_charge}\n"      result << "You earned #{customer.total_frequent_renter_points} frequent\   renter points"    end  end    class HtmlStatement < Statement    def value(customer)      result = "<H1>Rentals for <EM>#{customer.name}</EM></H1><P>\n"      customer.rentals.each do |rental|        # show figures for this rental        result << "#{rental.movie.title}: \t#{rental.charge}<BR/>\n"      end      # add footer lines      result << "<P>You owe <EM>#{customer.total_charge}</EM></P>\n"      result << "On this rental you earned <EM>\  #{customer.total_frequent_renter_points}</EM> frequent renter points</P>"    end  end  
+As I moved them I renamed the
+statement  methods to better fit the strategy. I gave them 
+the same name because the difference between the two now lies in the class rather than 
+the method. (For those trying this from the example, I also had to add a rentals method to customer and relax the visibility of
+total_charge  andtotal_frequent_renter_points .
+With two similar methods on subclasses, I can start to use Form Template 
+Method. The key to this refactoring is to separate the varying code from the similar code by using Extract Method to extract the pieces that are different between the two methods. Each time I extract I create methods with different bodies but the same signature. 
+The first example is the printing of the header. Both methods use the customer to 
+obtain information, but the resulting string is formatted differently. I can extract the formatting of this string into separate methods with the same signature: 
+ class TextStatement < Statement
+    def value(customer)
+     
+  
+Form Template Method 377
+Form
+Template
+Method      result =  header_string(customer) 
+      customer.rentals.each do |rental|        # show figures for this rental        result << "\t#{rental.movie.title}\t#{rental.charge}\n"      end      # add footer lines      result << "Amount owed is #{customer.total_charge}\n"      result << "You earned #{customer.total_frequent_renter_points} frequent\  renter points"    end      def header_string(customer)      "Rental Record for #{customer.name}\n"    end  end    class HtmlStatement < Statement      def value(customer)      result =  header_string(customer)       customer.rentals.each do |rental|        # show figures for this rental        result << "#{rental.movie.title}: \t#{rental.charge}<BR/>\n"      end      # add footer lines      result << "<P>You owe <EM>#{customer.total_charge}</EM></P>\n"      result << "On this rental you earned <EM>\
+  #{customer.total_frequent_renter_points}</EM> frequent renter points</P>"
+    end      def header_string(customer)      "<H1>Rentals for <EM>#{customer.name}</EM></H1><P>\n"    end  end  
+I test and then continue with the other elements. I did the steps one at a time. 
+Here is the result: 
+ class TextStatement < Statement
+    def value(customer)      result = header_string(customer)      customer.rentals.each do |rental|        result <<  each_rental_string(rental) 
+      end
+     
+  
+Chapter 11  Dealing with Generalization 378
+Form
+Template
+Method      result <<  footer_string(customer) 
+    end      def header_string(customer)      "Rental Record for #{customer.name}\n"    end      def each_rental_string(rental)      "\t#{rental.movie.title}\t#{rental.charge}\n"    end      def footer_string(customer)      <<-EOS        Amount owed is #{customer.total_charge}        You earned #{customer.total_frequent_renter_points} frequent renter  points      EOS    end  end    class HtmlStatement < Statement    def value(customer)      result = header_string(customer)      customer.rentals.each do |rental|        result <<  each_rental_string(rental) 
+      end      result <<  footer_string(customer) 
+    end
+      def header_string(customer)      "<h1>Rentals for <em>#{customer.name}</em></h1><p>\n"    end      def each_rental_string(rental)      "#{rental.movie.title}: \t#{rental.charge}<BR/>\n"    end      def footer_string(customer)      <<-EOS        <P>You owe <EM>#{customer.total_charge}</EM></P>        On this rental you earned <EM>#{customer.      total_frequent_  renter_points}</EM> frequent renter points</P>      EOS    end
+     
+  
+Form Template Method 379
+Form
+TemplateMethod  end  
+Once these changes have been made, the two value methods look remarkably 
+similar. So I use Pull Up Method on one of them, picking the text version at 
+random:
+ class Statement...
+    def value(customer)      result = header_string(customer)      customer.rentals.each do |rental|        result << each_rental_string(rental)      end      result << footer_string(customer)    end  
+I remove the
+value method from text statement and test. When that works I 
+remove the value method from the HTML statement and test again. The result 
+is shown in Figure 11.4.
+After this refactoring, it is easy to add new kinds of statements. All you have 
+to do is create a subclass of statement that implements the three methods. 
+Customer
+statement()
+html statement()Statement
+1value(customer)
+Html Statement
+header string(customer)each rental string(rental)footer string(customer)Text Statement
+header string(customer)each rental string(rental)footer string(customer)
+Figure 11.4 Classes after forming the template method .
+Technically, if the  Statement  class was never to be instantiated directly, I would 
+make it a module. (See Replace Abstract Superclass with Module later in this 
+chapter for an explanation.) I’d then include the Statement  module in each of the 
+HtmlStatement  and  TextStatement  classes. But the traditional Template Method pattern 
+is done with inheritance, so I thought an example would be useful. 
+     
+  
+Chapter 11  Dealing with Generalization 380
+Form
+Template
+MethodExample 2: Template Method Using Extension of Modules 
+For this example, we’ll go back to the code as it stood at the end of Chapter 1:
+   def statement
+      result = "Rental Record for #{name}\n"      @rentals.each do |rental|        # show figures for this rental        result << "\t#{rental.movie.title}\t#{rental.charge}\n"      end      # add footer lines      result << "Amount owed is #{total_charge}\n"      result << "You earned #{total_frequent_renter_points} frequent renter\  points"      result    end      def html_statement      result = "<H1>Rentals for <EM>#{name}</EM></H1><P>\n"      @rentals.each do |rental|        # show figures for this rental        result << "#{rental.movie.title}: \t#{rental.charge}<BR/>\n"      end      # add footer lines      result << "<P>You owe <EM>#{total_charge}</EM></P>\n"      result << "On this rental you earned <EM>\  #{total_frequent_renter_points}</EM> frequent renter points</P>"    end  
+Similarly to the inheritance example, I first create a 
+ Statement  class. Instead of 
+creating two subclasses of Statement, I create two modules to house the unique 
+behavior:
+ class Statement
+  end    module TextStatement  end    module HtmlStatement  end  
+I use Move Method to move the two 
+ statement  methods over to the modules: 
+ class Customer    def statement
+     
+  
+Form Template Method 381
+Form
+Template
+Method      Statement.new.extend(TextStatement).value(self)
+    end      def html_statement      Statement.new.extend(HtmlStatement).value(self)    end  end    module TextStatement    def value(customer)      result = "Rental Record for #{customer.name}\n"      customer.rentals.each do |rental|        # show figures for this rental        result << "\t#{rental.movie.title}\t#{rental.charge}\n"      end      # add footer lines      result << "Amount owed is #{customer.total_charge}\n"      result << "You earned #{customer.total_frequent_renter_points} frequent\  renter points"    end  end    module HtmlStatement    def value(customer)      result = "<H1>Rentals for <EM>#{customer.name}</EM></H1><P>\n"      customer.rentals.each do |rental|        # show figures for this rental
+        result << "#{rental.movie.title}: \t#{rental.charge}<BR/>\n"
+      end      # add footer lines      result << "<P>You owe <EM>#{customer.total_charge}</EM></P>\n"      result << "On this rental you earned <EM>\  #{customer.total_frequent_renter_points}</EM> frequent renter points</P>"    end  end  
+As with the inheritance example, I use Extract Method on any unique behav-
+ior:
+ module TextStatement...
+    def value(customer)      result =  header_string(customer) 
+      customer.rentals.each do |rental|        result <<  each_rental_string(rental) 
+     
+  
+Chapter 11  Dealing with Generalization 382
+Form
+Template
+Method      end
+      result <<  footer_string(customer)     end      def header_string(customer)      "Rental Record for #{customer.name}\n"    end      def each_rental_string(rental)      "\t#{rental.movie.title}\t#{rental.charge}\n"    end      def footer_string(customer)      <<-EOS        Amount owed is #{customer.total_charge}        You earned #{customer.total_frequent_renter_points} frequent renter  points      EOS    end  end    module HtmlStatement...    def value(customer)      result =  header_string(customer)       cusotmer.rentals.each do |rental|        result <<  each_rental_string(rental) 
+      end
+      result <<  footer_string(customer) 
+    end      def header_string(customer)      "<H1>Rentals for <EM>#{customer.name}</EM></H1><P>\n"    end      def each_rental_string(rental)      "#{rental.movie.title}: \t#{rental.charge}<BR/>\n"    end      def footer_string(customer)      <<-EOS        <P>You owe <EM>#{customer.total_charge}</EM></P>        On this rental you earned <EM>#{customer.      total_frequent_  renter_points}</EM> frequent renter points</P>      EOS    end
+     
+  
+Form Template Method 383
+Form
+Template
+Method  end  
+The final step is to pull up the value method. 
+ class Statement...
+    def value(customer)      result = header_string(customer)      customer.rentals.each do |rental|        result << each_rental_string(rental)      end      result << footer_string(customer)    end    module TextStatement...    def header_string(customer)      "Rental Record for #{customer.name}\n"    end      def each_rental_string(rental)      "\t#{rental.movie.title}\t#{rental.charge}\n"    end      def footer_string(customer)      <<-EOS        Amount owed is #{customer.total_charge}        You earned #{customer.total_frequent_renter_points} frequent renter  points      EOS
+    end
+  end    module HtmlStatement...    def header_string(customer)      "<h1>Rentals for <em>#{customer.name}</em></h1><p>\n"    end      def each_rental_string(rental)      "#{rental.movie.title}: \t#{rental.charge}<BR/>\n"    end      def footer_string(customer)      <<-EOS
+     
+  
+Chapter 11  Dealing with Generalization 384
+Form
+Template
+Method        <P>You owe <EM>#{customer.total_charge}</EM></P>
+        On this rental you earned <EM>#{customer.      total_frequent_  renter_points}</EM> frequent renter points</P>      EOS    end  end  
+And finally we’re left with the structure shown in Figure 11.5.
+def value(customer)
+ result + header_string(customer)
+ customer.rentals.each do |rental|
+result << each_rental_string(rental)
+ end
+ result << footer_string(customer)
+end
+return GatewayExpressionBuilder.new(self)
+def html_statement Statement.new.extend(HtmlStatement).value(self)
+end
+def html_statement
+ Statement.new.extend(HtmlStatement).value(self)
+end
+Customer
+statement()
+html_statement()total_charge()
+total_frequent_renter_points()name
+<<module>>
+Text Statement
+header_stringfooter_stringeach_rental_string
+<<module>>Html Statement
+header_stringfooter_stringeach_rental_string
+Customer
+statement()html_statement()name
+ Statement
+valuerun-time
+extension
+Figure 11.5 Using dynamic extension of modules to implement Form Template 
+Method.
+Notice that the implementation using extension of modules is similar to the 
+inheritance example. So why use extend instead of inheritance? The answer is 
+that you would use extend if the modules you were creating could be used to extend various classes. 
+     
+  
+Form Template Method 385
+Form
+Template
+MethodFor example, let’s imagine that the next requirement of our application is 
+to display the preceding information for only the previous month. The current 
+statement class gives a list of each rental associated with a customer for all months. To satisfy our new requirement we could create a 
+ MonthlyStatement  class 
+similar to the following code. 
+ MonthlyStatement
+    def value(customer)      result = header_string(customer)      rentals = customer.rentals.select do |rental|         rental.date > DateTime.now -30       end      rentals.each do |rental|        result << each_rental_string(rental)      end      result << footer_string(customer)    end  end  
+The advantage of module extension is now clear: Because a given class in 
+Ruby can inherit directly from only one other class, the inheritance approach 
+would have forced us to implement both a
+TextMonthlyStatement  class and an  
+HtmlMonthlyStatement  class, instead of our  MonthlyStatement  class. Each new subclass 
+would have had to decide whether to output the rental based on the rental date, which is not ideal. The module extension approach allows us to avoid the com-plexity of another level of inheritance and consolidates the date-checking code into one method. 
+ class Customer
+    def statement      Statement.new.extend(TextStatement).value(self)    end      def html_statement      Statement.new.extend(HtmlStatement).value(self)    end      def monthly_statement      MonthlyStatement.new.extend(TextStatement).value(self)    end      def monthly_html_statement      MonthlyStatement.new.extend(HtmlStatement).value(self)    end  end    
+     
+  
+Chapter 11  Dealing with Generalization 386
+Replace
+Inheritance
+with
+DelegationReplace Inheritance with Delegation 
+A subclass uses only part of a superclass interface or does not want to inherit 
+data.
+Create a field for the superclass, adjust methods to delegate to the superclass, 
+and remove the subclassing.
+return @rules.empty?
+Hash
+empty?
+Hash
+empty?
+Policy
+empty?rules : Hash
+1
+Policy
+Motivation
+Inheritance is a wonderful thing, but sometimes it isn’t what you want. Often 
+you start inheriting from a class but then find that many of the superclass opera-tions aren’t really true of the subclass. In this case you have an interface that’s not a true reflection of what the class does. Or you may find that you are inher-iting a whole load of data that is not appropriate for the subclass. Or you may find that there are protected superclass methods that don’t make much sense with the subclass. 
+You can live with the situation and use convention to say that although it is a 
+subclass, it’s using only part of the superclass function. But that results in code that says one thing when your intention is something else—a confusion you should remove. 
+By using delegation instead, you make it clear that you are making only par-
+tial use of the delegated class. You control which aspects of the interface to take and which to ignore. The cost is extra delegating methods that are boring to write but are too simple to go wrong. 
+Mechanics
+1.Create a field in the subclass that refers to an instance of the superclass. Initialize it to self.
+     
+  
+Replace Inheritance with Delegation 387
+Replace
+Inheritance
+with
+Delegation2.Change each method defined in the subclass to use the delegate field. Test 
+after changing each method. 
+You won’t be able to replace any methods that invoke a method 
+on super that is defined on the subclass, or they may get into an infinite recurse. These methods can be replaced only after you have broken the inheritance.
+3.Remove the subclass declaration and replace the delegate assignment with an assignment to a new object. 
+4.For each superclass method used by a client, add a simple delegating method.
+5.Test. 
+Example
+One of the classic examples of inappropriate inheritance is inheriting from a collection. Here I have a
+Policy  class that inherits from  Hash. Each Hash element is 
+anArray of  Rules, and  Policy  gives the  Hash an  Arraylike interface by implementing the 
+<< operator: 
+ class Policy < Hash
+    attr_reader :name      def initialize(name)      @name = name    end      def <<(rule)      key = rule.attribute      self[key] ||= []      self[key] << rule    end      def apply(account)      self.each do |attribute, rules|        rules.each { |rule| rule.apply(account) }      end    end  
+  end  
+     
+  
+Chapter 11  Dealing with Generalization 388
+Replace
+Inheritance
+with
+DelegationTheRule class has an attribute and default value: 
+ class Rule...
+    attr_reader :attribute, :default_value      def initialize(attribute, default_value)      @attribute, @default_value = attribute, default_value    end      def apply(account)      ...    end  
+Looking at the users of
+Policy , I realize that clients do only five things: <<,apply ,  [] , 
+ size, andempty? . The latter three are inherited from Hash.
+I begin the delegation by creating a field for the delegated  Hash. I link this field 
+toself so that I can mix delegation and inheritance while I carry out the refac-
+toring:
+ class Policy < Hash...
+      def initialize(name)      @name = name       @rules = self     end  
+Now I start replacing methods to get them to use the delegation. I begin with 
+<<:
+ def <<(rule)
+    key = rule.attribute.to_sym     @rules [key] ||= []
+     @rules [key] << rule
+  end  
+I can test here, and everything will still work. Now the
+apply  method: 
+ def apply(account)     @rules .each do |attribute, rules|
+      rules.each { |rule| rule.apply(account) }    end  end  
+Once I’ve completed these subclass methods, I need to break the link to the 
+superclass:
+     
+  
+Replace Delegation with Hierarchy 389
+Replace
+DelegationwithHierarchy class Policy    < Hash 
+  
+    def initialize(name)      @name = name       @rules = {}     end  
+I then extend
+Forwardable  to add simple delegating methods for superclass  methods
+used by clients: 
+ require 'forwardable’
+    class Policy...    extend Forwardable      def_delegators :@rules, :size, :empty?, :[]      def initialize(name)      @name = name      @rules = {}    end  
+Now I can test. If I forgot to add a delegating method, the tests will tell me. 
+Replace Delegation with Hierarchy 
+You’re using delegation and are often writing many simple delegations for the 
+entire interface. 
+Make the delegate a module and include it into the delegating class.
+return person.name
+Employee
+name
+Person
+name
+<<module>>
+Person
+name
+Employee
+     
+  
+Chapter 11  Dealing with Generalization 390
+Replace
+Delegation
+with
+HierarchyMotivation
+This is the flip side of Replace Delegation with Inheritance, though generally 
+we’ll end up with a module hierarchy rather than inheritance. 
+If you find yourself using all the methods of the delegate and are sick of 
+writing all those simple delegating methods, you can switch back to a hierarchy pretty easily. 
+One situation to beware of is that in which the delegate is shared by more 
+than one object and is mutable. In this case you can’t replace the delegate with a hierarchy because you’ll no longer share the data. Data sharing is a responsi-bility that cannot be transferred back to a module hierarchy. When the object is immutable, data sharing is not a problem, because you can just copy and nobody can tell. 
+Mechanics
+1.Make the delegate a module. Include the module in the delegating object. 
+2.Remove the simple delegation methods. 
+3.Set the delegate instance variable to self.
+4.Test. 
+5.Replace all other delegations with calls to the object itself. 
+6.Remove the delegate field. 
+Example
+A simple Employee  delegates to a simple Person :
+ class Employee
+    extend Forwardable    def_delegators :@person, :name, :name=      def initialize      @person = Person.new    end      def to_s
+     
+  
+Replace Delegation with Hierarchy 391
+Replace
+Delegation
+with
+Hierarchy      "Emp: #{@person.last_name}"
+    end  end    class Person    attr_accessor :name      def last_name      @name.split(' ').last    end  end  
+The first step is to make
+Person  a module and include it into Employee :
+ module Person    attr_accessor :name      def last_name      @name.split(' ').last    end  end    class Employee...    include Person    end  
+The next step is to make the delegate field refer to
+self. I must remove all 
+simple delegation methods such as name and  name=. If I leave any in, I will get a 
+stack overflow error caused by infinite recursion. In this case I need to remove 
+name and  name= from  Employee . Now that Employee  includes the  Person  module, these 
+methods have already been mixed into the Employee, so it is just a matter of removing the
+def_delegators  declaration. 
+ class Employee
+    include Person    extend Forwardable
+    def_delegators :@person, :name, :name=
+      def initialize       @person = self 
+    end      def to_s      "Emp: #{@person.last_name}"
+     
+  
+Chapter 11  Dealing with Generalization 392
+Replace
+Abstract
+Superclass
+with Module    end
+  end  
+Next I can change the methods that use the delegate. I switch them to use 
+calls to implicit  self:
+ def to_s    "Emp: #{ last_name }"
+  end  
+Once I’ve gotten rid of all methods that use delegate methods, I can get rid 
+of the 
+ @person  field. 
+Replace Abstract Superclass with Module 
+You have an inheritance hierarchy, but never intend to explicitly instantiate an 
+instance of the superclass. 
+Replace the superclass with a module to better communicate your intention.
+Inner Join
+join type
+Outer Join
+join type
+Inner Join
+join type
+Outer Join
+join type
+Join
+joins for table
+to sql
+<<module>>
+Join
+joins for tableto sql
+Motivation
+In Java, it is possible to designate a class as abstract to prevent objects of that 
+class from being instantiated explicitly. There is no such feature in Ruby. Writ-ing intentional code is important, and it would be nice if we could communi-cate that instances of our abstract superclass are not meant to be instantiated directly. We could write some code to raise an error when the constructor is invoked, but if instead we replace the abstract superclass with a module, we can communicate our intention in a more idiomatic fashion. 
+     
+  
+Replace Abstract Superclass with Module 393
+Replace
+Abstract
+Superclass
+with ModuleMechanics
+1.If the superclass has any class methods that you want to call using the 
+subclass class, define an inherited  hook and use the hook to move the class 
+methods onto the subclasses themselves. 
+2.Test. 
+3.Make the class a module, and replace the inheritance declaration with an 
+ include  in each of the base classes. 
+4.Make the   inherited  hook an  included  hook. 
+5.Test. 
+Example
+Let’s start with some subclass objects that we are using to construct SQL joins: 
+ class LeftOuterJoin < Join
+      def join_type      "LEFT OUTER"    end  end  
+  class InnerJoin < Join
+      def join_type      "INNER"    end  end  
+They can be used like so: 
+ InnerJoin.new(
+    :equipment_listings,    :on => "equipment_listings.listing_id =listings.id"  ).to_sql  
+And we have a class method for returning all joins for a given table: 
+ InnerJoin.joins_for_table(:books)  
+The superclass looks like this: 
+   class Join...
+     
+  
+Chapter 11  Dealing with Generalization 394
+Replace
+Abstract
+Superclass
+with Module  
+    def initialize(table, options)      @table = table      @on = options[:on]    end      def self.joins_for_table(table_name)      # ...some code for querying the database for the given table’s joins of    #   the base class’s join type    end      def to_sql      "#{join_type} JOIN #{@table} ON #{@on}"    end    end  
+When we change
+Join to a module, the joins_for_table  method will not be avail-
+able using the  InnerJoin.joins_for_table  syntax. To enable this, we have to add the 
+joins_for_table  method to both of thesubclasses. To do so without duplicating the 
+method, we can use the  inherited  hook. We define the  inherited  hook on the  Join 
+class, and within the definition we open up the class that is doing the inheriting, 
+and add the  joins_for_table  method: 
+ class Join...
+      def self.inherited(klass)      klass.class_eval do        def self.joins_for_table(table_name)          table_name.to_s        end      end    end    end  
+If we’re successful, our tests should pass. 
+Then we can make
+Join a module: 
+ class module Join...
+  
+  end  
+And include the  Join module into our subclasses, removing the inheritance as 
+we go: 
+     
+  
+Replace Abstract Superclass with Module 395
+Replace
+Abstract
+Superclass
+with Module class LeftOuterJoin < Join
+     include Join 
+      def join_type      "LEFT OUTER"    end  end    class InnerJoin < Join
+     include Join       def join_type      "INNER"    end  end  
+Finally, our  
+inherited  hook will no longer be executed, because we’re not inher-
+iting—we’re including. Luckily for us, Ruby has an  included  hook, with similar 
+syntax:
+ def self. included (mod)
+    mod.class_eval do
+      def self.joins_for_table(table_name)        table_name.to_s      end    end  end     
+     
+  
+This page intentionally left blank 
+     
+  
+397

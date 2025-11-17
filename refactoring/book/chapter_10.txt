@@ -1,0 +1,1130 @@
+Chapter 10 
+Making Method Calls Simpler 
+Objects are all about interfaces. Coming up with interfaces that are easy to 
+understand and use is a key skill in developing good Object-Oriented software. 
+This chapter explores refactorings that make interfaces more straightforward. 
+Often the simplest and most important thing you can do is to change the 
+name of a method. Naming is a key tool in communication. If you understand what a program is doing, you should not be afraid to use Rename Method to pass on that knowledge. You can (and should) also rename variables and classes. On the whole these renamings are fairly simple text replacements, so I haven’t added extra refactorings for them. 
+Parameters themselves have quite a role to play with interfaces. Add Param-
+eter and Remove Parameter are common refactorings. Programmers new to objects often use long parameter lists, which are typical of other development environments. Objects allow you to keep parameter lists short, and several more involved refactorings give you ways to shorten them. If you are passing several values from an object, use Preserve Whole Object to reduce all the values to a single object. If this object does not exist, you can create it with Introduce Parameter Object. If you can get the data from an object to which the method already has access, you can eliminate parameters with Replace Parameter with Method. If you have parameters that are used to determine conditional behav-ior, you can use Replace Parameter with Explicit Methods. You can combine several similar methods by adding a parameter with Parameterize Method. 
+Doug Lea, author of Concurrent Programming in Java, gave me a warning 
+about refactorings that reduce parameter lists. Concurrent programming often uses long parameter lists. Typically this occurs so that you can pass in param-eters that are immutable, as built-ins and value objects often are. Usually you can replace long parameter lists with immutable objects, but otherwise you need to be cautious about this group of refactorings. 
+One of the most valuable conventions I’ve used over the years is to clearly 
+separate methods that change state (modifiers) from those that query state (que-ries). I don’t know how many times I’ve got myself into trouble, or seen others 
+     
+  
+Chapter 10  Making Method Calls Simpler 298
+Rename 
+Methodget into trouble, by mixing these up. So whenever I see them combined, I use 
+Separate Query from Modifier to get rid of them. 
+Good interfaces show only what they have to and no more. You can improve 
+an interface by hiding things. Of course all data should be hidden (I hope I don’t need to tell you to do that), but also any methods that can should be hidden. When refactoring you often need to make things visible for a while and then cover them up with Hide Method and Remove Setting Method. 
+Constructors are a particularly awkward feature of Ruby and Java, because 
+they force you to know the class of an object you need to create. Often you don’t need to know this. The need to know can be removed with Replace Con-structor with Factory Method. 
+Ruby, like many modern languages, has an exception-handling mechanism 
+to make error handling easier. Programmers who are not used to this often use error codes to signal trouble. You can use Replace Error Code with Exception to use the new exceptional features. But sometimes exceptions aren’t the right answer; you should test first with Replace Exception with Test. 
+Rename Method 
+The name of a method does not reveal its purpose. 
+Change the name of the method. 
+invcdt ImtCustomer
+invoiceable credit limitCustomer
+Motivation
+An important part of the code style I am advocating is small methods to factor 
+complex processes. Done badly, this can lead you on a merry dance to find out what all the little methods do. The key to avoiding this merry dance is nam-ing the methods. Methods should be named in a way that communicates their intention. A good way to do this is to think about the comment you would use to describe the method, and turn that comment into the name of the method. 
+Life being what it is, you won’t get your names right the first time. In this 
+situation you may well be tempted to leave it—after all it’s only a name. That 
+     
+  
+Rename Method 299
+Rename 
+Methodis the work of the evil demon Obfuscatis; don’t listen to him. If you see a badly 
+named method, it is imperative that you change it. Remember your code is for 
+a human first and a computer second. Humans need good names. Take note of when you have spent ages trying to do something that would have been easier if a couple of methods had been better named. Good naming is a skill that requires practice; improving this skill is the key to being a truly skillful programmer. The same applies to other aspects of the signature. If reordering parameters clarifies matters, do it (see Add Parameter and Remove Parameter). 
+Mechanics
+1.Check to see whether the method signature is implemented by a super-class or subclass. If it is, perform these steps for each implementation. 
+2.Declare a new method with the new name. Copy the old body of code over to the new name and make any alterations to fit. 
+3.Change the body of the old method so that it calls the new one. 
+If you only have a few references, you can reasonably skip this 
+step.
+4.Test. 
+5.Find all references to the old method name and change them to refer to the new one. Test after each change. 
+6.Remove the old method. 
+If the old method is part of the published interface and you cannot 
+get to all of its callers, leave it in place and mark it as deprecated. 
+7.Test. 
+Example
+I have a method to get a person’s telephone number: 
+ def telephone_number
+    "(#{@officeAreaCode}) #{@officeNumber}"  end  
+     
+  
+Chapter 10  Making Method Calls Simpler 300
+Add
+ParameterI want to rename the method to office_telephone_number . I begin by creating the 
+new method and copying the body over to the new method. The old method 
+now changes to call the new one: 
+ class Person...
+    def telephone_number      office_telephone_number    end      def office_telephone_number      "(#{@officeAreaCode}) #{@officeNumber}"    end  
+Now I find the callers of the old method, and switch them to call the new one. 
+When I have switched them all, I can remove the old method. 
+The procedure is the same if I need to add or remove a parameter. If there aren’t many callers, I change the callers to call the new method with-
+out using the old method as a delegating method. If my tests throw a wobbly, I back out and make the changes the slow way. 
+Add Parameter 
+A method needs more information from its caller. 
+Add a parameter for an object that can pass on this information.
+contact()Customer
+contact(date)Customer
+Motivation
+Add Parameter is a common refactoring, one that you almost certainly have 
+already done. The motivation is simple. You have to change a method, and the change requires information that wasn’t passed in before, so you add a parameter. 
+     
+  
+Add Parameter 301
+Add
+ParameterActually most of what I have to say is motivation against doing this refactor-
+ing. Often you have other alternatives to adding a parameter. If available, these 
+alternatives are better because they don’t lead to increasing the length of param-eter lists. Long parameter lists smell bad because they are hard to remember and often involve data clumps. 
+Look at the existing parameters. Can you ask one of those objects for the 
+information you need? If not, would it make sense to give them a method to provide that information? What are you using the information for? Should that behavior be on another object, the one that has the information? Look at the existing parameters and think about them with the new parameter. Perhaps you should consider Introduce Parameter Object. 
+I’m not saying that you should never add parameters; I do it frequently, but 
+you need to be aware of the alternatives. 
+Mechanics
+The mechanics of Add Parameter are similar to those of Rename Method. 
+1.Check to see whether this method signature is implemented by a super-class or subclass. If it is, check to see whether the parameter needs to be added for all implementations. If you decide not too add the parameter for any of the implementations, any calls to the implementation via super will have to be made explicitly with the receiving method’s parameter list. 
+2.Declare a new method with the added parameter. Copy the old body of code over to the new method. 
+If you need to add more than one parameter, it is easier to add 
+them at the same time. 
+3.Change the body of the old method so that it calls the new one. 
+If you only have a few references, you can reasonably skip this 
+step.
+Add a default value for the new parameter. You can use any value 
+for the default, but usually you use nil or an empty Array or Hash.
+4.Test. 
+5.Find all references to the old method and change them to refer to the new one. Test after each change. 
+     
+  
+Chapter 10  Making Method Calls Simpler 302
+Remove
+Parameter6.Remove the old method. 
+If the old method is part of the published interface and you cannot 
+get to all of its callers, leave it in place and mark it as deprecated. 
+7.Test. 
+Remove Parameter 
+A parameter is no longer used by the method body. 
+Remove it. 
+contact()Customer
+contact(date)Customer
+Motivation
+Programmers often add parameters but are reluctant to remove them. After all, 
+a spurious parameter doesn’t cause any problems, and you might need it again later. 
+This is the demon Obfuscatis speaking; purge him from your soul! A param-
+eter indicates information that is needed; different values make a difference. Your caller has to worry about what values to pass. By not removing the param-eter you are making further work for everyone who uses the method. That’s not a good trade-off, especially because removing parameters is an easy refactoring. 
+Mechanics
+The mechanics of Remove Parameter are similar to those of Rename Method 
+and Add Parameter. 
+1.Check to see whether this method signature is implemented by a super-
+class or subclass. Check to see whether the subclass or superclass uses the parameter. If it does, don’t do this refactoring. 
+2.Declare a new method without the parameter. Ruby doesn’t allow method overloading, so you’ll have to give the new method a different name from 
+     
+  
+Separate Query from Modifier 303
+Separate
+Query fromModifierthe old one. This will only be temporary. Copy the old body of code to 
+the new method. 
+If you need to remove more than one parameter, it is easier to 
+remove them together. 
+3.Change the body of the old method so that it calls the new one. 
+If you only have a few references, you can reasonably skip this 
+step.
+4.Test. 
+5.Find all references to the old method and change them to refer to the new one. Test after each change. 
+6.Remove the old method. 
+If the old method is part of the published interface and you cannot 
+get to all of its callers, leave it in place and mark it as deprecated. 
+7.Test. 
+8.Use Rename Method to change the name of the new method to the old method’s name. 
+9.Because I’m pretty comfortable with adding and removing parameters, I often do a batch in one go. 
+Separate Query from Modifier 
+You have a method that returns a value and also changes the state of an object.
+Create two methods, one for the query and one for the modification. 
+total outstanding
+ready for summaries=Customer
+total outstanding and set ready for summariesCustomer
+     
+  
+Chapter 10  Making Method Calls Simpler 304
+Separate
+Query from
+ModifierMotivation
+When you have a function that gives you a value and has no observable side 
+effects, you have a valuable thing. You can call this function as often as you like. You can move the call to other places in the method. In short, you have a lot less to worry about. 
+It is a good idea to clearly signal the difference between methods with side 
+effects and those without. A good rule to follow is to say that any method that returns a value should not have observable side effects. Some programmers treat this as an absolute rule, including Bertrand Meyer, author of Object Oriented Software Constructionm [Meyer]. I’m not 100 percent sure on this (as on any-thing), but I try to follow it most of the time, and it has served me well. 
+It’s worth clarifying that in Ruby, every method returns some value (the 
+return value of the last statement or
+nil). Here we’re talking about return values 
+that are actually used by the caller. 
+If you come across a method that returns a value that is used by the caller 
+and also has side effects, you should try to separate the query from the modifier. 
+Note I use the phrase observable side effects. A common optimization is to 
+cache the value of a query in a field so that repeated calls go perform better. Although this changes the state of the object with the cache, the change is not observable. Any sequence of queries will always return the same results for each query [Meyer]. 
+Mechanics
+1.Create a query that returns the same value as the original method. 
+Look in the original method to see what is returned. If the 
+returned value is a temporary, look at the location of the temp assign-ment.
+2.Modify the original method so that it returns the result of a call to the query. 
+Every return in the original method should say, “ return    new_query ”
+(where new_query  is the name of the new_query  method), instead of returning 
+anything else. 
+If the method used a temp with a single assignment to capture the 
+return value, you should be able to remove it. 
+3.Test. 
+     
+  
+Separate Query from Modifier 305
+Separate
+Query from
+Modifier4.For each call, replace the single call to the original method with a call to 
+the query. Add a call to the original method before the line that calls the query. Test after each change to a calling method. 
+5.Remove the return expressions from the original method. 
+Example
+Here is a function that tells me the name of a miscreant for a security system and sends an alert. The rule is that only one alert is sent even if there is more than one miscreant: 
+ def found_miscreant(people)
+    people.each do |person|      if person == "Don"        send_alert        return "Don"      end      if person == "John"        send_alert        return "John"      end    end    ""  end  
+It is called by :
+ def check_security(people)    found = found_miscreant(people)    some_later_code(found)  end  
+To separate the query from the modifier, I first need to create a suitable query 
+that returns the same value as the modifier does but without the side effects. 
+ def found_person(people)
+    people.each do |person|      return "Don" if person == "Don"      return "John" if person == "John"      end  ""  end  
+     
+  
+Chapter 10  Making Method Calls Simpler 306
+Separate
+Query from
+ModifierThen I replace every return in the original function, one at a time, with calls 
+to the new query. I test after each replacement. When I’m done the original 
+method looks like the following: 
+ def found_miscreant(people)
+    people.each do |person|      if person == "Don"        send_alert        return  found_person(people) 
+      end      if person == "John"        send_alert        return  found_person(people) 
+      end    end     found_person(people) 
+  end  
+Now I alter all the calling methods to do two calls: first to the modifier and 
+then to the query: 
+ def check_security(people)
+    found_miscreant(people)    found = found_person(people)    some_later_code(found)  end  
+Once I have done this for all calls, I can alter the modifier to make it return 
+nil:
+ def found_miscreant(people)    people.each do |person|      if person == "Don"        send_alert        return      end      if person == "John"        send_alert        return      end    end  nil  end  
+Now it seems better to change the name of the original: 
+ def send_alert_if_miscreant_in(people)
+     
+  
+Parameterize Method 307
+Parameterize
+Method    people.each do |person|
+      if person == "Don"        send_alert        return      end      if person == "John"        send_alert        return      end    end  nil  end  
+Of course in this case I have a lot of code duplication because the modifier 
+uses the body of the query to do its work. I can now use Substitute Algorithm 
+on the modifier to take advantage of this: 
+ def send_alert_if_miscreant_in(people)
+    send_alert unless found_person(people).empty?  end   
+Concurrency Issues 
+If you are working in a multithreaded system, you know that doing test and 
+set operations as a single action is an important idiom. Does this conflict with Separate Query from Modifier? I discussed this issue with Doug Lea, author of Concurrent Programming in Java, and concluded that it doesn’t. You do, how-ever, need to do some additional things. It is still valuable to have separate query and modifier operations. However, you need to retain a third method that does both. The query-and-modify operation will call the separate query and modify methods and be synchronized. If the query and modify operations are not syn-chronized, you also might restrict their visibility to private level. That way you have a safe, synchronized operation decomposed into two easier-to-understand methods. These lower-level methods are then available for other uses. 
+Parameterize Method 
+Several methods do similar things but with different values contained in the method body. 
+Create one method that uses a parameter for the different values. 
+     
+  
+Chapter 10  Making Method Calls Simpler 308
+Parameterize
+Method
+raise(percentage)Employee
+five percent raise
+ten percent raiseEmployee
+Motivation
+You may see a couple of methods that do similar things but vary depending 
+on a few values. In this case you can simplify matters by replacing the separate methods with a single method that handles the variations by parameters. Such a change removes duplicate code and increases flexibility, because you can deal with other variations by adding parameters. 
+Mechanics
+1.Create a parameterized method that can be substituted for each repetitive method.
+2.Replace one old method with a call to the new method. 
+3.Test. 
+4.Repeat for all the methods, testing after each one. 
+You may find that you cannot do this for the whole method, but you can for a fragment of a method. In this case, first extract the fragment into a method; then parameterize that method. 
+Example
+The simplest case is methods along the following lines: 
+ class Employee
+    def ten_percent_raise      @salary *= 1.1    end      def five_percent_raise      @salary *= 1.05
+     
+  
+Parameterize Method 309
+Parameterize
+Method    end
+  end  
+which can be replaced with 
+ def raise(factor)    @salary *= (1 + factor)  end  
+Of course that is so simple that anyone would spot it. 
+A less obvious case is as follows: 
+ def base_charge
+    result = [last_usage, 100].min * 0.03      if last_usage > 100      result += ([last_usage, 200].min - 100) * 0.05    end      if last_usage > 200      result += (last_usage - 200) * 0.07    end      Dollar.new(result)  end    def last_usage    ...  end  
+this can be replaced with :
+ def base_charge    result = (usage_in_range 0..100) * 0.03
+    result += (usage_in_range 100..200) * 0.05
+    result += (usage_in_range 200..last_usage) * 0.07    Dollar.new(result)  end    def usage_in_range(range)    if last_usage > range.begin      [last_usage, range.end].min - range.begin    else      0    end  end  
+     
+  
+Chapter 10  Making Method Calls Simpler 310
+Replace
+Parameter
+with Explicit
+MethodsThe trick is to spot code that is repetitive on the basis of a few values that can 
+be passed in as parameters. 
+Replace Parameter with Explicit Methods 
+You have a method that runs different code depending on the values of an enu-
+merated parameter. 
+Create a separate method for each value of the parameter.
+ def set_value(name, value)
+    if name == "height"      @height = value    elsif name == "width"      @width = value    else      raise "Should never reach here"    end  end  
+ def height=(value)    @height = value  end    def width=(value)    @width = value  end  
+Motivation
+Replace Parameter with Explicit Methods is the reverse of Parameterize Method. 
+The usual case for the former is that you have discrete values of a parameter, test for those values in a conditional, and do different things. The caller has to decide what it wants to do by setting the parameter, so you might as well pro-vide different methods and avoid the conditional. Furthermore your interface is 
+     
+  
+Replace Parameter with Explicit Methods 311
+Replace
+Parameter
+with Explicit
+Methodsalso clearer.  Switch.turn_on  is a lot clearer than  Switch.set_state(true) , even when all 
+you are doing is setting an internal boolean field. 
+With the parameter, any programmer using the method needs not only to 
+look at the methods on the class but also to determine a valid parameter value. 
+The latter is often poorly documented. 
+You shouldn’t use Replace Parameter with Explicit Methods when the param-
+eter values are likely to change a lot. If this happens and you are just setting a field to the passed-in parameter, use a simple setter. If you need conditional behavior, you need Replace Conditional with Polymorphism. 
+Mechanics
+1.Create an explicit method for each value of the parameter. 
+2.For each leg of the conditional, call the appropriate new method. 
+3.Test after changing each leg. 
+4.Replace each caller of the conditional method with a call to the appropri-ate new method. 
+5.Test. 
+6.When all callers are changed, remove the conditional method. 
+Example
+I want to create a subclass of Employee  on the basis of a passed-in parameter, often 
+the result of Replace Constructor with Factory Method: 
+ ENGINEER = 0
+  SALESPERSON = 1  MANAGER = 2    def self.create(type)    case type    when ENGINEER      Engineer.new    when SALESPERSON      Salesperson.new    when MANAGER
+     
+  
+Chapter 10  Making Method Calls Simpler 312
+Replace
+Parameter
+with Explicit
+Methods      Manager.new
+    else      raise ArgumentError, "Incorrect type code value"    end  end  
+Because this is a factory method, I can’t use Replace Conditional with Poly-
+morphism, because I haven’t created the object yet. I don’t expect too many new 
+subclasses, so an explicit interface makes sense. First I create the new methods: 
+ def self.create_engineer
+    Engineer.new  end    def self.create_salesperson    Salesperson.new  end    def self.create_manager    Manager.new  end  
+One by one I replace the 
+cases in the  case statement with calls to the explicit 
+methods:
+ def self.create(type)
+    case type    when ENGINEER       Employee.create_engineer     when SALESPERSON      Salesperson.new    when MANAGER      Manager.new    else      raise ArgumentError, "Incorrect type code value"    end  end  
+I test after changing each leg, until I’ve replaced them all: 
+ def self.create(type)    case type    when ENGINEER      Employee.create_engineer    when SALESPERSON      Employee.create_salesperson
+     
+  
+Preserve Whole Object 313
+Preserve
+Whole
+Object    when MANAGER
+      Employee.create_manager    else      raise ArgumentError, "Incorrect type code value"    end  end  
+Now I move on to the callers of the old create method. I change code such as: 
+ kent = Employee.create(Employee::ENGINEER)  
+to
+   kent = Employee.create_engineer  
+Once I’ve done that for all the callers of
+create , I can remove the create  method. 
+I may also be able to get rid of the constants. 
+Preserve Whole Object 
+You are getting several values from an object and passing these values as param-
+eters in a method call. 
+Send the whole object instead. 
+ low = days_temperature_range.low
+  high = days_temperature_range.high  plan.within_range?(low, high)  
+ plan.within_range?(days_temperature_range)  
+Motivation
+This type of situation arises when an object passes several data values from a 
+single object as parameters in a method call. The problem with this is that if the called object needs new data values later, you have to find and change all the calls to this method. You can avoid this by passing in the whole object from which the data came. The called object can then ask for whatever it wants from the whole object. 
+     
+  
+Chapter 10  Making Method Calls Simpler 314
+Preserve
+Whole
+ObjectIn addition to making the parameter list more robust to changes, Preserve 
+Whole Object often makes the code more readable. Long parameter lists can 
+be hard to work with because both caller and callee have to remember which values were there. They also encourage duplicate code because the called object can’t take advantage of any other methods on the whole object to calculate intermediate values. 
+There is a down-side. When you pass in values, the called object has a depen-
+dency on the values, but there isn’t any dependency to the object from which the values were extracted. Passing in the required object causes a dependency between the required object and the called object. If this is going to mess up your dependency structure, don’t use Preserve Whole Object. 
+Another reason I have heard for not using Preserve Whole Object is that 
+when a calling object needs only one value from the required object, it is better to pass in the value than to pass in the whole object. I don’t subscribe to that view. One value and one object amount to the same thing when you pass them in, at least for clarity’s sake (there may be a performance cost with pass by value parameters). The driving force is the dependency issue. 
+That a called method uses a lot of values from another object is a signal 
+that the called method should really be defined on the object from which the values come. When you are considering Preserve Whole Object, consider Move Method as an alternative. 
+You may not already have the whole object defined. In this case you need 
+Introduce Parameter Object. 
+A common case is that a calling object passes several of its own data values 
+as parameters. In this case you can make the call and pass in
+self instead of these 
+values, if you have the appropriate accessor methods and you don’t mind the dependency. 
+Mechanics
+   
+1.Create a new parameter for the whole object from which the data comes. 
+2.Test. 
+3.Determine which parameters should be obtained from the whole object. 
+4.Take one parameter and replace references to it within the method body by invoking an appropriate method on the whole object parameter. 
+     
+  
+Preserve Whole Object 315
+Preserve
+Whole
+Object5.Delete the parameter. 
+6.Test. 
+7.Repeat for each parameter that can be got from the whole object. 
+8.Remove the code in the calling method that obtains the deleted param-
+eters.
+Unless, of course, the code is using these parameters somewhere 
+else.
+9.Test. 
+Motivation
+Consider a Room object that records high and low temperatures during the day. It 
+needs to compare this range with a range in a predefined heating plan: 
+   class Room...  
+    def within_plan?(plan)      low = days_temperature_range.low      high = days_temperature_range.high      plan.within_range?(low, high)    end    class HeatingPlan...      def within_range?(low, high)      (low >= @range.low) && (high <= @range.high)    end  
+Rather than unpack the range information when I pass it, I can pass the whole 
+range object. In this simple case I can do this in one step. When more param-eters are involved, I can do it in smaller steps. First I add the whole object to the parameter list: 
+ class HeatingPlan...
+      def within_range?( room_range , low, high)
+      (low >= @range.low) && (high <= @range.high)    end
+     
+  
+Chapter 10  Making Method Calls Simpler 316
+Preserve
+Whole
+Object  
+  class Room...      def within_plan?(plan)      low = days_temperature_range.low      high = days_temperature_range.high      plan.within_range?( days_temperature_range , low, high)
+    end  
+Then I use a method on the whole object instead of one of the parameters: 
+ class HeatingPlan...
+      def within_range?(room_range, high)      ( room_range.low  >= @range.low) && (high <= @range.high)
+    end    class Room...      def within_plan?(plan)      low = days_temperature_range.low      high = days_temperature_range.high      plan.within_range?(days_temperature_range, high)    end  
+I continue until I’ve changed all I need: 
+ class HeatingPlan...
+      def within_range?(room_range)      (room_range.low >= @range.low) && ( room_range.high  <= @range.high)
+    end  
+  class Room...
+      def within_plan?(plan)      low = days_temperature_range.low      high = days_temperature_range.high      plan.within_range?(days_temperature_range)    end  
+Now I don’t need the temps anymore: 
+     
+  
+Replace Parameter with Method 317
+Replace
+Parameter
+with Method class Room...
+      def within_plan?(plan)         low = days_temperature_range.low
+ 
+         high = days_temperature_range.high  
+      plan.within_range?(days_temperature_range)    end  
+Using whole objects this way soon leads you to realize that you can usefully 
+move behavior into the whole object to make it easier to work with. 
+ class HeatingPlan...
+      def within_temperature_range?(room_temperature_range)       @range.includes?(room_temperature_range)     end    class TempRange...      def includes?(temperature_range)      temperature_range.low >= low && temperature_range.high <= high    end    
+Replace Parameter with Method 
+An object invokes a method, then passes the result as a parameter for a method. 
+The receiver can also invoke this method. 
+Remove the parameter and let the receiver invoke the method.
+ base_price = @quantity * @item_price
+  level_of_discount = discount_level  final_price = discounted_price(base_price, level_of_discount)  
+ base_price = @quantity * @item_price  final_price = discounted_price(base_price)  
+     
+  
+Chapter 10  Making Method Calls Simpler 318
+Replace
+Parameter
+with MethodMotivation
+If a method can get a value that is passed in as parameter by another means, it 
+should. Long parameter lists are difficult to understand, and we should reduce them as much as possible. 
+One way of reducing parameter lists is to look to see whether the receiving 
+method can make the same calculation. If an object is calling a method on itself, and the calculation for the parameter does not reference any of the parameters of the calling method, you should be able to remove the parameter by turning the calculation into its own method. This is also true if you are calling a method on a different object that has a reference to the calling object. 
+You can’t remove the parameter if the calculation relies on a parameter of the 
+calling method, because that parameter may change with each call (unless, of course, that parameter can be replaced with a method). You also can’t remove the parameter if the receiver does not have a reference to the sender, and you don’t want to give it one. 
+In some cases the parameter may be there for a future parameterization of 
+the method. In this case I would still get rid of it. Deal with the parameteriza-tion when you need it; you may find out that you don’t have the right parameter anyway. I would make an exception to this rule only when the resulting change in the interface would have painful consequences around the whole program, such as changing of a lot of embedded code. If this worries you, look into how painful such a change would really be. You should also look to see whether you can reduce the dependencies that cause the change to be so painful. Stable inter-faces are good, but freezing a poor interface is a problem. 
+Mechanics
+1.If necessary, extract the calculation of the parameter into a method. 
+2.Replace references to the parameter in method bodies with references to the method. 
+3.Test after each replacement. 
+4.Use Remove Parameter on the parameter. 
+Example
+Another unlikely variation on discounting orders is as follows: 
+     
+  
+Replace Parameter with Method 319
+Replace
+Parameter
+with Method def price
+    base_price = @quantity * @item_price    level_of_discount = 1    level_of_discount = 2 if @quantity > 100    discounted_price(base_price, level_of_discount)  end    def discounted_price(base_price, level_of_discount)    return base_price * 0.1 if level_of_discount == 2    base_price * 0.05  end  
+I can begin by extracting the calculation of the discount level: 
+ def price    base_price = @quantity * @item_price    level_of_discount =  discount_level 
+    discounted_price(base_price, level_of_discount)  end    def discount_level    return 2 if @quantity > 100    return 1  end  
+I then replace references to the parameter in
+discounted_price :
+ def discounted_price(base_price, level_of_discount)    return base_price * 0.1 if  discount_level  == 2
+    base_price * 0.05  end  
+Then I can use Remove Parameter: 
+ def price    base_price = @quantity * @item_price    level_of_discount = discount_level    discounted_price(base_price)  end    def discounted_price(base_price)    return base_price * 0.1 if discount_level == 2    base_price * 0.05  end  
+I can now get rid of the temp: 
+     
+  
+Chapter 10  Making Method Calls Simpler 320
+Introduce
+Parameter
+Object def price
+    base_price = @quantity * @item_price    discounted_price(base_price)  end  
+Then it’s time to get rid of the other parameter and its temp. I am left with :
+ def price    discounted_price  end    def discounted_price    return base_price * 0.1 if discount_level == 2    base_price * 0.05  end    def base_price    @quantity * @item_price  end  
+so I might as well use Inline Method on
+discounted_price :
+ def price    return base_price * 0.1 if discount_level == 2    base_price * 0.05  end    
+Introduce Parameter Object 
+You have a group of parameters that naturally go together. 
+Replace them with an object. 
+add_charge(charge)Account
+charges
+add_charge(base_price,tax_rate,imported)Account
+charges
+Charge
+base_price
+tax-rate
+imported
+Motivation
+Often you see a particular group of parameters that tend to be passed together. 
+Several methods may use this group, either on one class or in several classes. 
+     
+  
+Introduce Parameter Object 321
+Introduce
+Parameter
+ObjectSuch a group of classes is a data clump and can be replaced with an object that 
+carries all of this data. It is worthwhile to turn these parameters into objects just to group the data together. This refactoring is useful because it reduces the size of the parameter lists, and long parameter lists are hard to understand. The defined accessors on the new object also make the code more consistent, which again makes it easier to understand and modify. 
+You get a deeper benefit, however, because once you have clumped together 
+the parameters, you soon see behavior that you can also move into the new class. Often the bodies of the methods have common manipulations of the parameter values. By moving this behavior into the new object, you can remove a lot of duplicated code. 
+Mechanics
+1.Create a new class to represent the group of parameters you are replacing. Make the class immutable. 
+2.Use Add Parameter for the new data clump. Use a default value for the new parameter. 
+3.For each parameter in the data clump, remove the parameter from the sig-nature. Modify the callers and method body to use the parameter object for that value. 
+4.Test after you remove each parameter. 
+5.When you have removed the parameters, look for behavior that you can move into the parameter object with Move Method. 
+This may be a whole method or part of a method. If it is part of a 
+method, use Extract Method first and then move the new method over. 
+6.Be sure to remove the default value for the new parameter. The method is not intended to be used without the parameter. Leaving it in would only cause confusion. 
+Example
+I begin with an account that holds a collection of charges for items. Each charge is determined by a calculation based on base price, tax rate, and whether the item is imported: 
+     
+  
+Chapter 10  Making Method Calls Simpler 322
+Introduce
+Parameter
+Object class Account...
+      def add_charge(base_price, tax_rate, imported)      total = base_price + base_price * tax_rate      total += base_price * 0.1 if imported      @charges << total    end      def total_charge      @charges.inject(0) { |total, charge| total + charge }    end    client code...    account.add_charge(5, 0.1, true)    account.add_charge(12, 0.125, false)    ...    total = account.total_charge  
+The
+base_price , tax_rate ,  and  imported  status naturally go together, so I group 
+them in a Charge object: 
+ class Charge
+    attr_accessor :base_price, :tax_rate, :imported      def initialize(base_price, tax_rate, imported)      @base_price = base_price      @tax_rate = tax_rate      @imported = imported    end  end  
+I’ve made the
+Charge  class immutable; that is, all the values for the charge are 
+set in the constructor, hence there are no methods for modifying the values. This 
+is a wise move to avoid aliasing bugs. 
+Next I add the charge into the parameter list for the add_charge  method: 
+ class Account...
+      def add_charge(base_price, tax_rate, imported,  charge=nil )
+      total = base_price + base_price * tax_rate      total += base_price * 0.1 if imported      @charges << total    end      def total_charge
+     
+  
+Introduce Parameter Object 323
+Introduce
+Parameter
+Object      @charges.inject(0) { |total, charge| total + charge }
+    end  
+At this point I haven’t altered any behavior. 
+The next step is to remove one of the parameters and use the new object 
+instead. To do this I delete the  base_price  parameter and modify the method and 
+its callers to use the new object instead: 
+ class Account...
+      def add_charge(tax_rate, imported, charge)      total =  charge.base_price  +  charge.base_price  * tax_rate
+      total +=  charge.base_price  * 0.1 if imported
+      @charges << total    end      def total_charge      @charges.inject(0) { |total, charge| total + charge }    end    client code...    account.add_charge(0.1, true,  Charge.new(9.0, nil, nil) )
+    account.add_charge(0.125, true,  Charge.new(12.0, nil, nil) )
+    ...    total = account.total_charge  
+I then remove the other two parameters: 
+ class Account...      def add_charge(charge)      total = charge.base_price + charge.base_price *  charge.tax_rate 
+      total += charge.base_price * 0.1 if  charge.imported 
+      @charges << total    end      def total_charge
+      @charges.inject(0) { |total, charge| total + charge }
+    end    client code...    account.add_charge(Charge.new(9.0,  0.1, true ))
+    account.add_charge(Charge.new(12.0,  0.125, true ))
+    ...    total = account.total_charge  
+     
+  
+Chapter 10  Making Method Calls Simpler 324
+Remove
+Setting
+MethodI have introduced the parameter object; however, I can get more value from 
+this refactoring by moving behavior from other methods to the new object. In 
+this case I can take the code to perform the charge calculation and use Extract Method and Move Method to add the method to the Charge object. I can also remove the readers on the
+Charge  object, improving encapsulation. 
+ class Account...
+      def add_charge(charge)      @charges << charge    end      def total_charge      @charges.inject(0) do |total_for_account, charge|       total_for_account +    charge.total        end    end    class Charge    def initialize(base_price, tax_rate, imported)      @base_price = base_price      @tax_rate = tax_rate      @imported = imported    end      def total      result = @base_price + @base_price * @tax_rate
+      result += @base_price * 0.1 if @imported
+      result    end  end  
+I usually do simple extracts and moves such as this in one step. If I run into a 
+bug, I can back out and take the two smaller steps. 
+Remove Setting Method 
+A field should be set at creation time and never altered. 
+Remove any setting method for that field. 
+     
+  
+Remove Setting Method 325
+Remove
+SettingMethod
+immutable value=Employee
+ Employee
+Motivation
+Providing a setting method indicates that a field may be changed. If you don’t 
+want that field to change once the object is created, don’t provide a setting method. That way your intention is clear and you often remove the possibility that the field will change. 
+This situation often occurs when programmers blindly use indirect variable 
+access [Beck]. Such programmers then use setters even in a constructor. I guess there is an argument for consistency but not compared with the confusion that the setting method will cause later on. 
+Mechanics
+1.Check that the setting method is called only in the constructor, or in a method called by the constructor. 
+2.Modify the constructor to access the variables directly. 
+3.Test. 
+4.Remove the setting method. 
+5.Test. 
+Example
+A simple example is as follows: 
+ class Account
+      def initialize(id)      self.id = id    end  
+     
+  
+Chapter 10  Making Method Calls Simpler 326
+Remove
+Setting
+Method  # you may have an attr_writer instead of this method - it 
+# should be removed   also    def id=(value)      @id = value    end  
+which can be replaced with 
+ class Account
+      def initialize(id)      @id = id    end  
+The problems come in some variations. First is the case in which you are doing 
+computation on the argument: 
+ class Account
+      def initialize(id)      self.id = id    end      def id=(value)      @id = "ZZ#{value}"    end  
+If the change is simple (as here), I can make the change in the constructor. If the 
+change is complex or I need to call it from separate methods, I need to provide a method. In that case I need to name the method to make its intention clear: 
+ class Account
+      def initialize(id)      initialize_id(id)    end      def initialize_id(value)      @id = "ZZ#{value}"    end  
+Another case to consider is setting the value of a collection: 
+     
+  
+Hide Method 327
+Hide
+Method class Person
+    attr_accessor :courses      def initialize      @courses = []    end    end  
+Here I want to replace the setter with add and  remove operations. I talk 
+about this in Encapsulate Collection. 
+Hide Method 
+A method is not used by any other class. 
+Make the method private. 
++ a methodEmployee
+ Employee
+ a method
+Motivation
+Refactoring often causes you to change decisions about the visibility of meth-
+ods. It is easy to spot cases in which you need to make a method more visible: Another class needs it and you thus relax the visibility. It is somewhat more difficult to tell when a method is too visible. Ideally a tool should check all methods to see whether they can be hidden. If it doesn’t, you should make this check at regular intervals. 
+A particularly common case is hiding, getting, and setting methods as you 
+work up a richer interface that provides more behavior. This case is most com-mon when you are starting with a class that is little more than an encapsulated data holder. As more behavior is built into the class, you may find that many of the getting and setting methods are no longer needed publicly, in which case they can be hidden. If you make a getting or setting method private and you are using direct variable access, you can remove the method. 
+     
+  
+Chapter 10  Making Method Calls Simpler 328
+Replace
+Constructor
+with Factory
+MethodMechanics
+1.Check regularly for opportunities to make a method more private. 
+Use a lint-style tool, do manual checks every so often, and check 
+when you remove a call to a method in another class. 
+Particularly look for cases such as this with setting methods. 
+2.Make each method as private as you can. 
+3.Test after doing a group of hidings. 
+Replace Constructor with Factory Method 
+You want to do more than simple construction when you create an object. 
+Replace the constructor with a factory method. 
+ class ProductController...
+      def create      ...      @product = if imported        ImportedProduct.new(base_price)      else        if base_price > 1000          LuxuryProduct.new(base_price)        else          Product.new(base_price)        end      end      ...    end  
+     
+  
+Replace Constructor with Factory Method 329
+Replace
+Constructor
+with Factory
+Method class ProductController...
+      def create      ...      @product = Product.create(base_price, imported)      ...    end    class Product      def self.create(base_price, imported=false)      if imported        ImportedProduct.new(base_price)      else        if base_price > 1000          LuxuryProduct.new(base_price)        else          Product.new(base_price)        end      end    end  
+Motivation
+The most obvious motivation for Replace Constructor with Factory Method is 
+when you have conditional logic to determine the kind of object to create. If you need to do this conditional logic in more than one place, it’s time for a Factory Method.
+You can use factory methods for other situations in which constructors are 
+too limited. Factory methods are essential for Change Value to Reference. They also can be used to signal different creation behavior that goes beyond the num-ber and types of parameters. 
+Mechanics
+1.Perform Extract Method to isolate the construction logic. 
+Make the newly extracted method a class method. Pass in any 
+required data as parameters. 
+2.Test. 
+     
+  
+Chapter 10  Making Method Calls Simpler 330
+Replace
+Constructor
+with Factory
+Method3.If the factory method is not on the desired object, use Move Method. 
+4.Test. 
+5.Remove the original constructor if no one else is using it. 
+6.Test. 
+Example
+In this example we are creating products. The type of product we want to create 
+depends on the product’s base price, and whether it is imported from another country. 
+ class ProductController...
+      def create      ...      @product = if imported        ImportedProduct.new(base_price)      else        if base_price > 1000          LuxuryProduct.new(base_price)        else          Product.new(base_price)        end      end      ...    end  
+We might have an inheritance hierarchy to represent the products. 
+ class Product...
+      def initialize(base_price)      @base_price = base_price    end      def total_price
+      @base_price
+    end    end
+     
+  
+Replace Constructor with Factory Method 331
+Replace
+Constructor
+with Factory
+Method  
+  class LuxuryProduct < Product...    def total_price      super + 0.1 * super    end  end    class ImportedProduct < Product...      def total_price      super + 0.25 * super    end    end  
+There are two motivations here for using Replace Constructor with Factory 
+Method. The first comes about if we need to perform this construction logic in 
+more than one place. We don’t want to introduce duplication, so extracting this construction logic to a factory method makes sense. The second motivation is encapsulation. If we can push this logic that uses the product’s attributes onto the product object itself, we’ll be able to accommodate changes to this logic more easily in the future. 
+The first step is to perform Extract Method on the construction logic. We’ll 
+make the extracted method a class method (so that it’s easy to turn into a fac-tory method). 
+ def create
+    ...    @product = self.class.create_product(base_price, imported)    ...  end    def self.create_product(base_price, imported)    if imported      ImportedProduct.new(base_price)    else      if base_price > 1000        LuxuryProduct.new(base_price)      else        Product.new(base_price)      end    end  end  
+     
+  
+Chapter 10  Making Method Calls Simpler 332
+Replace
+Error Code
+with
+ExceptionWe can then use Move Method to move the method to a more appropriate 
+place—the Product  class. 
+ class ProductController...
+      def create      ...      @product = Product.create(base_price, imported)      ...    end    class Product      def self.create(base_price, imported=false)      if imported        ImportedProduct.new(base_price)      else        if base_price > 1000          LuxuryProduct.new(base_price)        else          Product.new(base_price)        end      end    end  
+Since no one else is using
+Product ’s  initialize  method, we can remove it. 
+Replace Error Code with Exception 
+A method returns a special code to indicate an error. 
+Raise an exception instead. 
+ def withdraw(amount)
+    return -1 if amount > @balance    @balance -= amount    0  end  
+     
+  
+Replace Error Code with Exception 333
+Replace
+Error Code
+with
+Exception def withdraw(amount)
+    raise BalanceError.new if amount > @balance    @balance -= amount  end  
+Motivation
+In computers, as in life, things go wrong occasionally. When things go wrong, 
+you need to do something about it. In the simplest case, you can stop the pro-gram with an error code. This is the software equivalent of committing suicide because you miss a flight. (If I did that I wouldn’t be alive even if I were a cat.) Despite my glib attempt at humor, there is merit to the software suicide option. If the cost of a program crash is small and the user is tolerant, stopping the program is fine. However, more important programs need more important mea-sures.
+The problem is that the part of a program that spots an error isn’t always the 
+part that can figure out what to do about it. When such a routine finds an error, it needs to let its caller know, and the caller may pass the error up the chain. In many languages a special output is used to indicate error. Unix and C-based systems traditionally use a return code to signal success or failure of a routine. 
+Ruby has a better way: exceptions. Exceptions are better because they clearly 
+separate normal processing from error processing. This makes programs easier to understand, and as I hope you now believe, understandability is next to god-liness.
+Mechanics
+1.Find all the callers and adjust them to use the exception. 
+Decide whether the caller should check for the condition before 
+making the call or rescue the exception. 
+2.Test after each such change. 
+3.Use Rename Method if there is a more appropriate name for the method given the changes. 
+If you have many callers, this can be too big a change. You can make it more 
+gradual with the following steps: 
+1.Create a new method that uses the exception. 
+     
+  
+Chapter 10  Making Method Calls Simpler 334
+Replace
+Error Code
+with
+Exception2.Modify the body of the old method to call the new method. 
+3.Test. 
+4.Adjust each caller of the old method to call the new method. Test after 
+each change. 
+5.Delete the old method. 
+Example
+Isn’t it strange that computer textbooks often assume you can’t withdraw more than your balance from an account, although in real life you often can? 
+ class Account...
+      def withdraw(amount)      return -1 if amount > @balance      @balance -= amount      return 0    end  
+In Ruby, there are no “checked” exceptions, as there are in Java. So all that is 
+left to decide is how to handle the error. Should the caller check for the error condition before calling the method, or should it rescue the exception? I look to the likelihood of the error condition occurring to help me decide. If the error is likely to occur in normal processing, then I would make the caller check the condition before calling. If the error is not likely to occur, then I would rescue the exception. 
+Example: Caller Checks Condition Before Calling 
+First I look at the callers. In this case nobody should be using the return code because it is a programmer error to do so. If I see code such as :
+ if account.withdraw(amount) == -1
+    handle_overdrawn  else    do_the_usual_thing  end  
+I need to replace it with code such as :
+     
+  
+Replace Error Code with Exception 335
+Replace
+Error Code
+with
+Exception if !account.can_withdraw?(amount)
+    handle_overdrawn  else    account.withdraw(amount)  end  
+I can test after each change. 
+Now I need to remove the error code and raise an exception for the error 
+case. Because the behavior is (by definition) exceptional, I should use a guard clause for the condition check: 
+ def withdraw(amount)
+    raise ArgumentError.new if amount > @balance    @balance -= amount  end  
+Because it is a programmer error, I should signal even more clearly by using 
+an assertion: 
+ class Account
+    include Assertions    ...      def withdraw(amount)      assert("amount too large") { amount <= @balance }      @balance -= amount    end    module Assertions    class AssertionFailedError < StandardError; end      def assert(message, &condition)      unless condition.call      raise AssertionFailedError.new("Assertion Failed: #{message}")       end
+      end   
+Example: Caller Catches Exception 
+I handle the “caller catches exception” case slightly differently. First I create (or 
+use) an appropriate new exception: 
+ class BalanceError < StandardError ; end  
+     
+  
+Chapter 10  Making Method Calls Simpler 336
+Replace
+Error Code
+with
+ExceptionThen I adjust the callers to look like :
+   begin
+    account.withdraw(amount)
+    do_the_usual_thing  rescue BalanceError    handle_overdrawn  end  
+Now I change the
+withdraw  method to use the exception: 
+ def withdraw(amount)    raise BalanceError.new if amount > @balance    @balance -= amount  end  
+If there are a lot of callers, this can be too large a change without being able 
+to test as you go. 
+For these cases I can use a temporary intermediate method. I begin with the 
+same case as before: 
+ if account.withdraw(amount) == -1
+    handle_overdrawn  else    do_the_usual_thing  end    class Account...      def withdraw(amount)      return -1 if amount > @balance      @balance -= amount      return 0    end  
+The first step is to create a new
+withdraw  method that uses the exception: 
+ def new_withdraw(amount)
+    raise BalanceError.new if amount > @balance    @balance -= amount  end  
+Next I adjust the current withdraw method to use the new one: 
+ def withdraw(amount)    begin
+     
+  
+Replace Exception with Test 337
+Replace
+Exception
+with Test      new_withdraw(amount)
+      return 0    rescue BalanceException      return -1    end  end  
+With that done, I can test. Now I can replace each of the calls to the old 
+method with a call to the new one: 
+ begin
+    account.new_withdraw(amount)    do_the_usual_thing  rescue BalanceError    handle_overdrawn  end  
+With both old and new methods in place, I can test after each change. When 
+I’m finished, I can delete the old method and use Rename Method to give the 
+new method the old name. 
+Replace Exception with Test 
+You are raising an exception on a condition the caller could have checked first. 
+Change the caller to make the test first. 
+ def execute(command)
+    command.prepare rescue nil    command.execute  end  
+ def execute(command)    command.prepare if command.respond_to? :prepare    command.execute  end  
+     
+  
+Chapter 10  Making Method Calls Simpler 338
+Replace
+Exception
+with TestMotivation
+Exceptions are an important advance in programming languages. They allow us 
+to avoid complex codes by use of Replace Error Code with Exception. Like so many pleasures, exceptions can be used to excess, and they cease to be pleasur-able. Exceptions should be used for exceptional behavior: behavior that is an unexpected error. They should not act as a substitute for conditional tests. If you can reasonably expect the caller to check the condition before calling the operation, you should provide a test, and the caller should use it. 
+Mechanics
+1.Put a test up front and copy the code from the rescue clause into the appropriate leg of the
+if statement. 
+2.Add an assertion to the rescue clause to notify you whether the rescue clause is executed. 
+3.Test. 
+4.Remove the rescue clause and the begin block if there are no other rescue clauses.
+5.Test. 
+Example
+For this example I use an object that manages resources that are expensive to create but can be reused. Database connections are a good example of this. Such a manager has two pools of resources, one that is available for use and one that is allocated. When a client wants a resource, the pool hands it out and transfers it from the available pool to the allocated pool. When a client releases a resource, the manager passes it back. If a client requests a resource and none is available, the manager creates a new one. 
+The method for giving out resources might look like this: 
+ class ResourceStack...
+      def pop      ... #raises EmptyStackError if the stack is empty    end
+     
+  
+Replace Exception with Test 339
+Replace
+Exception
+with Test  
+  class ResourcePool    def initialize      @available = ResourceStack.new      @allocated = ResourceStack.new    end      def resource      begin        result = @available.pop        @allocated.push(result)        return result      rescue EmptyStackError        result = Resource.new        @allocated.push(result)        return result      end    end    end  
+In this case running out of resources is not an unexpected occurrence, so I 
+should not use an exception. 
+To remove the exception I first add an appropriate up-front test and do the 
+empty behavior there: 
+ def resource
+    if @available.empty?      result = Resource.new      @allocated.push(result)      return result    else      begin        result = @available.pop        @allocated.push(result)        return result      rescue EmptyStackError        result = Resource.new
+        @allocated.push(result)
+        return result      end    end  end  
+     
+  
+Chapter 10  Making Method Calls Simpler 340
+Replace
+Exception
+with TestWith this the exception should never occur. I can add an assertion to check 
+this:
+ def resource
+    if @available.empty?      result = Resource.new      @allocated.push(result)      return result    else      begin        result = @available.pop        @allocated.push(result)        return result      rescue EmptyStackError        Assert.should_never_reach_here("available was empty on pop")        result = Resource.new        @allocated.push(result)        return result      end    end  end    class Assert...    def self.should_never_reach_here(message)      raise message    end  
+Now I can test. If all goes well, I can remove the begin-rescue block completely: 
+ def resource
+    if @available.empty?      result = Resource.new
+      @allocated.push(result)
+      return result    else      result = @available.pop      @allocated.push(result)      return result    end  end  
+After this I usually find I can clean up the conditional code. Here I can use 
+Consolidate Duplicate Conditional Fragments: 
+     
+  
+Introduce Gateway 341
+Introduce
+Gateway def resource
+    if @available.empty?      result = Resource.new    else      result = @available.pop    end    @allocated.push(result)    result  end    
+Introduce Gateway 
+You want to interact with a complex API of an external system or resource in a 
+simplified way. 
+Introduce a Gateway that encapsulates access to an external system or resource. 
+Person
+save
+Gateway
+execute
+Post Gateway
+savesavePerson
+Motivation
+Interesting software rarely lives in isolation. Even the purest Object-Oriented 
+system often has to deal with things that aren’t objects. The majority of Rails applications use
+ActiveRecord  as a Gateway to a relational database. Additionally, 
+Ruby applications often make use of YAML files and connection to one or more Web services. 
+When accessing external systems or resources, you’ll usually get APIs for 
+them. However, these APIs are naturally going to be somewhat complicated because they are designed to be flexible and reusable for various consumers. Anyone who needs to understand a resource needs to understand its API. Not only does this make the software harder to understand, it also makes it much 
+     
+  
+Chapter 10  Making Method Calls Simpler 342
+Introduce
+Gatewayharder to change should you shift some data from a relational database to an 
+XML message at some point in the future. 
+Mechanics
+1.Introduce a Gateway that uses the underlying API. 
+2.Change one use of the API to use the Gateway instead. 
+3.Test. 
+4.Change all other uses of the API to use the Gateway instead. 
+5.Test. 
+Example
+Imagine we are working with an application that uses Web Services to persist all its data. The save methods of the domain objects could be implemented using the
+net/http  library included in the Ruby Standard Library. 
+ class Person
+    attr_accessor :first_name, :last_name, :ssn      def save      url = URI.parse('http://www.example.com/person’)      request = Net::HTTP::Post.new(url.path)      request.set_form_data(      "first_name" => first_name,       "last_name" =>   last_name,       "ssn" => ssn    )      Net::HTTP.new(url.host, url.port).start {|http| http.request(request) }    end  end  
+Unfortunately, we are working with a few different services provided by 
+different teams. Because the teams are different they’ve chosen to create their 
+Web services in different ways. Some teams allow you to post form data; oth-ers require that you send over get requests. Additionally, there’s the matter of authentication. Some use IPs to trust internal calls, but others require you to use basic HTTP authentication. In the end, each save method is similar, but not similar enough that Form Template Method can be easily applied. 
+     
+  
+Introduce Gateway 343
+Introduce
+GatewayThe following are a few more example domain objects that demonstrate the 
+differences between the save methods. 
+ class Company
+    attr_accessor :name, :tax_id      def save      url = URI.parse('http://www.example.com/companies’)      request = Net::HTTP::Get.new(url.path + "?name=#{name}&tax_id=#{tax_id}")      Net::HTTP.new(url.host, url.port).start {|http| http.request(request) }    end  end    class Laptop    attr_accessor :assigned_to, :serial_number      def save      url = URI.parse('http://www.example.com/issued_laptop’)      request = Net::HTTP::Post.new(url.path)      request.basic_auth 'username’, 'password’      request.set_form_data(      "assigned_to" => assigned_to,       "serial_number" =>   serial_number    )      Net::HTTP.new(url.host, url.port).start {|http| http.request(request) }    end  end  
+The solution is to create a Gateway that simplifies the API for consumption, 
+but simply delegates behind the scenes to
+net/http .
+We’ll begin by creating the Gateway and only giving it the methods required 
+by the Person  class. 
+ class Gateway    attr_accessor :subject, :attributes, :to      def self.save      gateway = self.new      yield gateway      gateway.execute    end      def execute      request = Net::HTTP::Post.new(url.path)      attribute_hash = attributes.inject({}) do |result, attribute|        result[attribute.to_s] = subject.send attribute
+     
+  
+Chapter 10  Making Method Calls Simpler 344
+Introduce
+Gateway        result
+      end      request.set_form_data(attribute_hash)      Net::HTTP.new(url.host, url.port).start {|http| http.request(request) }    end      def url      URI.parse(to)    end  end  
+Now the
+Person  class can be updated to use the new Gateway  class. 
+ class Person    attr_accessor :first_name, :last_name, :ssn      def save      Gateway.save do |persist|        persist.subject = self        persist.attributes = [:first_name, :last_name, :ssn]        persist.to = 'http://www.example.com/person’      end    end  end  
+Next we update the Gateway to support the
+Company  class. The  Company  class 
+introduces the need for supporting both get and post. To support both we’re 
+going to introduce the PostGateway  and the GetGateway .
+ class Gateway
+    # ...      def self.save      gateway = self.new      yield gateway      gateway.execute    end      def execute      Net::HTTP.new(url.host, url.port).start do |http|        http.request(build_request)      end    end    class PostGateway < Gateway
+     
+  
+Introduce Gateway 345
+Introduce
+Gateway    def build_request
+      request = Net::HTTP::Post.new(url.path)      attribute_hash = attributes.inject({}) do |result, attribute|        result[attribute.to_s] = subject.send attribute        result      end      request.set_form_data(attribute_hash)    end  end    class GetGateway < Gateway    def build_request      parameters = attributes.collect do |attribute|       "#{attribute}=#{subject.send(attribute)}"    end      Net::HTTP::Get.new("#{url.path}?#{parameters.join("&")}")    end  end  
+The
+Company  class can now use the  GetGateway , and the Person  class can use the 
+PostGateway .
+ class Company    attr_accessor :name, :tax_id      def save      GetGateway.save do |persist|        persist.subject = self        persist.attributes = [:name, :tax_id]        persist.to = 'http://www.example.com/companies’      end    end  end    class Person    attr_accessor :first_name, :last_name, :ssn      def save      PostGateway.save do |persist|        persist.subject = self        persist.attributes = [:first_name, :last_name, :ssn]        persist.to = 'http://www.example.com/person’
+      end
+    end  end  
+     
+  
+Chapter 10  Making Method Calls Simpler 346
+Introduce
+Expression
+BuilderNext, authentication support must be added to the Gateway  for the Laptop  class. 
+ class Gateway
+    attr_accessor :subject, :attributes, :to, :authenticate      def execute      request = build_request(url)      request.basic_auth 'username’, 'password’ if authenticate      Net::HTTP.new(url.host, url.port).start {|http| http.request(request) }    end      # ...  end  
+With support in place for authentication the last thing to do is change the 
+Laptop  to take advantage of the Gateway. 
+ class Laptop    attr_accessor :assigned_to, :serial_number      def save      PostGateway.save do |persist|        persist.subject = self        persist.attributes = [:assigned_to, :serial_number]        persist.authenticate = true        persist.to = 'http://www.example.com/issued_laptop’      end    end  end  
+We can then use Introduce Expression Builder to interact with the Gateway 
+in a more fluent manner. This example is continued there. 
+Introduce Expression Builder 
+You want to interact with a public interface in a more fluent manner and not 
+muddy the interface of an existing object. 
+Introduce an Expression Builder and create an interface specific to your 
+application. 
+     
+  
+Introduce Expression Builder 347
+Introduce
+ExpressionBuilder
+ Person
+save
+http
+savePost Gateway
+savesubjectattributestoauthenticate
+Gateway
+Expression Builder
+postwith_authenticationtoPost Gateway
+savesubjectattributesto
+def save   PostGateway.save do |persist|  persist.subject  self  persist.attributes  [:first_name, :last_name, :ssn]  persist.authenticate  true  persist.to  ‘http://www.example.com/person’    endend
+def save  http.post(:assigned_to, :serial_number).with_authentication.to(‘http://www.example.com/issued_laptop’)endreturn GatewayExpressionBuilder.new(self)Person
+Motivation
+APIs are usually designed to provide a set of self-standing methods on objects; 
+ideally these methods can be understood individually. This is in contrast to a fluent interface that is designed around the readability of a whole expression. Fluent interfaces often lead to methods that make little sense individually. 
+An Expression Builder provides a fluent interface as a separate layer on top 
+of the regular API. It has one job—to supply the fluent interface—leaving the original object to provide the interface that can be understood on a method-by-method basis. 
+Mechanics
+1.Change the calling code to use the fluent interface. 
+     
+  
+Chapter 10  Making Method Calls Simpler 348
+Introduce
+Expression
+BuilderThe fluent interface is much easier to design by writing the client 
+code first. 
+2.Create an Expression Builder that uses the original object. 
+3.Change one use of the original object to use the Expression Builder 
+instead.
+4.Test. 
+5.Change all other uses of the original object to use the Expression Builder instead.
+6.Test. 
+Example
+Imagine we are working with an application that uses Web services to persist all its data. We’re going to build on the example used in Introduce Gateway. 
+Currently, the  
+Person ,Company , andLaptop  classes are defined as follows. 
+ class Person
+    attr_accessor :first_name, :last_name, :ssn      def save      PostGateway.save do |persist|        persist.subject = self        persist.attributes = [:first_name, :last_name, :ssn]        persist.to = 'http://www.example.com/person’      end    end  end    class Company    attr_accessor :name, :tax_id      def save      GetGateway.save do |persist|        persist.subject = self        persist.attributes = [:name, :tax_id]
+        persist.to = 'http://www.example.com/companies’
+     
+  
+Introduce Expression Builder 349
+Introduce
+Expression
+Builder      end
+    end  end    class Laptop    attr_accessor :assigned_to, :serial_number      def save      PostGateway.save do |persist|        persist.subject = self        persist.attributes = [:assigned_to, :serial_number]        persist.authenticate = true        persist.to = 'http://www.example.com/issued_laptop’      end    end  end  
+The
+Person ,Company , andLaptop  classes use the Gateway to hide the complexity of 
+the underlying API, but the Gateway interface can be made more fluent. 
+The solution is to create an Expression Builder that exposes a fluent interface 
+for consumption, but simply delegates behind the scenes to the Gateway. 
+We’ll begin by writing the Ruby that we’d like to use in our  Person  class. 
+ class Person    attr_accessor :first_name, :last_name, :ssn      def save      http.post(:first_name, :last_name, :ssn).to(      'http://www.example.com/person’    )    end    end  
+There’s a couple of ways that we could implement this interface. We could 
+make the 
+http method return the relevant  Gateway  class, and add a  post method 
+andto method to the  Gateway . The problem with this is that a method called “ to”
+makes no sense outside the context of the fluent expression. Defining to on the 
+Gateway  class would muddy its interface. 
+A better option is to create a class whose sole responsibility is to provide our 
+desired fluent interface. It can delegate to the relevant Gateway  object to do the 
+real work. That way, the  Gateway  objects’ interfaces can all be easily understood in 
+isolation, yet we can still have our fluent calling code. 
+     
+  
+Chapter 10  Making Method Calls Simpler 350
+Introduce
+Expression
+BuilderIn this example we’ll create a GatewayExpressionBuilder  class to provide the fluency. 
+Ourhttp method will return an instance of this class. 
+ class Person
+      def save      http.post(:first_name, :last_name, :ssn).to(      'http://www.example.com/person’    )    end      private      def http      GatewayExpressionBuilder.new(self)    end    end    class GatewayExpressionBuilder    def initialize(subject)      @subject = subject    end      def post(attributes)      @attributes = attributes    end  
+    def to(address)
+      PostGateway.save do |persist|        persist.subject = @subject        persist.attributes = @attributes        persist.to = address      end    end  end  
+Next we’ll change the
+Company  class to use a fluent interface. Again we will cre-
+ate the fluent interface before worrying about the implementation. 
+ class Company < DomainObject
+    attr_accessor :name, :tax_id      def save      http.get(:name, :tax_id).to('http://www.example.com/companies’)    end
+     
+  
+Introduce Expression Builder 351
+Introduce
+Expression
+Builder  end  
+As the preceding example shows, while creating our fluent interface we 
+noticed that the http method was common and went ahead with extracting that 
+to a base class. 
+ class DomainObject
+    def http      GatewayExpressionBuilder.new(self)    end  end  
+Now that we know what interface the
+Company  class would like to use we can 
+update the GatewayExpressionBuilder  class. The  Company  class introduces the need for 
+supporting both the GetGateway  and the  PostGateway . This is fairly easily handled by 
+storing the desired Gateway  subclass class as an instance variable. In the  to method 
+we’ll use the @gateway  instead of hard-coding which Gateway to use. 
+ class GatewayExpressionBuilder    # ...      def post(attributes)      @attributes = attributes      @gateway = PostGateway    end      def get(attributes)      @attributes = attributes      @gateway = GetGateway    end      def to(address)      @gateway.save do |persist|        persist.subject = @subject        persist.attributes = @attributes        persist.to = address      end    end  end  
+Again, we’ll create our fluent interface for
+Laptop  first and worry about imple-
+menting the required methods when we know what we want. 
+ class Laptop
+     
+  
+Chapter 10  Making Method Calls Simpler 352
+Introduce
+Expression
+Builder    attr_accessor :assigned_to, :serial_number
+      def save      http.post(:assigned_to, :serial_number).with_authentication.to(      'http://www.example.com/issued_laptop’      )    end  end  
+The final change to
+GatewayExpressionBuilder  is to add support for authentication. 
+ class GatewayExpressionBuilder    # ...      def with_authentication      @with_authentication = true    end      def to(address)      @gateway.save do |persist|        persist.subject = @subject        persist.attributes = @attributes        persist.authenticate = @with_authentication        persist.to = address      end    end  end     
+     
+  
+353

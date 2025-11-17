@@ -1,0 +1,1432 @@
+Chapter 6 
+Composing Methods 
+A large part of my refactoring is composing methods to package code prop-
+erly. Almost all the time the problems come from methods that are too long. 
+Long methods are troublesome because they often contain a lot of information, which gets buried by the complex logic that usually gets dragged in. The key refactoring is Extract Method, which takes a clump of code and turns it into its own method. Inline Method is essentially the opposite. You take a method call and replace it with the body of the code. I need Inline Method when I’ve done multiple extractions and realize some of the resulting methods are no longer pulling their weight or if I need to reorganize the way I’ve broken down meth-ods.
+The biggest problem with Extract Method is dealing with local variables, and 
+temps are one of the main sources of this issue. When I’m working on a method, I like Replace Temp with Query to get rid of any temporary variables that I can remove. If the temp is used for many things, I use Split Temporary Variable first to make the temp easier to replace. 
+Sometimes, however, the temporary variables are just too tangled to replace. 
+I need Replace Method with Method Object. This allows me to break up even the most tangled method, at the cost of introducing a new class for the job. 
+Parameters are less of a problem than temps, provided you don’t assign to 
+them. If you do, you need Remove Assignments to Parameters. 
+Once the method is broken down, I can understand how it works much bet-
+ter. I may also find that the algorithm can be improved to make it clearer. I then use Substitute Algorithm to introduce the clearer algorithm. 
+To improve the fluency of code I use Introduce Named Parameter. If I find 
+later that the fluency the named parameter brings is no longer worth the com-plexity on the receiver, I can remove it with Remove Named Parameter. 
+When a default parameter becomes unused, I need to remove it using Remove 
+Unused Default Parameter. 
+     
+  
+Chapter 6  Composing Methods 102
+Extract 
+MethodExtract Method 
+You have a code fragment that can be grouped together. 
+Turn the fragment into a method whose name explains the purpose of the 
+method.
+ def print_owing(amount)
+    print_banner    puts "name: #{@name}"    puts "amount: #{amount}"  end  
+ def print_owing(amount)    print_banner    print_details amount  end    def print_details(amount)    puts "name: #{@name}"    puts "amount: #{amount}"  end  
+Motivation
+Extract Method is one of the most common refactorings I do. I look at a method 
+that is too long or look at code that needs a comment to understand its purpose. I then turn that fragment of code into its own method. 
+I prefer short, well-named methods for several reasons. First, it increases 
+the chances that other methods can use a method when the method is finely grained. Second, it allows the higher-level methods to read more like a series of comments. Overriding also is easier when the methods are finely grained. 
+It does take a little getting used to if you are used to seeing larger methods. 
+And small methods really work only when you have good names, so you need to pay attention to naming. People sometimes ask me what length I look for in a method. To me length is not the issue. The key is the semantic distance between the method name and the method body. If extracting improves clarity, do it, even if the name is longer than the code you have extracted. 
+     
+  
+Extract Method 103
+Extract 
+MethodMechanics
+1.Create a new method, and name it after the intention of the method 
+(name it by what it does, not by how it does it). 
+If the code you want to extract is very simple, such as a single 
+message or function call, you should extract it if the name of the new method reveals the intention of the code in a better way. If you can’t come up with a more meaningful name, don’t extract the code. 
+2.Copy the extracted code from the source method into the new target method.
+3.Scan the extracted code for references to any variables that are local in scope to the source method. These are local variables and parameters to the method. 
+4.See whether any temporary variables are used only within this extracted code. If so, declare them in the target method as temporary variables. 
+5.Look to see whether any of these local-scope variables are modified by the extracted code. If one variable is modified, see whether you can treat the extracted code as a query and assign the result to the variable con-
+cerned. If this is awkward, or if there is more than one such variable, you can’t extract the method as it stands. You may need to use Split Tempo-
+rary Variable and try again. You can eliminate temporary variables with Replace Temp with Query (see the discussion in the examples). 
+6.Pass into the target method as parameters local-scope variables that are read from the extracted code. 
+7.Replace the extracted code in the source method with a call to the target method.
+If you moved any temporary variables over to the target method, 
+look to see whether they were declared outside the extracted code. If so, you can now remove the declaration. 
+8.Test. 
+     
+  
+Chapter 6  Composing Methods 104
+Extract 
+MethodExample: No Local Variables 
+In the simplest case, Extract Method is trivially easy. Take the following method: 
+ def print_owing
+    outstanding = 0.0      # print banner    puts "*************************"    puts "***** Customer Owes *****"    puts "*************************"      # calculate outstanding    @orders.each do |order|      outstanding += order.amount    end      # print details    puts "name: #{@name}"    puts "amount: #{outstanding}"  end  
+Tip Comments often identify pieces of a method that can be extract-
+ed. Additionally, the comment itself can be a potential name for the 
+extracted method. For example, in the preceding code the print banner functionality is a primary candidate for extraction. 
+It is easy to extract the code that prints the banner. I just cut, paste, and put 
+in a call: 
+ def print_owing
+    outstanding = 0.0       print_banner       # calculate outstanding    @orders.each do |order|      outstanding += order.amount    end      # print details    puts "name: #{@name}"
+     
+  
+Extract Method 105
+Extract 
+Method    puts "amount: #{outstanding}"
+  end    def print_banner    # print banner    puts "*************************"    puts "***** Customer Owes *****"    puts "*************************"  end   
+Example: Using Local Variables 
+So what’s the problem? The problem is local variables: parameters passed into 
+the original method and temporaries declared within the original method. Local variables are only in scope in that method, so when I use Extract Method, these variables cause me extra work. In some cases they even prevent me from doing the refactoring at all. 
+The easiest case with local variables is when the variables are read but not 
+changed. In this case I can just pass them in as a parameter. So if I have the fol-lowing method: 
+ def print_owing
+    outstanding = 0.0      print_banner      # calculate outstanding    @orders.each do |order|      outstanding += order.amount    end      # print details    puts "name: #{@name}"    puts "amount: #{outstanding}"  end    def print_banner    # print banner    puts "*************************"    puts "***** Customer Owes *****"    puts "*************************"  end  
+     
+  
+Chapter 6  Composing Methods 106
+Extract 
+MethodI can extract the printing of details with a method with one parameter: 
+ def print_owing
+    outstanding = 0.0      print_banner      # calculate outstanding    @orders.each do |order|      outstanding += order.amount    end       print_details outstanding   end    def print_details(outstanding)    puts "name: #{@name}"    puts "amount: #{outstanding}"  end   
+Example: Reassigning a Local Variable 
+It’s the assignment to local variables that becomes complicated. In this case 
+we’re only talking about temps. If you see an assignment to a parameter, you should immediately use Remove Assignments to Parameters. 
+For temps that are assigned to, there are two cases. The simpler case is that in 
+which the variable is a temporary variable used only within the extracted code. When that happens, you can move the temp into the extracted code. The other case is use of the variable outside the code. If the variable is not used after the code is extracted, you can make the change in just the extracted code. If it is used afterward, you need to make the extracted code return the changed value of the variable. I can illustrate this with the following method: 
+ def print_owing
+    outstanding = 0.0      print_banner      # calculate outstanding    @orders.each do |order|      outstanding += order.amount    end  
+     
+  
+Extract Method 107
+Extract 
+Method    print_details outstanding
+  end  
+Now I extract the calculation: 
+ def print_owing    print_banner    outstanding =  calculate_outstanding     print_details outstanding  end    def calculate_outstanding    outstanding = 0.0    @orders.each do |order|      outstanding += order.amount    end    outstanding  end  
+Once I’ve tested for the extraction, I use the inject Collection Closure Method 
+on Array: 
+ def calculate_outstanding
+    @orders.inject(0.0) { |result, order| result + order.amount }  end  
+In this case the outstanding variable is initialized only to an obvious ini-
+tial value, so I can initialize it only within the extracted method. If something 
+more involved happens to the variable, I have to pass in the previous value as a parameter. The initial code for this variation might look like this: 
+ def print_owing(previous_amount)
+    outstanding = previous_amount * 1.2      print_banner      # calculate outstanding    @orders.each do |order|      outstanding += order.amount    end      print_details outstanding  end  
+In this case the extraction would look like this: 
+     
+  
+Chapter 6  Composing Methods 108
+Inline 
+Method def print_owing(previous_amount)
+    outstanding = previous_amount * 1.2    print_banner    outstanding = calculate_outstanding(outstanding)    print_details outstanding  end    def calculate_outstanding(initial_value)    @orders.inject(initial_value) { |result, order| result + order.amount }  end  
+After I test this, I clear up the way the outstanding variable is initialized: 
+ def print_owing(previous_amount)    print_banner    outstanding = calculate_outstanding(previous_amount * 1.2)    print_details outstanding  end  
+At this point you may be wondering, “What happens if more than one vari-
+able needs to be returned?” 
+Though parallel assignment can be used to return multiple values, I prefer 
+to use single return values as much as possible. In this case, I try to do multiple 
+extractions with each extraction only returning one value. 
+Temporary variables often are so plentiful that they make extraction very 
+awkward. In these cases I try to reduce the temps by using Replace Temp with Query. If whatever I do things are still awkward, I resort to Replace Method with Method Object. This refactoring doesn’t care how many temporaries you have or what you do with them. 
+Inline Method 
+A method’s body is just as clear as its name. 
+Put the method’s body into the body of its callers and remove the method.
+ def get_rating
+    more_than_five_late_deliveries ? 2 : 1  end    def more_than_five_late_deliveries    @number_of_late_deliveries > 5  end  
+     
+  
+Inline Method 109
+Inline 
+Method def get_rating
+    @number_of_late_deliveries > 5 ? 2 : 1  end  
+Motivation
+A theme of this book is to use short methods named to show their intention, 
+because these methods lead to clearer and easier to read code. But sometimes you do come across a method in which the body is as clear as the name. Or you refactor the body of the code into something that is just as clear as the name. When this happens, you should then get rid of the method. Indirection can be helpful, but needless indirection is irritating. 
+Another time to use Inline Method is when you have a group of methods 
+that seem badly factored. You can inline them all into one big method and then re-extract the methods. Kent Beck finds it is often good to do this before using Replace Method with Method Object. You inline the various calls made by the method that have behavior you want to have in the method object. It’s easier to move one method than to move the method and its called methods. 
+I commonly use Inline Method when someone is using too much indirection, 
+and it seems that every method does simple delegation to another method, and I get lost in all the delegation. In these cases some of the indirection is worth-while, but not all of it. By trying to inline I can flush out the useful ones and 
+eliminate the rest. 
+Mechanics
+1.Check that the method is not polymorphic. 
+Don’t inline if subclasses override the method; they cannot over-
+ride a method that isn’t there. 
+2.Find all calls to the method. 
+3.Replace each call with the method body. 
+4.Test. 
+5.Remove the method definition. 
+     
+  
+Chapter 6  Composing Methods 110
+Inline 
+TempWritten this way, Inline Method is simple. In general it isn’t. I could write pages 
+on how to handle recursion, multiple return points, inlining into another object when you don’t have accessors, and the like. The reason I don’t is that if you encounter these complexities, you shouldn’t do this refactoring. 
+Inline Temp 
+You have a temp that is assigned to once with a simple expression, and the temp is getting in the way of other refactorings. 
+Replace all references to that temp with the expression.
+ base_price = an_order.base_price
+  return (base_price > 1000)  
+ return (an_order.base_price > 1000)  
+Motivation
+Most of the time Inline Temp is used as part of Replace Temp with Query, so the 
+real motivation is there. The only time Inline Temp is used on its own is when you find a temp that is assigned the value of a method call. Often this temp isn’t doing any harm and you can safely leave it there. If the temp is getting in the way of other refactorings, such as Extract Method, it’s time to inline it. 
+Mechanics    
+1.Find all references to the temp and replace them with the right-hand side of the assignment. 
+2.Test after each change. 
+3.Remove the declaration and the assignment of the temp. 
+4.Test. 
+     
+  
+Replace Temp with Query 111
+Replace 
+Temp with 
+QueryReplace Temp with Query 
+You are using a temporary variable to hold the result of an expression. 
+    Extract the expression into a method. Replace all references to the temp with 
+the expression. The new method can then be used in other methods.   
+   base_price = @quantity * @item_price  if (base_price > 1000)
+    base_price * 0.95  else    base_price * 0.98  end  
+ if (base_price > 1000)    base_price * 0.95  else    base_price * 0.98  end    def base_price    @quantity * @item_price  end  
+Motivation
+The problem with temps is that they are temporary and local. Because they can 
+be seen only in the context of the method in which they are used, temps tend to encourage longer methods, because that’s the only way you can reach the temp. By replacing the temp with a query method, any method in the class can get at the information. That helps a lot in coming up with cleaner code for the class. 
+Replace Temp with Query often is a vital step before Extract Method. Local 
+variables make it difficult to extract, so replace as many variables as you can with queries. 
+The straightforward cases of this refactoring are those in which temps are 
+assigned only to once and those in which the expression that generates the assignment is free of side effects. Other cases are trickier but possible. You may 
+     
+  
+Chapter 6  Composing Methods 112
+Replace 
+Temp with 
+Queryneed to use Split Temporary Variable or Separate Query from Modifier first to 
+make things easier. If the temp is used to collect a result (such as summing over a loop), you need to copy some logic into the query method. 
+Mechanics
+Here is the simple case: 
+1.Extract the right-hand side of the assignment into a method. 
+Initially mark the method as private. You may find more use for it 
+later, but you can easily relax the protection then. 
+Ensure the extracted method is free of side effects—that is, it does 
+not modify any object. If it is not free of side effects, use Separate Query from Modifier. 
+2.Test. 
+3.Inline Temp on the temp. 
+Temps often are used to store summary information in loops. The entire 
+loop can be extracted into a method; this removes several lines of noisy code. Sometimes a loop may be used to sum up multiple values, as in the
+total_charge 
+method in the Decomposing and Redistributing the Statement Method section in Chapter 1. When this is the case, duplicate the loop for each temp so that you can replace each temp with a query. The loop should be simple, so there is little danger in duplicating the code. 
+You may be concerned about performance in this case. As with other perfor-
+mance issues, let it slide for the moment. Nine times out of ten, it won’t mat-ter. When it does matter, you will fix the problem during optimization. With your code better factored, you often find more powerful optimizations that you would have missed without refactoring. If worse comes to worst, it’s easy to put the temp back. 
+Example
+I start with a simple method: 
+ def price
+    base_price = @quantity * @item_price    if base_price > 1000      discount_factor = 0.95    else
+     
+  
+Replace Temp with Query 113
+Replace 
+Temp with 
+Query      discount_factor = 0.98
+    end    base_price * discount_factor  end  
+I replace the temps one at a time. First I extract the right-hand side of the 
+assignment:
+ def price
+    a_base_price =  base_price 
+    if a_base_price > 1000      discount_factor = 0.95    else      discount_factor = 0.98    end    a_base_price * discount_factor  end    def base_price     @quantity * @item_price  end  
+I test; then I begin with Inline Temp. First I replace the first reference to the 
+temp:
+ def price
+    a_base_price = base_price    if  base_price  > 1000
+      discount_factor = 0.95    else      discount_factor = 0.98    end    a_base_price * discount_factor  end  
+  def base_price
+     @quantity * @item_price  end  
+Test and do the next (sounds like a caller at a line dance). Because it’s the last, 
+I also remove the temp assignment: 
+ def price
+    if base_price > 1000      discount_factor = 0.95    else      discount_factor = 0.98
+     
+  
+Chapter 6  Composing Methods 114
+Replace 
+Temp with 
+Chain    end
+     base_price  * discount_factor
+  end    def base_price     @quantity * @item_price  end  
+With that gone I can extract 
+ discount_factor  in a similar way: 
+ def price    a_discount_factor =  discount_factor 
+    base_price * a_discount_factor  end    def discount_factor    base_price > 1000 ? 0.95 : 0.98  end  
+See how it would have been difficult to extract
+discount_factor  if I had not 
+replaced base_price  with a query? 
+Theprice  method ends up as follows: 
+ def price    base_price * discount_factor  end    
+Replace Temp with Chain 
+You are using a temporary variable to hold the result of an expression. 
+Change the methods to support chaining, thus removing the need for a temp. 
+ mock = Mock.new
+  expectation = mock.expects(:a_method_name)  expectation.with("arguments")  expectation.returns([1, :array])  
+ mock = Mock.new  mock.expects(:a_method_name).with("arguments").returns([1, :array])  
+     
+  
+Replace Temp with Chain 115
+Replace 
+Temp with 
+ChainMotivation
+Calling methods on different lines gets the job done, but at times it makes sense 
+to chain method calls together and provide a more fluent interface. In the pre-vious example, assigning an expectation to a local variable is only necessary so that the arguments and return value can be specified. The solution utilizing Method Chaining removes the need for the local variable. Method Chaining can also improve maintainability by providing an interface that allows you to compose code that reads naturally. 
+At first glance, Replace Temp With Chain might seem to be in direct contrast 
+to Hide Delegate. The important difference is that Hide Delegate should be used to hide the fact that an object of one type needs to delegate to an object of another type. It is about encapsulation—the calling object should not reach down through a series of subordinate objects to request information—it should tell the nearest object to do a job for it. Replace Temp With Chain, on the other hand, involves only one object. It’s about improving the fluency of one object by allowing chaining of its method calls. 
+Mechanics
+1.Return  self  from methods that you want to allow chaining from. 
+2.Test. 
+3.Remove the local variable and chain the method calls. 
+4.Test. 
+Example
+Suppose you were designing a library for creating HTML elements. This library would likely contain a method that created a select drop-down and allowed you to add options to the select. The following code contains the
+Select  class that 
+could enable creating the example HTML and an example usage of the Select 
+class.
+ class Select
+    def options      @options ||= []    end  
+     
+  
+Chapter 6  Composing Methods 116
+Replace 
+Temp with 
+Chain    def add_option(arg)
+      options << arg    end  end    select = Select.new  select.add_option(1999)  select.add_option(2000)  select.add_option(2001)  select.add_option(2002)  select # => #<Select:0x28708 @options=[1999, 2000, 2001, 2002]>  
+The first step in creating a Method Chained solution is to create a method 
+that creates the Select instance and adds an option. 
+ class Select
+    def self.with_option(option)      select = self.new      select.options << option      select    end      # ...  end    select = Select.with_option(1999)  select.add_option(2000)  select.add_option(2001)  select.add_option(2002)  select # => #<Select:0x28488 @options=[1999, 2000, 2001, 2002]>  
+Next, change the method that adds options to return self so that it can be 
+chained.
+ class Select
+    # ...      def add_option(arg)      options << arg      self
+    end
+  end    select = Select.with_option(1999).add_option(2000).add_option(2001).          add_option(2002)  
+     
+  
+Introduce Explaining Variable 117
+Introduce
+Explaining
+Variable  select # => #<Select:0x28578 @options=[1999, 2000, 2001, 2002]>  
+Finally, rename the  add_option method to something that reads more flu-
+ently, such as “ and”.
+ class Select
+    def self.with_option(option)      select = self.new      select.options << option      select    end      def options      @options ||= []    end      def and(arg)      options << arg      self    end  end    select = Select.with_option(1999).and(2000).and(2001).and(2002)    select # => #<Select:0x28578 @options=[1999, 2000, 2001, 2002]>    
+Introduce Explaining Variable 
+You have a complicated expression. 
+Put the result of the expression, or parts of the expression, in a temporary vari-
+able with a name that explains the purpose.
+ if (platform.upcase.index("MAC") &&
+      browser.upcase.index("IE") &&      initialized? &&      resize > 0    )    # do something  end  
+     
+  
+Chapter 6  Composing Methods 118
+Introduce
+Explaining
+Variable is_mac_os = platform.upcase.index("MAC")
+  is_ie_browser = browser.upcase.index("IE")  was_resized = resize > 0    if (is_mac_os && is_ie_browser && initialized? && was_resized)    # do something  end  
+Motivation
+Expressions can become complex and hard to read. In such situations tempo-
+rary variables can be helpful to break down the expression into something more manageable.
+Introduce Explaining Variable is particularly valuable with conditional logic 
+in which it is useful to take each clause of a condition and explain what the condition means with a well-named temp. Another case is a long algorithm, in which each step in the computation can be explained with a temp. 
+Note In this, and the two refactorings that follow, we introduce 
+temporary variables. It should be stated that temps should not be in-troduced lightly. Extraneous temporary variables are not a good thing: They can clutter method bodies and distract the reader, hindering their understanding of the code. So why do we introduce them? It turns out that in some circumstances, temporary variables can make code a little less ugly. But whenever I’m tempted to introduce a temporary variable, I ask myself if there’s another option. In the case of Introduce Explain-ing Variable, I almost always prefer to use Extract Method if I can. A temp can only be used within the context of one method. A method is useful throughout the object and to other objects. There are times, however, when other local variables make it difficult to use Extract Method. That’s when I bite the bullet and use a temp. 
+     
+  
+Introduce Explaining Variable 119
+Introduce
+Explaining
+VariableMechanics
+1.Assign a temporary variable to the result of part of the complex 
+expression.
+2.Replace the result part of the expression with the value of the temp. 
+If the result part of the expression is repeated, you can replace the 
+repeats one at a time. 
+3.Test. 
+4.Repeat for other parts of the expression. 
+Example
+I start with a simple calculation: 
+ def price
+    # price is base price - quantity discount + shipping    return @quantity * @item_price -      [0, @quantity - 500].max * @item_price * 0.05 +      [@quantity * @item_price * 0.1, 100.0].min  end  
+Simple it may be, but I can make it easier to follow. First I identify the base 
+price as the quantity times the item price. I can turn that part of the calculation 
+into a temp: 
+ def price
+    # price is base price - quantity discount + shipping     base_price = @quantity * @item_price     return  base_price  -
+      [0, @quantity - 500].max * @item_price * 0.05 +      [@quantity * @item_price * 0.1, 100.0].min  end  
+Quantity times item price is also used later, so I can substitute with the temp 
+there as well: 
+ def price
+    # price is base price - quantity discount + shipping    base_price = @quantity * @item_price    return base_price -      [0, @quantity - 500].max * @item_price * 0.05 +
+     
+  
+Chapter 6  Composing Methods 120
+Introduce
+Explaining
+Variable      [ base_price  * 0.1, 100.0].min
+  end  
+Next I take the quantity discount: 
+ def price
+    # price is base price - quantity discount + shipping    base_price = @quantity * @item_price     quantity_discount = [0, @quantity - 500].max * @item_price * 0.05  
+    return base_price -       quantity_discount  +
+      [base_price * 0.1, 100.0].min  end  
+Finally, I finish with the shipping. As I do that, I can remove the comment, 
+too, because now it doesn’t say anything the code doesn’t say: 
+ def price
+    base_price = @quantity * @item_price    quantity_discount = [0, @quantity - 500].max * @item_price * 0.05     shipping = [base_price * 0.1, 100.0].min 
+    return base_price - quantity_discount +  shipping 
+  end   
+Example with Extract Method 
+For this example I usually wouldn’t have done the explaining temps; I would 
+prefer to do that with Extract Method. I start again with 
+ def price
+    # price is base price - quantity discount + shipping    return @quantity * @item_price -      [0, @quantity - 500].max * @item_price * 0.05 +      [@quantity * @item_price * 0.1, 100.0].min  end  
+but this time I extract a method for the base price: 
+ def price    # price is base price - quantity discount + shipping    return  base_price  -      [0, @quantity - 500].max * @item_price * 0.05 +      [ base_price  * 0.1, 100.0].min
+     
+  
+Split Temporary Variable 121
+Split
+Temporary
+Variable  end
+    def base_price    @quantity * @item_price  end  
+I continue one at a time. When I’m finished I get :
+ def price    base_price - quantity_discount + shipping  end    def base_price    @quantity * @item_price  end    def quantity_discount     [0, @quantity - 500].max * @item_price * 0.05  end    def shipping    [base_price * 0.1, 100.0].min  end    
+Split Temporary Variable 
+You have a temporary variable assigned to more than once, but it is not a loop 
+variable nor a collecting temporary variable. 
+Make a separate temporary variable for each assignment.
+ temp = 2 * (@height + @width)
+  puts temp  temp = @height * @width  puts temp  
+     
+  
+Chapter 6  Composing Methods 122
+Split
+Temporary
+Variable perimeter = 2 * (@height + @width)
+  puts perimeter  area = @height * @width  puts area  
+Motivation
+Temporary variables are made for various uses. Some of these uses naturally lead 
+to the temps being assigned to several times. Loop variables [Beck] change for each run around a loop. Collecting temporary variables [Beck] collect together some value that is built up during the method. 
+Many other temporaries are used to hold the result of a long-winded bit 
+of code for easy reference later. These kinds of variables should be set only once. That they are set more than once is a sign that they have more than one responsibility within the method. Any variable with more than one responsibil-ity should be replaced with a temp for each responsibility. Using a temp for two different things is confusing for the reader. 
+Mechanics
+1.Change the name of a temp at its first assignment. 
+If the later assignments are of the form   i = i + some_expression , that 
+indicates that it is a collecting temporary variable, so don’t split it. The operator for a collecting temporary variable usually is addition, string concatenation, writing to a stream, or adding to a collection. 
+2.Change all references of the temp up to its second assignment. 
+3.Test. 
+4.Repeat in stages, each stage renaming at the assignment, and changing references until the next assignment. 
+Example
+For this example I compute the distance traveled by a haggis. From a standing start, a haggis experiences an initial force. After a delayed period a second-ary force kicks in to further accelerate the haggis. Using the common laws of motion, I can compute the distance traveled as follows: 
+     
+  
+Split Temporary Variable 123
+Split
+Temporary
+Variable def distance_traveled(time)
+     acc = @primary_force / @mass     primary_time = [time, @delay].min    result = 0.5 * acc * primary_time * primary_time    secondary_time = time - @delay    if(secondary_time > 0)      primary_vel = acc * @delay       acc = (@prmary_force + @secondary_force) / @mass  
+      result += primary_vel * secondary_time + 5 * acc * secondary_time *        secondary_time    end    result  end  
+A nice awkward little function. The interesting thing for our example is the 
+way the variable acc is set twice. It has two responsibilities: one to hold the ini-
+tial acceleration caused by the first force and another later to hold the accelera-tion with both forces. This I want to split. 
+I start at the beginning by changing the name of the temp. Then I change all 
+references to the temp from that point up to the next assignment: 
+ def distance_traveled(time)
+     primary_acc  = @primary_force / @mass
+    primary_time = [time, @delay].min    result = 0.5 *  primary_acc  * primary_time * primary_time    secondary_time = time - @delay    if(secondary_time > 0)      primary_vel =  primary_acc  * @delay
+      acc = (@prmary_force + @secondary_force) / @mass      result += primary_vel * secondary_time + 5 * acc * secondary_time *                secondary_time    end    result  end  
+I choose the new name to represent only the first use of the temp. My tests 
+should pass. 
+I continue on the second assignment of the temp. This removes the original 
+temp name completely, replacing it with a new temp named for the second use. 
+ def distance_traveled(time)
+    primary_acc = @primary_force / @mass    primary_time = [time, @delay].min    result = 0.5 * primary_acc * primary_time * primary_time
+     
+  
+Chapter 6  Composing Methods 124
+Remove
+ Assignments 
+to Parameters    secondary_time = time - @delay
+    if(secondary_time > 0)      primary_vel = primary_acc * @delay       secondary_acc  = (@prmary_force + @secondary_force) / @mass      result += primary_vel * secondary_time + 5 *  secondary_acc  *
+                secondary_time * secondary_time    end    result  end  
+I’m sure you can think of a lot more refactoring to be done here. Enjoy it. 
+(I’m sure it’s better than eating the haggis—do you know what they put in those 
+things?)
+Remove Assignments to Parameters 
+The code assigns to a parameter. 
+Use a temporary variable instead.
+ def discount(input_val, quantity, year_to_date)
+    if input_val > 50      input_val -= 2    end  end  
+ def discount(input_val, quantity, year_to_date)    result = input_val    if input_val > 50      result -= 2    end  end  
+Motivation
+First let me make sure we are clear on the phrase “assigns to a parameter.” 
+If you pass an object named foo as a parameter to a method, assigning to the 
+parameter means to change foo to refer to a different object. I have no problems 
+     
+  
+Remove Assignments to Parameters 125
+Remove
+Assignments to 
+Parameterswith doing something to the object that was passed in; I do that all the time. I 
+just object to changing foo to refer to another object entirely: 
+ def a_method(foo)
+    foo.modify_in_some_way # that's OK    foo = another_object # trouble and despair will follow you  end  
+The reason I don’t like this comes down to lack of clarity and to confusion 
+between pass by value and pass by reference. Ruby uses pass by value exclu-
+sively (see later), and this discussion is based on that usage. 
+With pass by value, any change to the parameter is not reflected in the calling 
+routine. Those who have used pass by reference will probably find this confus-ing.
+The other area of confusion is within the body of the code itself. It is much 
+clearer if you use only the parameter to represent what has been passed in, because that is a consistent usage. 
+In Ruby, don’t assign to parameters, and if you see code that does, apply 
+Remove Assignments to Parameters. 
+Of course this rule does not necessarily apply to other languages that use 
+output parameters, although even with these languages I prefer to use output parameters as little as possible. 
+Mechanics
+1.Create a temporary variable for the parameter. 
+2.Replace all references to the parameter, made after the assignment, to the temporary variable. 
+3.Change the assignment to assign to the temporary variable. 
+4.Test. 
+Example
+I start with the following simple routine: 
+ def discount(input_val, quantity, year_to_date)
+    input_val -= 2 if input_val > 50    input_val -= 1 if quantity > 100
+     
+  
+Chapter 6  Composing Methods 126
+Remove
+ Assignments 
+to Parameters    input_val -= 4 if year_to_date > 10000
+    input_val  end  
+Replacing with a temp leads to :
+ def discount(input_val, quantity, year_to_date)    result = inputval    result -= 2 if input_val > 50    result -= 1 if quantity > 100    result -= 4 if year_to_date > 10000    result  end  
+Use of pass by value often is a source of confusion in Ruby. Ruby strictly uses 
+pass by value in all places, thus the following program: 
+ x = 5
+  def triple(arg)    arg = arg * 3    puts "arg in triple: #{arg}"  end  triple x  puts "x after triple #{x}"  
+produces the following output: 
+ arg in triple: 15  x after triple 5  
+The confusion arises because I can call methods on the object that modify its 
+state:
+ class Ledger
+      attr_reader :balance      def initialize(balance)      @balance = balance    end      def add(arg)      @balance += arg    end    end  
+     
+  
+Replace Method with Method Object 127
+Replace 
+Method with 
+Method 
+Object  class Product
+      def self.add_price_by_updating(ledger, price)      ledger.add(price)      puts "ledger in add_price_by_updating: #{ledger.balance}"    end      def self.add_price_by_replacing(ledger, price)      ledger = Ledger.new(ledger.balance + price)      puts "ledger in add_price_by_replacing: #{ledger.balance}"    end    end    l1 = Ledger.new(0)  Product.add_price_by_updating(l1, 5)  puts "l1 after add_price_by_updating: #{l1.balance}"    l2 = Ledger.new(0)  Product.add_price_by_replacing(l2, 5)  puts "l2 after add_price_by_replacing: #{l2.balance}"  
+It produces this output: 
+ ledger in add_price_by_updating: 5  l1 after add_price_by_updating: 5  ledger in add_price_by_replacing: 5  l2 after add_price_by_replacing: 0  
+Essentially the object reference is passed by value. I can use the reference to 
+call methods and make changes to the state that will be reflected further up the 
+call stack. But if I assign to the reference, the fact that this reference has been passed by value means that this new assignment will not be reflected outside the scope of the method body. 
+Replace Method with Method Object 
+You have a long method that uses local variables in such a way that you cannot apply Extract Method. 
+Turn the method into its own object so that all the local variables become 
+instance variables on that object. You can then decompose the method into other methods on the same object. 
+     
+  
+Chapter 6  Composing Methods 128
+Replace 
+Method with 
+Method 
+Object class Order
+      def price      primary_base_price = 0      secondary_base_price = 0      tertiary_base_price = 0      # long computation    end    end  
+return PriceCalculator.new(self).compute()1
+price()Order Price
+charge
+Motivation
+In this book I emphasize the beauty of small methods. By extracting pieces out 
+of a large method, you make things much more comprehensible. 
+The difficulty in decomposing a method lies in local variables. If they are 
+rampant, decomposition can be difficult. Using Replace Temp with Query helps to reduce this burden, but occasionally you may find you cannot break down a method that needs breaking. In this case you reach deep into the tool bag and get out your Method Object [Beck]. 
+Applying Replace Method with Method Object turns all these local variables 
+into attributes on the method object. You can then use Extract Method on this new object to create additional methods that break down the original method. 
+     
+  
+Replace Method with Method Object 129
+Replace 
+Method with 
+Method 
+ObjectMechanics
+Stolen shamelessly from Kent Beck’s Smalltalk Best Practices. 
+1.Create a new class, name it after the method. 
+2.Give the new class an attribute for the object that hosted the original 
+method (the source object) and an attribute for each temporary variable and each parameter in the method. 
+3.Give the new class a constructor that takes the source object and each parameter. 
+4.Give the new class a method named “ 
+compute ”
+5.Copy the body of the original method into compute . Use the source object 
+instance variable for any invocations of methods on the original object. 
+6.Test. 
+7.Replace the old method with one that creates the new object and calls compute.
+Now comes the fun part. Because all the local variables are now attributes, 
+you can freely decompose the method without having to pass any parameters. 
+Example
+A proper example of this requires a long chapter, so I’m showing this refactor-ing for a method that doesn’t need it. (Don’t ask what the logic of this method is, I made it up as I went along.) 
+ class Account
+      def gamma(input_val, quantity, year_to_date)      inportant_value1 = (input_val * quantity) + delta      important_value2 = (input_val * year_to_date) + 100      if (year_to_date - important_value1) > 100        important_value2 -= 20      end      important_value3 = important_value2 * 7      # and so on.      important_value3 - 2 * important_value1
+     
+  
+Chapter 6  Composing Methods 130
+Replace 
+Method with 
+Method 
+Object    end
+    end  
+To turn this into a method object, I begin by declaring a new class. I provide 
+an attribute for the original object and an attribute for each parameter and tem-
+porary variable in the method. 
+ class Gamma
+    attr_reader :account,                :input_val,                :quantity,                :year_to_date,                :important_value1,                :important_value2,                :important_value3    end  
+I add a constructor: 
+ def initialize(account, input_val_arg, quantity_arg, year_to_date_arg)    @account = account    @input_val = input_val_arg    @quantity = quantity_arg    @year_to_date = year_to_date_arg  end  
+Now I can move the original method over. I need to modify any calls of fea-
+tures of account to use the
+@account  instance variable. 
+ def compute    @inportant_value1 = (input_val * quantity) +  @account.delta 
+    @important_value2 = (input_val * year_to_date) + 100    if (year_to_date - important_value1) > 100      @important_value2 -= 20    end    @important_value3 = important_value2 * 7    # and so on.    @important_value3 - 2 * important_value1  end  
+I then modify the old method to delegate to the method object: 
+ def gamma(input_val, quantity, year_to_date)    Gamma.new(self, input_val, quantity, year_to_date).compute  end  
+     
+  
+Substitute Algorithm 131
+Substitute
+AlgorithmThat’s the essential refactoring. The benefit is that I can now easily use 
+Extract Method on the compute method without ever worrying about the argu-
+ment’s passing: 
+ def compute
+    @inportant_value1 = (input_val * quantity) + @account.delta    @important_value2 = (input_val * year_to_date) + 100    important_thing    @important_value3 = important_value2 * 7    # and so on.    @important_value3 - 2 * important_value1  end    def important_thing    if (year_to_date - important_value1) > 100       @important_value2 -= 20     end  end    
+Substitute Algorithm 
+You want to replace an algorithm with one that is clearer. 
+Replace the body of the method with the new algorithm.
+ def found_friends(people)
+    friends = []    people.each do |person|      if(person == "Don")        friends << "Don"      end      if(person == "John")        friends << "John"      end      if(person == "Kent")        friends << "Kent"      end    end    return friends  end  
+     
+  
+Chapter 6  Composing Methods 132
+Substitute
+Algorithm def found_friends(people)
+    people.select do |person|      %w(Don John Kent).include? person    end  end  
+Motivation
+I’ve never tried to skin a cat. I’m told there are several ways to do it. I’m sure 
+some are easier than others. So it is with algorithms. If you find a clearer way to do something, you should replace the complicated way with the clearer way. Refactoring can break down something complex into simpler pieces, but some-times you just reach the point at which you have to remove the whole algorithm and replace it with something simpler. This occurs as you learn more about the problem and realize that there’s an easier way to do it. It also happens if you start using a library that supplies features that duplicate your code. 
+Sometimes when you want to change the algorithm to do something slightly 
+different, it is easier to substitute the algorithm first into something easier for the change you need to make. 
+When you have to take this step, make sure you have decomposed the method 
+as much as you can. Substituting a large, complex algorithm is difficult; only by making it simple can you make the substitution tractable. 
+Mechanics
+1.Prepare your alternative algorithm. 
+2.Run the new algorithm against your tests. If the results are the same, you’re finished. 
+3.If the results aren’t the same, use the old algorithm for comparison in test-ing and debugging. 
+Run each test case with old and new algorithms and watch both 
+results. That helps you see which test cases are causing trouble, and how .
+     
+  
+Replace Loop with Collection Closure Method 133
+Replace Loop 
+with Collection 
+Closure 
+MethodReplace Loop with Collection Closure Method 
+You are processing the elements of a collection in a loop. 
+Replace the loop with a collection closure method.
+Motivation
+In most mainstream programming languages you operate on collections using 
+loops, grabbing each element one at a time and processing it. It turns out there are common patterns of processing that you do in loops, but these are difficult to extract into libraries unless your programming language has closures. 
+Two of Ruby’s mentor languages are Lisp and Smalltalk, both of which have 
+closures and library code to manipulate collections easily. Ruby has followed their lead and offers a really nice set of methods. The Enumberable module, included in Array and Hash, is a perfect example. 
+By replacing loops with the relevant collection closure methods you can 
+make the code easier to follow. The collection closure method hides away the infrastructure code used to traverse the collection and create derived collections, allowing us to focus on business logic. 
+There are times when a more complex task requires a sequence of collection 
+closure methods chained together. 
+Mechanics
+1.Identify what the basic pattern of the loop is. 
+2.Replace the loop with the appropriate collection closure methods. 
+3.Test. 
+Examples
+There are quite a few common cases when different collection closure methods are useful. Here I show the most common transformations. 
+ managers = []
+  employees.each do |e|    managers << e if e.manager?  end  
+     
+  
+Chapter 6  Composing Methods 134
+Replace Loop 
+with Collection 
+Closure 
+Method managers = employees.select {|e| e.manager?}  
+Thereject method reverses the test of the filter. In both cases the original col-
+lection isn’t touched unless you use the destructive form ( select!  or  reject! ).
+   offices = []
+  employees.each {|e| offices << e.office}  
+ offices = employees.collect {|e| e.office}  
+collect  is aliased as “  map ”.  collect  is the Smalltalk word, and  map is the Lisp word, so 
+the choice depends on whether you like parentheses or square brackets. 
+Often you’ll find loops that include more than one task going on. In this case 
+you can often replace them with a sequence of collection closure methods. 
+   managerOffices = []  employees.each do |e|
+    managerOffices << e.office if e.manager?  end  
+ managerOffices = employees.select {|e| e.manager?}.                             collect {|e| e.office}  
+It might be useful to think of this chaining as a series of pipes and filters. 
+Here, we’ve piped the original collection through the
+select  filter and onto the 
+collect  filter. Also note the way I’ve laid out the code here—listing each filter on 
+its own line makes the transformations a little clearer. If you finish a line with a 
+period, Ruby knows not to treat the end of line as a statement terminator. 
+     
+  
+Extract Surrounding Method 135
+Extract 
+Surrounding 
+MethodWhen the series of pipes and filters becomes so complex that it’s no lon-
+ger easy to understand, you might want to consider writing a custom traversal 
+method whose name explains the purpose of the traversal. 
+If you need to do something in a loop that produces a single value, such as a 
+sum, consider using the  inject  method. This can take a bit more getting used to. 
+ total = 0
+  employees.each {|e| total += e.salary}  
+ total = employees.inject(0) {|sum, e| sum + e.salary}    
+Extract Surrounding Method 
+You have two methods that contain nearly identical code. The variance is in the 
+middle of the method. 
+Extract the duplication into a method that accepts a block and yields back to 
+the caller to execute the unique code.
+   def charge(amount, credit_card_number)    begin
+      connection = CreditCardServer.connect(...)      connection.send(amount, credit_card_number)    rescue IOError => e      Logger.log "Could not submit order #{@order_number} to the server: #{e}"      return nil    ensure      connection.close    end  end  
+ def charge(amount, credit_card_number)    connect do |connection|
+     
+  
+Chapter 6  Composing Methods 136
+Extract 
+Surrounding 
+Method      connection.send(amount, credit_card_number)
+    end  end    def connect    begin      connection = CreditCardServer.connect(...)       yield connection     rescue IOError => e      Logger.log "Could not submit order #{@order_number} to the server: #{e}"      return nil    ensure      connection.close    end  end  
+Motivation
+It’s not hard to remove duplication when the offending code is at the top or bot-
+tom of a method: Just use Extract Method to move the duplication out of the way. But what happens when the unique code is in the middle of the method? You can use Form Template Method, but that involves introducing an inheri-tance hierarchy, which isn’t always ideal. 
+Conveniently, Ruby’s blocks allow us to extract the surrounding duplication 
+and have the extracted method yield back to the calling code to execute the unique logic. As well as removing duplication, this refactoring can be used to hide away infrastructure code (for example, code for iterating over a collection or connecting to an external service), so that the business logic becomes more prominent.
+Mechanics
+1.Use Extract Method on one piece of duplication. Name it after the dupli-cated behavior. 
+This will become our surrounding method. 
+For now the surrounding method will still perform the unique 
+behavior. 
+2.Test. 
+     
+  
+Extract Surrounding Method 137
+Extract 
+Surrounding Method3.Modify the calling method to pass a block to the surrounding method. 
+Copy the unique logic from the surrounding method into the block. 
+4.Replace the unique logic in the extracted method with the yield keyword. 
+5.Identify any variables in the surrounding method that are needed by the unique logic and pass them as parameters in the call to yield.
+6.Test. 
+7.Modify any other methods that can use the new surrounding method. 
+Example
+Let’s say that we are modeling family trees, and we have a person class that has a self-referential one-to-many relationship to itself, called children (see Figure 6.1).
+mother children
+Person
+Figure 6.1 A mother can have many children. 
+For now, we only need to capture the mother of each child. Our person class 
+looks like this: 
+ class Person
+    attr_reader :mother, :children, :name      def initialize(name, date_of_birth, date_of_death=nil, mother=nil)      @name, @mother = name, mother,     @date_of_birth, @date_of_death = date_of_birth, date_of_death      @children = []      @mother.add_child(self) if @mother    end      def add_child(child)      @children << child    end  
+     
+  
+Chapter 6  Composing Methods 138
+Extract 
+Surrounding 
+MethodThe person class has two methods that we’re interested in: one for counting 
+the number of living descendants, and one for counting the number of descen-
+dants with a particular name. 
+ def number_of_living_descendants
+    children.inject(0) do |count, child|      count += 1 if child.alive?      count + child.number_of_living_descendants    end  end    def number_of_descendants_named(name)    children.inject(0) do |count, child|      count += 1 if child.name == name      count + child.number_of_descendants_named(name)    end  end    def alive?    @date_of_death.nil?  end  
+Both of these methods iterate over the collection of children, recursively 
+down the family tree. Recursion isn’t trivial, and once I get it correct, I try to 
+avoid duplication of the recursive logic. But the means to remove this duplica-tion isn’t always obvious. Extract Method can reduce duplication if you can parameterize the method in a way that allows its use in different situations. But in this case, the duplication is in the decision about whether to increment the count or not—and this decision can’t be made without context as to the state of the person object that you are examining at each step of the iteration. 
+Fortunately, Ruby’s blocks allow us to provide this context. We can yield 
+the person object back to the caller at each iteration step, and the caller can decide whether we should count. The first step is to perform Extract Method on one of the duplicates. I start with the
+number_of_descendants_named  method. I name 
+the extracted method after the common behavior—the counting of descendants matching a certain criteria. This will become the surrounding method. 
+ def number_of_descendants_named(name)
+    count_descendants_matching(name)  end    protected  def count_descendants_matching(name)    children.inject(0) do |count, child|
+     
+  
+Introduce Class Annotation 139
+Introduce 
+Class Annotation      count += 1 if child.name == name
+      count + child.count_descendants_matching(name)    end  end  
+Next, I make the calling method pass a block to the surrounding method, 
+and push the logic that checks for a matching name up into the block. I need to 
+yield the child back to the caller so that it can perform the check: 
+ def number_of_descendants_named(name)
+    count_descendants_matching { |descendant| descendant.name == name }  end    def count_descendants_matching(&block)    children.inject(0) do |count, child|      count += 1 if  yield child       count + child.count_descendants_matching(&block)    end  end  
+And finally, I can modify the  
+number_of_living_descendants  method to use our new 
+surrounding method. 
+ def number_of_living_descendants
+    count_descendants_matching { |descendant| descendant.alive? }  end  
+The duplication has been removed, and I have the added benefit of having 
+kept the business logic (the logic determining whether to count the descendant) 
+up in the public method. I’ve separated this business logic from the infrastruc-ture logic required to iterate over the collection, which helps during mainte-nance.
+Introduce Class Annotation 
+You have a method whose implementation steps are so common that they can safely be hidden away. 
+Declare the behavior by calling a class method from the class definition.
+ class SearchCriteria...
+      def initialize(hash)      @author_id = hash[:author_id]      @publisher_id = hash[:publisher_id]
+     
+  
+Chapter 6  Composing Methods 140
+Introduce 
+Class 
+Annotation      @isbn = hash[:isbn]
+    end  
+ class SearchCriteria...      hash_initializer :author_id, :publisher_id, :isbn  
+Motivation
+Attribute readers and writers are so common in Object-Oriented programming 
+languages that the author of Ruby decided to provide a succinct way to declare them. The
+attr_accessor ,  attr_reader , andattr_writer  methods can be called from the 
+definition of a class or module with a list of names of attributes. The implemen-tation of an attribute accessor is so easy to understand that it can be hidden away and replaced with a class annotation. Most code isn’t this simple, and hiding it away would serve only to obfuscate the solution. But when the purpose of the code can be captured clearly in a declarative statement, Introduce Class Annotation can clarify the intention of your code. 
+Mechanics
+1.Decide on the signature of your class annotation. Declare it in the appro-priate class. 
+2.Convert the original method to a class method. Make the appropriate changes so that the method works at class scope. 
+Make sure the class method is declared before the class annota-
+tion is called; otherwise, you’ll get an exception when the parser tries to execute the annotation. 
+3.Test. 
+4.Consider using Extract Module on the class method to make the annota-tion more prominent in your class definition. 
+     
+  
+Introduce Class Annotation 141
+Introduce 
+Class 
+Annotation5.Test. 
+Example
+For this example, we have a  SearchCriteria  class that takes a  Hash of parameters and 
+assigns them to instance variables. 
+ class SearchCriteria...
+      def initialize(hash)      @author_id = hash[:author_id]      @publisher_id = hash[:publisher_id]      @isbn = hash[:isbn]    end  
+Since we’re dealing with 
+ initialize  here, we’ll use Rename Method as well as 
+change the method to class scope, just to make things a little clearer. We want 
+to define the initialize  method dynamically so that we can handle any list of key-
+names.
+ class SearchCriteria
+      def self.hash_initializer(*attribute_names)      define_method(:initialize) do |*args|        data = args.first || {}        attribute_names.each do |attribute_name|          instance_variable_set "@#{attribute_name}", data[attribute_name]        end      end    end      hash_initializer :author_id, :publisher_id, :isbn    end  
+The unfortunate thing here is that we’re not really taking advantage of our 
+succinct class annotation with the ugliness of the
+hash_initializer  standing above 
+it. Since we’ll probably use hash_initializer  in a lot of classes, it makes sense to 
+extract it to a module and move it to class Class.
+ module CustomInitializers
+      def hash_initializer(*attribute_names)      define_method(:initialize) do |*args|
+     
+  
+Chapter 6  Composing Methods 142
+Introduce 
+Named 
+Parameter        data = args.first || {}
+        attribute_names.each do |attribute_name|          instance_variable_set "@#{attribute_name}", data[attribute_name]        end      end    end    end    Class.send :include, CustomInitializers    class SearchCriteria...      hash_initializer :author_id, :publisher_id, :isbn    
+Introduce Named Parameter 
+The parameters in a method call cannot easily be deduced from the name of the 
+method you are calling. 
+Convert the parameter list into a Hash, and use the keys of the Hash as names 
+for the parameters.
+ SearchCriteria.new(5, 8, "0201485672")  
+           
+   SearchCriteria.new(:author_id => 5, :publisher_id => 8, :isbn =>"0201485672")  
+Motivation
+So much of object-oriented design depends on the effectiveness of the abstractions 
+that you create. Let’s say you have object A that delegates to object B, which in turn delegates to object C. It is much easier to understand the algorithm if each object can be synthesized in isolation by the reader. To provide for this, the clarity of the public interface of the object being delegated to is important. If object B’s pub-lic interface represents a cohesive piece of behavior with a well-named class, well-named methods, and parameter lists that make sense given the name of the method, a reader is less likely to have to delve into the details of object B to understand object A. Without this clear abstraction around the behavior of object B, the reader will have to move back and forth between object A and object B (and perhaps object C as well), and understanding of the algorithm will be much more difficult. 
+     
+  
+Introduce Named Parameter 143
+Introduce 
+Named 
+ParameterRuby’s  Hash object provides another way to improve the readability of a 
+method. By replacing a list of parameters with a Hash of key-value pairs, with 
+the key representing the name of the parameter and the value representing the 
+parameter itself, the fluency of the calling code can be improved significantly. The reader of the calling code can see how the parameters might relate to one another and deduce how the method might use them. It’s particularly useful for optional parameters—parameters that are only used in some of the calls can be extra hard to understand. 
+Mechanics
+1.Choose the parameters that you want to name. If you are not naming all of the parameters, move the parameters that you want to name to the end of the parameter list. 
+That way your calling code does not need to wrap the named 
+parameters in curly braces. 
+2.Test 
+3.Replace the parameters in the calling code with name/value pairs 
+4.Replace the parameters with a Hash object in the receiving method. Modify 
+the receiving method to use the new Hash.
+5.Test. 
+Example 1: Naming All of the Parameters 
+We start with a  SearchCriteria object that is responsible for finding books. Its constructor takes an
+author_id ,  publisher_id , andisbn.
+ class SearchCriteria...
+      attr_reader :author_id, :publisher_id, :isbn      def initialize(author_id, publisher_id, isbn)      @author_id = author_id      @publisher_id = publisher_id      @isbn = isbn    end  
+     
+  
+Chapter 6  Composing Methods 144
+Introduce 
+Named 
+ParameterSome client code might look like this: 
+ criteria = SearchCriteria.new(5, 8, "0201485672")  
+Without looking at the class definition, it’s hard to know what the param-
+eters are. And without knowing what the parameters are, it’s hard to infer how 
+theSearchCriteria object might behave. 
+First we change the calling code to pass key-value pairs to the constructor. 
+   criteria = SearchCriteria.new(
+           :author_id => 5, :publisher_id => 8, :isbn =>"0201485672")  
+Next we change the initialize  method to take a  Hash, and initialize the instance 
+variables with the values from the Hash.
+ class SearchCriteria...
+      def initialize(params)      @author_id =  params[:author_id] 
+      @publisher_id =  params[:publisher_id]       @isbn =  params[:isbn]     end  
+Our calling code is a lot cleaner, but if a developer is looking at the class defini-
+tion and wants to know the required parameters for the method, she needs to examine the method definition to find all that are used. For
+initialize  methods 
+such as this that simply assign instance variables of the same name as the keys in the
+Hash , I like to use Introduce Class Annotation to declare the initialize method. 
+ class SearchCriteria...
+      def initialize(hash)      @author_id = hash[:author_id]      @publisher_id = hash[:publisher_id]      @isbn = hash[:isbn]    end  
+becomes
+ class SearchCriteria...
+      hash_initializer :author_id, :publisher_id, :isbn  
+To do this, we add a method to the  
+Class class: 
+ module CustomInitializers  
+     
+  
+Introduce Named Parameter 145
+Introduce 
+Named 
+Parameter    def hash_initializer(*attribute_names)
+      define_method(:initialize) do |*args|        data = args.first || {}        attribute_names.each do |attribute_name|          instance_variable_set "@#{attribute_name}", data[attribute_name]        end      end    end    end    Class.send :include, CustomInitializers  
+And then we can use our 
+ hash_initializer  method in any class definition. 
+Example 2: Naming Only the Optional Parameters 
+It can be useful to distinguish between optional and required parameters to bet-
+ter communicate the method’s use to the developer trying to call the method. Take for example the following SQL-building code: 
+ class Books...
+      def self.find(selector, conditions="", *joins)      sql = ["SELECT * FROM books"]      joins.each do |join_table|        sql << "LEFT OUTER JOIN #{join_table} ON"        sql << "books.#{join_table.to_s.chap}_id"        sql << " = #{join_table}.id"      end      sql << "WHERE #{conditions}" unless conditions.empty?      sql << "LIMIT 1" if selector == :first        connection.find(sql.join(" "))    end  
+Both the
+conditions  and  joins parameters are optional, but the  selector  is required. 
+Theselector  can be either  :all, or:first . The former brings back all records that 
+meet the given criteria, and the latter brings back only the first record that meets 
+the criteria. Here are some clients of this code: 
+ Books.find(:all)
+  Books.find(:all, "title like '%Voodoo Economics'")  Books.find(:all, "authors.name = 'Jenny James'", :authors)  Books.find(:first, "authors.name = 'Jenny James'", :authors)  
+     
+  
+Chapter 6  Composing Methods 146
+Introduce 
+Named 
+ParameterWhile the conditions  parameter might be reasonably intuitive to a developer 
+who understands SQL, the joins parameter is not as clear. The following syntax 
+better communicates the use of the parameters: 
+ Books.find(:all)
+  Books.find(:all, :conditions => "title like '%Voodoo Economics'")  Books.find(:all, :conditions => "authors.name = 'Jenny James'",                  :joins =>[:authors])  Books.find(:first, :conditions => "authors.name = 'Jenny James'",                    :joins =>[:authors])  
+Since the parameters we want to name are already at the end of the param-
+eter list, we don’t need to move them. 
+We convert the  
+conditions  and  joins parameters to a  Hash, and modify the 
+method definition accordingly. 
+ class Books...
+      def self.find(selector,  hash={} )
+      hash[:joins] ||= []      hash[:conditions] ||= ""        sql = ["SELECT * FROM books"]       hash[:joins] .each do |join_table|
+        sql << "LEFT OUTER JOIN #{join_table} ON"        sql << "books.#{join_table.to_s.chop}_id"      sql << "= #{join_table}.id"      end        sql << "WHERE #{ hash[:conditions] }" unless  hash[:conditions] .empty?
+      sql << "LIMIT 1" if selector == :first        connection.find(sql.join(" "))    end  
+Our calling code is more fluent, but if we are looking at the class definition, we 
+have to look through the entire method to know the parameters that we need to pass in. We can improve this by using Introduce Assertion. We’ll add the asser-tion to the
+Hash object itself. 
+ module AssertValidKeys
+    def assert_valid_keys(*valid_keys)      unknown_keys = keys - [valid_keys].flatten      if unknown_keys.any?        raise(ArgumentError, "Unknown key(s): #{unknown_keys.join(", ")}")        end    end  
+     
+  
+Remove Named Parameter 147
+Remove 
+Named 
+Parameter  Hash.send(:include, AssertValidKeys)
+    class Books...    def self.find(selector, hash={})      hash.assert_valid_keys :conditions, :joins        hash[:joins] ||= []      hash[:conditions] ||= ""        sql = ["SELECT * FROM books"]      hash[:joins].each do |join_table|        sql << "LEFT OUTER JOIN #{join_table}"        sql << "ON books.#{join_table.to_s.chop}_id = #{join_table}.id"      end        sql << "WHERE #{hash[:conditions]}" unless hash[:conditions].empty?      sql << "LIMIT 1" if selector == :first        connection.find(sql.join(" "))    end  
+This has two advantages: We get quick feedback on misspelled keys that we 
+pass to the method, and the assertion serves as a declarative statement to com-municate to any reader the expected parameters. 
+Remove Named Parameter 
+The fluency that the named parameter brings is no longer worth the complexity on the receiver. 
+Convert the named parameter Hash to a standard parameter list.
+ IsbnSearch.new(:isbn => "0201485672")  
+   IsbnSearch.new("0201485672")  
+     
+  
+Chapter 6  Composing Methods 148
+Remove 
+Named 
+ParameterMotivation
+Introduce Named Parameter brings a fluency to the calling code that can be 
+beneficial. But named parameters do come at a price—they add complexity to the receiving method. The parameters are clumped together into one
+Hash, which 
+can rarely have a better name than “  params ” or “  options ”, because the param-
+eters contained within the Hash are not cohesive enough to have a domain-related 
+name. Even if they are named well, it is impossible to tell exactly the contents of the
+Hash, without examining the method body or the calling code. Most of 
+the time, this added complexity is worth the increased readability on the calling side, but sometimes the receiver changes in such a way that the added complex-ity is no longer justified. Perhaps the number of parameters has reduced, or one of the optional parameters becomes required, so we remove the required param-eter from the named parameter
+Hash. Or perhaps we perform Extract Method or 
+Extract Class and take only one of the parameters with us. The newly created method or class might now be able to be named in such a way that the param-eter is obvious. In these cases, you want to remove the named parameter. 
+Mechanics
+1.Choose the parameter that you want to remove from the named param-eter
+Hash. In the receiving method, replace the named parameter with a 
+standard parameter in the parameter list. 
+If you have other named parameters that you don’t want to 
+remove, place the unnamed parameter earlier in the parameter list than the named parameters, so that you can still call the method without curly braces for your named parameter 
+Hash.
+2.Replace the named parameter in the calling code with a standard param-eter. 
+3.Test. 
+Example
+Let’s go back to our books example, but this time suppose that all of the param-eters have been implemented as named parameters. They are all optional. This means that the calling code can call the method in many different ways: 
+     
+  
+Remove Named Parameter 149
+Remove 
+Named 
+Parameter Books.find
+  Books.find(:selector => :all,            :conditions => "authors.name = 'Jenny   James'",           :joins => [:authors])  Books.find(:selector => :first,            :conditions => "authors.name = 'JennyJames'",             :joins => [:authors])  
+This code has a couple of problems. For starters, without looking at the 
+implementation of the 
+ find method, it is difficult to predict the result of calling 
+ Books.find  without any parameters. Does it return one result? Does it return all 
+results? For this, I need to go to the implementation: 
+ class Books...
+      def self.find(hash={})      hash[:joins] ||= []      hash[:conditions] ||= ""        sql = ["SELECT * FROM books"]      hash[:joins].each do |join_table|        sql << "LEFT OUTER JOIN #{join_table}"        sql << "ON books.#{join_table.to_s.chop}_id = #{join_table}.id"      end        sql << "WHERE #{hash[:conditions]}" unless hash[:conditions].empty?      sql << "LIMIT 1" if hash[:selector] == :first        connection.find(sql.join(" "))    end  
+After sifting through the entire method, I see that if I don’t provide any param-
+eters, all books will be returned. So we’ve introduced named parameters, but haven’t removed the need to switch to the implementation to understand the calling code. 
+The second problem is the name of the
+:selector  parameter. “ :selector ” doesn’t 
+mean anything in the domain of SQL. “  :limit ” would perhaps be a better name, 
+but:limit => :all  is a little strange. Changing the  selector parameter to be required 
+will solve both problems. The name “  selector ” will be removed, and if we want 
+to return all books we will use the syntax Books.find(:all) .
+The first step is to introduce the  selector  parameter into the find method: 
+ def self.find( selector , hash={})
+    hash[:joins] ||= []
+    hash[:conditions] ||= ""  
+     
+  
+Chapter 6  Composing Methods 150
+Remove 
+Unused 
+Default 
+Parameter    sql = ["SELECT * FROM books"]
+    hash[:joins].each do |join_table|      sql << "LEFT OUTER JOIN #{join_table} ON"     sql << "books.#{join_table.to_s.chop}_id   = #{join_table}.id"    end
+  
+    sql << "WHERE #{hash[:conditions]}" unless hash[:conditions].empty?    sql << "LIMIT 1" if  selector  == :first
+      connection.find(sql.join(" "))  end  
+The next step is to modify the calling code :
+ Books.find  
+becomes
+   Books.find(:all)
+  Books.find(:selector => :all, 
+           :conditions => "authors.name = 'Jenny James'",           :joins => [:authors])  
+becomes
+ Books.find(:all, :conditions => "authors.name = 'Jenny James'",                  :joins =>[:authors])  
+and
+   Books.find(:selector => :first,            :conditions => "authors.name = 'JennyJames'",            :joins => [:authors])  
+becomes
+ Books.find(:first, :conditions => "authors.name = 'Jenny James'",                    :joins =>[:authors])    
+Remove Unused Default Parameter 
+A parameter has a default value, but the method is never called without the 
+parameter. 
+Remove the default value.
+   def product_count_items(search_criteria=nil)
+     
+  
+Remove Unused Default Parameter 151
+Remove 
+Unused 
+Default 
+Parameter    criteria = search_criteria | @search_criteria
+    ProductCountItem.find_all_by_criteria(criteria)  end  
+ def product_count_items(search_criteria)    ProductCountItem.find_all_by_criteria(search_criteria)  end  
+Motivation
+Adding a default value to a parameter can improve the fluency of calling code. Without 
+the default, callers that don’t require the parameter will have to explicitly pass  nil or an 
+empty collection to the method when they don’t require it, and the fluency of the call-ing code is reduced. When required, default values are a good thing. But sometimes, as code evolves over time, fewer and fewer callers require the default value, until finally the default value is unused. Unused flexibility in software is a bad thing. Maintenance of this flexibility takes time, allows opportunities for bugs, and makes refactoring more difficult. Unused default parameters should be removed. 
+Mechanics
+1.Remove the default from the parameter in the method signature. 
+2.Test .
+3.Remove any code within the method that checks for the default value. 
+4.Test. 
+Example
+In this example, search_criteria  defaults to  nil in the parameter list, but then per-
+forms some conditional logic to use the @search_criteria  instance variable if  search_
+criteria  isn’t explicitly passed in: 
+ def product_count_items(search_criteria=nil)
+    criteria = search_criteria | @search_criteria    ProductCountItem.find_all_by_criteria(criteria)  end  
+     
+  
+Chapter 6  Composing Methods 152
+Dynamic 
+Method 
+DefinitionIf we never call product_count_items  without a parameter, then the use of  @search_
+criteria  is misleading. If this is the only use of the instance variable within the 
+class, then our default value is preventing us from removing the instance vari-
+able entirely. 
+First, we remove the default value: 
+ def product_count_items(search_criteria    = nil )
+    criteria = search_criteria | @search_criteria
+    ProductCountItem.find_all_by_criteria(criteria)  end  
+Our tests should still pass since no one calls the method without a parameter. 
+All going well, we should now be able to remove the conditional logic: 
+ def product_count_items(search_criteria)
+    ProductCountItem.find_all_by_criteria(search_criteria)  end  
+We now have the option to perform Inline Method, which could remove a 
+layer of indirection and simplify our code. 
+Dynamic Method Definition 
+You have methods that can be defined more concisely if defined dynamically. 
+Define the methods dynamically.
+ def failure
+    self.state = :failure  end    def error    self.state = :error  end  
+ def_each :failure, :error do |method_name|    self.state = method_name  end  
+     
+  
+Dynamic Method Definition 153
+Dynamic 
+Method 
+DefinitionMotivation
+I use Dynamic Method Definition frequently. Of course, I default to defining 
+methods explicitly, but at the point when duplication begins to appear I quickly move to the dynamic definitions. 
+Dynamically defined methods can help guard against method definition mis-
+takes, since adding another method usually means adding one more argument; however, this is not the primary reason for Dynamic Method Definition. 
+The primary goal for Dynamic Method Definition is to more concisely 
+express the method definition in a readable and maintainable format. 
+Mechanics
+1.Dynamically define one of the similar methods. 
+2.Test. 
+3.Convert the additional similar methods to use the dynamic definition. 
+4.Test. 
+Example: Using def_each to Define Similar Methods 
+Defining several similar methods is verbose and often unnecessary. For example, each of the following methods is simply calling the state method. 
+ def failure
+    self.state = :failure  end    def error    self.state = :error  end    def success    self.state = :success  end  
+The preceding code executes perfectly well, but it’s too similar to justify 11 
+lines in our source file. The following example could be a first step to removing 
+the duplication. 
+     
+  
+Chapter 6  Composing Methods 154
+Dynamic 
+Method 
+Definition [:failure, :error, :success].each do |method|
+    define_method method do      self.state = method    end  end  
+Dynamically defining methods in a loop creates a more concise definition, 
+but it’s not a particularly readable one. To address this issue I define the  
+def_each
+method. The motivation for defining a def_each  method is that it is easy to notice 
+and understand while scanning a source file. 
+ class Class
+    def def_each(*method_names, &block)      method_names.each do |method_name|        define_method method_name do          instance_exec method_name, &block        end      end    end  end  
+The instance_exec Method 
+Ruby 1.9 includes  instance_exec  by default; however, Ruby 1.8 has no such 
+feature. To address this limitation I generally include the following code created 
+by Mauricio Fernandez. 
+ class Object
+    module InstanceExecHelper; end    include InstanceExecHelper    def instance_exec(*args, &block)      begin        old_critical, Thread.critical = Thread.critical, true        n = 0        n += 1 while respond_to?(mname="__instance_exec#{n}")        InstanceExecHelper.module_eval{ define_method(mname, &block) }      ensure        Thread.critical = old_critical      end      begin        ret = send(mname, *args)      ensure        InstanceExecHelper.module_eval{ remove_method(mname) } rescue nil      end
+     
+  
+Dynamic Method Definition 155
+Dynamic 
+Method 
+Definition      ret
+    end  end  
+With  
+def_each  now available I can define the methods like so: 
+ def_each :failure, :error, :success do |method_name|    self.state = method_name  end    
+Example: Defining Instance Methods with a Class Annotation 
+Thedef_each  method is a great tool for defining several similar methods, but often 
+the similar methods represent a concept that can be used within code to make 
+the code itself more descriptive. 
+For example, the previous method definitions were all about setting the state 
+of the class. Instead of using def_each  you could use Introduce Class Annotation 
+to generate the state setting methods. Defining a states class annotation helps create more expressive code. 
+ def error
+    self.state = :error  end    def failure    self.state = :failure  end    def success    self.state = :success  end  
+ class Post    def self.states(*args)      args.each do |arg|        define_method arg do          self.state = arg        end      end
+     
+  
+Chapter 6  Composing Methods 156
+Dynamic 
+Method 
+Definition    end
+      states :failure, :error, :success  end   
+Example: Defining Methods By Extending a Dynamically Defined 
+Module
+Sometimes you have an object and you simply want to delegate method calls to 
+another object. For example, you might want your object to decorate a Hash so 
+that you can get values by calling methods that match keys of that Hash.
+As long as you know what keys to expect, you could define the decorator 
+explicitly. 
+ class PostData
+    def initialize(post_data)      @post_data = post_data    end      def params      @post_data[:params]    end      def session      @post_data[:session]    end  end  
+While this works, it’s truly unnecessary in Ruby. Additionally, it’s a headache 
+if you want to add new delegation methods. You could define 
+ method_missing  to 
+delegate directly to the Hash, but I find debugging method_missing  problematic and 
+avoid it whenever possible. I’m going to skip straight to defining the methods 
+dynamically from the keys of the Hash. Let’s also assume that the  PostData  instances 
+can be passed different Hashes, thus we’ll need to define the methods on indi-vidual instances of 
+ PostData  instead of defining the methods on the class itself. 
+ class PostData
+    def initialize(post_data)      (class << self; self; end).class_eval do        post_data.each_pair do |key, value|          define_method key.to_sym do            value          end
+     
+  
+Dynamic Method Definition 157
+Dynamic 
+Method 
+Definition        end
+      end    end  end  
+The preceding code works perfectly well, but it suffers from readability pain. 
+In cases like these I like to take a step back and look at what I’m trying to 
+accomplish.
+What I’m looking for is the keys of the 
+ Hash to become methods and the values 
+of the Hash to be returned by those respective methods. The two ways to add 
+methods to an instance are to define methods on the metaclass and to extend a module.
+Fortunately, Ruby allows me to define anonymous modules. I have a  
+Hash  and 
+a decorator, but what I want is a way to define methods of the decorator by extending a
+Hash, so I simply need to convert the Hash to a module. 
+The following code converts a Hash to a module with a method for each key 
+that returns the associated value. 
+ class Hash
+    def to_module      hash = self      Module.new do        hash.each_pair do |key, value|          define_method key do            value          end        end      end    end  end  
+With the preceding code in place, it’s possible to define the 
+ PostData  class like 
+the following example. 
+ class PostData
+    def initialize(post_data)      self.extend post_data.to_module    end  end    
+     
+  
+Chapter 6  Composing Methods 158
+Replace Dynamic 
+Receptor with 
+Dynamic Method 
+DefinitionReplace Dynamic Receptor with Dynamic Method Defi-
+nition
+You have methods you want to handle dynamically without the pain of debug-
+ging method_missing.
+Use dynamic method definition to define the necessary methods.
+Motivation
+Debugging classes that use  method_missing  can often be painful. At best you often 
+get aNoMethodError  on an object that you didn’t expect, and at worst you get stack 
+level too deep ( SystemStackError ).
+There are times that  method_missing  is required. If the object must support unex-
+pected method calls you may not be able to avoid the use of method_missing . How-
+ever, often you know how an object will be used and using Dynamic Method 
+Definition you can achieve the same behavior without relying on  method_missing .
+Mechanics
+1.Dynamically define the necessary methods. 
+2.Test. 
+3.Remove method_missing .
+4.Test. 
+Example: Dynamic Delegation Without method_missing 
+Delegation is a common task while developing software. Delegation can be handled explicitly by defining methods yourself or by utilizing something from the Ruby Standard Library such as 
+ Forwardable . (See the Hide Delegate section in 
+Chapter 7 for an explanation of  Forwardable .) Using these techniques gives you 
+control over what methods you want to delegate to the subject object; however, sometimes you want to delegate all methods without specifying them. Ruby’s Standard Library also provides this capability with the delegate library, but we’ll assume we need to implement our own for this example. 
+     
+  
+Replace Dynamic Receptor with Dynamic Method Definition 159
+Replace Dynamic 
+Receptor with Dynamic Method DefinitionThe simple way to handle delegation (ignoring the fact that you would want 
+to undefine all the standard methods a class gets by default) is to use method_missing
+to pass any method calls straight to the subject. 
+ class Decorator
+    def initialize(subject)      @subject = subject    end      def method_missing(sym, *args, &block)      @subject.send sym, *args, &block    end  end  
+This solution does work, but it can be problematic when mistakes are made. 
+For example, calling a method that does not exist on the subject results in the 
+subject raising a 
+ NoMethodError . Since the method call is being called on the decora-
+tor but the subject is raising the error, it may be painful to track down where the problem resides. 
+The wrong object raising a
+NoMethodError  is significantly better than the dreaded 
+stack level too deep ( SystemStackError ). This can be caused by something as simple 
+as forgetting to use the subject instance variable and trying to use a nonexistent subject method or any misspelled method. When this happens the only feedback you have is that something went wrong, but Ruby isn’t sure exactly what it was. 
+These problems can be avoided entirely by using the available data to dynam-
+ically define methods at runtime. The following example defines an instance method on the decorator for each public method of the subject. 
+ class Decorator
+    def initialize(subject)      subject.public_methods(false).each do |meth|        (class << self; self; end).class_eval do          define_method meth do |*args|            subject.send meth, *args          end        end      end    end  end  
+Using this technique any invalid method calls will be correctly reported as 
+NoMethodErrors on the decorator. Additionally, there’s no 
+ method_missing  defini-
+tion, which should help avoid the stack level too deep problem entirely. 
+     
+  
+Chapter 6  Composing Methods 160
+Isolate 
+Dynamic 
+ReceptorExample: Using User-Defined Data to Define Methods 
+Often you can use the information from a class definition to define methods 
+instead of relying on method_missing . For example, the following code relies on 
+method_missing  to determine whether any of the attributes are nil.
+ class Person
+    attr_accessor :name, :age      def method_missing(sym, *args, &block)      empty?(sym.to_s.sub(/^empty_/,"").chomp("?"))    end      def empty?(sym)      self.send(sym).nil?    end  end  
+The code works, but it suffers from the same debugging issues that the previ-
+ous example does. Utilizing Dynamic Method Definition and Introduce Class 
+Annotation the issue can be avoided by defining the attributes and creating the 
+empty_attribute?  methods at the same time. 
+ class Person
+    def self.attrs_with_empty_predicate(*args)      attr_accessor *args        args.each do |attribute|        define_method "empty_#{attribute}?" do          self.send(attribute).nil?        end      end    end      attrs_with_empty_predicate :name, :age  end    
+Isolate Dynamic Receptor 
+A class utilizing method_missing has become painful to alter. 
+Introduce a new class and move the method_missing logic to that class.
+     
+  
+Isolate Dynamic Receptor 161
+Isolate Dynamic 
+ReceptorCommand Center
+start()
+stop()1Recorder
+messagesmethod missing()play for()messages
+Message Collector
+messages()
+method missing()messages
+Command Center
+start()
+stop()
+Recorder
+message collector
+Play for()
+record1
+1
+Motivation
+As I mentioned in the section “ Replace Dynamic Receptor with Dynamic 
+Method Definition ” earlier in the chapter, objects that use  method_missing  often 
+raiseNoMethodErro r errors unexpectedly. Even worse is when you get no more infor-
+mation than stack level too deep ( SystemStackError ).
+Despite the added complexity,  method_missing  is a powerful tool that needs 
+to be used when the interface of a class cannot be predetermined. On those occasions I like to use Isolate Dynamic Receptor to move the
+method_missing
+behavior to a new class: a class whose sole responsibility is to handle the 
+ method_missing  cases. 
+The ActiveRecord::Base  ( AR::B) class defines method_missing  to handle dynamic find 
+messages. The implementation of method_missing  allows you to send find messages 
+that use attributes of a class as limiting conditions for the results that will be 
+returned by the dynamic find messages. For example, given a   Person  subclass of 
+AR::B  that has both a first name and a ssn attribute, it’s possible to send the mes-
+sagesPerson.find_by_first_name ,Person.find_by_ssn , andPerson.find_by_first_name_and_ssn .
+     
+  
+Chapter 6  Composing Methods 162
+Isolate 
+Dynamic 
+ReceptorIt’s possible, though not realistic, to dynamically define methods for all pos-
+sible combinations of the attributes of an AR::B subclass. Utilizing  method_missing
+is a good alternative. However, by defining  method_missing  on the  AR::B class itself 
+the complexity of the class is increased significantly.  AR::B would benefit from a 
+maintainability perspective if instead the dynamic finder logic were defined on 
+a class whose single responsibility was to handle dynamic find messages. For example, the previous
+Person  class could support find with the following syntax: 
+Person.find.by_first_name , Person.find.by_ssn , orPerson.find.by_first_name_and_ssn .
+Tip Very often it’s possible to know all valid method calls ahead of 
+time, in which case I prefer Replace Dynamic Receptor with Dynamic Method Definition. 
+Mechanics
+1.Create a new class whose sole responsibility is to handle the dynamic method calls. 
+2.Copy the logic from
+method_missing  on the original class to the method_missing  of 
+the focused class. 
+3.Create a method on the original class to return an instance of the focused class.
+4.Change all client code that previously called the dynamic methods on the original object to call the new method first. 
+5.Remove the
+method_missing  from the original object. 
+6.Test. 
+Example
+The following example is a Recorder  class that records all calls to method_missing .
+ class Recorder
+    instance_methods.each do |meth|      undef_method meth unless meth =~ /^(__|inspect)/    end  
+     
+  
+Isolate Dynamic Receptor 163
+Isolate 
+Dynamic 
+Receptor    def messages
+      @messages ||= []    end      def method_missing(sym, *args)      messages << [sym, args]      self    end  end  
+The
+Recorder  class may need additional behavior such as the ability to play 
+back all the messages on an object and the ability to represent all the calls as 
+Strings .
+ class Recorder...    def play_for(obj)      messages.inject(obj) do |result, message|        result.send message.first, *message.last      end    end      def to_s      messages.inject([]) do |result, message|        result << "#{message.first}(args: #{message.last.inspect})"      end.join(".")    end  end  
+It might be used like this: 
+ class CommandCenter      def start(command_string)      ...      self    end      def stop(command_string)      ...
+      self
+    end    end    recorder = Recorder.new  recorder.start("LRMMMMRL")
+     
+  
+Chapter 6  Composing Methods 164
+Isolate 
+Dynamic 
+Receptor  recorder.stop("LRMMMMRL")
+  recorder.play_for(CommandCenter.new)  
+As the behavior of  Recorder  grows it becomes harder to identify the messages 
+that are dynamically handled from those that are actually explicitly defined. 
+By design the functionality of method_missing  should handle any unknown mes-
+sage, but how do you know if you’ve broken something by adding an explicitly defined method? 
+The solution to this problem is to introduce an additional class that has the 
+single responsibility of handling the dynamic method calls. In this case we have a class
+Recorder  that handles recording unknown messages as well as playing 
+back the messages or printing them. To reduce complexity we will introduce the 
+MesageCollector  class that handles the method_missing  calls. 
+ class MessageCollector
+    instance_methods.each do |meth|      undef_method meth unless meth =~ /^(__|inspect)/    end      def messages      @messages ||= []    end      def method_missing(sym, *args)      messages << [sym, args]      self    end  end  
+The
+record method of  Recorder  will create a new instance of the MessageCollector  class 
+and each additional chained call will be recorded. The play back and printing 
+capabilities will remain on the  Recorder  object. 
+ class Recorder
+    def play_for(obj)      @message_collector.messages.inject(obj) do |result, message|        result.send message.first, *message.last      end    end      def record      @message_collector ||= MessageCollector.new    end  
+     
+  
+Move Eval from Runtime to Parse Time 165
+Move Eval 
+from 
+Runtime to 
+Parse Time    def to_s
+      @message_collector.messages.inject([]) do |result, message|        result << "#{message.first}(args: #{message.last.inspect})"      end.join(".")    end  end  
+And now our usage will change to call the
+record  method: 
+ recorder = Recorder.new  recorder. record .start("LRMMMMRL")
+  recorder. record .stop("LRMMMMRL")
+  recorder.play_for(CommandCenter.new)    
+Move Eval from Runtime to Parse Time 
+You need to use  eval but want to limit the number of times eval is necessary. 
+Move the use of eval from within the method definition to defining the method 
+itself.
+ class Person
+    def self.attr_with_default(options)      options.each_pair do |attribute, default_value|        define_method attribute do          eval "@#{attribute} ||= #{default_value}"        end      end    end      attr_with_default :emails => "[]",                     :employee_number   =>"EmployeeNumberGenerator.next"  end  
+ class Person    def self.attr_with_default(options)      options.each_pair do |attribute, default_value|        eval "define_method #{attribute} do
+     
+  
+Chapter 6  Composing Methods 166
+Move Eval 
+from 
+Runtime to 
+Parse Time             @#{attribute} ||= #{default_value}
+             end"      end    end      attr_with_default :emails => "[]",                     :employee_number   =>"EmployeeNumberGenerator.next"  end  
+Motivation
+As Donald Knuth once said, “Premature optimization is the root of all evil”. I’ll 
+never advocate for premature optimization, but this refactoring can be helpful when you determine that
+eval is a source of performance pain. The  Kernel#eval 
+method can be the right solution in some cases, but it is almost always more expensive (in terms of performance) than its alternatives. In the cases where
+eval
+is necessary, it’s often better to move an  eval call from runtime to parse time. 
+Mechanics
+1.Expand the scope of the string being eval’d.
+2.Test. 
+It’s also worth noting that evaluating the entire method definition allows you to change the
+define_method  to  def in this example. All current versions of Ruby 
+execute methods defined with def significantly faster than methods defined using 
+define_method ; therefore, this refactoring could yield benefits for multiple reasons. 
+Of course, you should always measure to ensure that you’ve actually refactored in the right direction. 
+     
+  
+167

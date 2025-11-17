@@ -1,0 +1,811 @@
+Chapter 1 
+Refactoring, a First Example 
+When I wrote the original edition of Refactoring I had to decide how to open 
+the book. Traditionally technical books start with a general introduction that 
+outlines things like history and broad principles. When someone does that at a conference, I get slightly sleepy. My mind starts wandering with a low-priority background process that polls the speaker until he or she gives an example. The examples wake me up because it is with examples that I can see what is going on. With principles it is too easy to make generalizations, too hard to figure out how to apply things. An example helps make things clear. 
+So I decided to start the book with an example of refactoring. Several review-
+ers saw it as an unusual and somewhat brave move. But I’ve never regretted it. I used the same example for many talks I gave on refactoring too—and found that an example made a very good introduction. Although the specifics in the example were specific, you can use the concrete example to illustrate many broader issues. 
+It’s no surprise then, that we wanted to start off with an example for this 
+Ruby version. I’m using exactly the same example as I did for Java, although Jay translated it into Ruby. I reworked the text considerably to introduce things I’ve learned when talking about this example over the years. If you’re familiar with the book we hope you’ll enjoy some of the new discussion. If this book is new to you you’re probably hoping I’ll start with the content. 
+As with any introductory example, however, there is a big problem. If I pick a 
+large program, describing it and how it is refactored is too complicated for any reader to work through. (I tried and even a slightly complicated example ran to more than 100 pages.) However, if I pick a program that is small enough to be comprehensible, refactoring does not look like it is worthwhile. 
+Thus I’m in the classic bind of anyone who wants to describe techniques 
+that are useful for real-world programs. Frankly it is not worth the effort to do the refactoring that I’m going to show you on a small program like the one I’m going to use. But if the code I’m showing you is part of a larger system, then the refactoring soon becomes important. So I have to ask you to look at this and imagine it in the context of a much larger system. 
+     
+  
+Chapter 1  Refactoring, a First Example 2
+The Starting
+Point The Starting Point 
+The sample program is simple. It is a program to calculate and print a statement 
+of a customer’s charges at a video store. The program is told which movies a customer rented and for how long. It then calculates the charges, which depend on how long the movie is rented, and identifies the type of movie. There are three kinds of movies: regular, children’s, and new releases. In addition to calcu-lating charges, the statement also computes frequent renter points, which vary depending on whether the film is a new release. 
+Several classes represent various video elements. Here’s a class diagram to 
+show them (see Figure 1.1).
+I’ll show the code for each of these classes in turn. 
+Movie
+Movie is just a simple data class. 
+ class Movie
+    REGULAR = 0    NEW_RELEASE = 1    CHILDRENS = 2      attr_reader :title    attr_accessor :price_code      def initialize(title, price_code)      @title, @price_code = title, price_code    end  end  
+1
+1
+1Movie
+price code * *
+ *
+Rental
+days rented
+Customer
+statement()
+Figure 1.1 Class diagram of the starting point classes. Only the most important fea-
+tures are shown. The notation is Unified Modeling Language (UML) [Fowler, UML]. 
+Rental
+The rental class represents a customer renting a movie. 
+ class Rental
+    attr_reader :movie, :days_rented
+     
+  
+The Starting Point 3
+The Starting
+Point      def initialize(movie, days_rented)
+      @movie, @days_rented = movie, days_rented    end  end   
+Customer
+The customer class represents the customer of the store. Like the other classes it 
+has data and accessors: 
+ class Customer
+    attr_reader :name      def initialize(name)      @name = name      @rentals = []    end      def add_rental(arg)      @rentals << arg    end  
+Customer also has the method that produces a statement. Figure 1.2 shows the 
+interactions for this method. 
+statement
+a customer
+ a rental
+ a movie
+* [for all rentals]
+movie
+price code
+days rented
+Figure 1.2 Interactions for the statement method .
+     
+  
+Chapter 1  Refactoring, a First Example 4
+The Starting
+Point def statement
+      total_amount, frequent_renter_points = 0, 0      result = "Rental Record for #{@name}\n"      @rentals.each do |element|        this_amount = 0          # determine amounts for each line        case element.movie.price_code        when Movie::REGULAR          this_amount += 2          this_amount += (element.days_rented - 2) * 1.5 if element.days_rented   > 2        when Movie::NEW_RELEASE          this_amount += element.days_rented * 3        when Movie::CHILDRENS          this_amount += 1.5          this_amount += (element.days_rented - 3) * 1.5 if element.days_rented   > 3        end          # add frequent renter points        frequent_renter_points += 1        # add bonus for a two day new release rental        if element.movie.price_code ==   Movie.NEW_RELEASE && element.days_rented > 1           frequent_renter_points += 1        end        # show figures for this rental        result += "\t" + element.movie.title + "\t" + this_amount.to_s + "\n"        total_amount += this_amount
+      end
+      # add footer lines      result += "Amount owed is #{total_amount}\n"      result += "You earned #{frequent_renter_points} frequent renter points"      result
+    end 
+     
+  
+The Starting Point 5
+The Starting
+Point  Comments on the Starting Program 
+What are your impressions about the design of this program? I would describe 
+it as not well designed and certainly not object oriented. For a simple program like this, that does not really matter. There’s nothing wrong with a quick and dirty simple program. But if this is a representative fragment of a more complex system, then I have some real problems with this program. That long statement routine in the Customer class does far too much. Many of the things that it does should really be done by the other classes. 
+Even so, the program works. Is this not just an aesthetic judgment, a dislike 
+of ugly code? It is until we want to change the system. The interpreter doesn’t care whether the code is ugly or clean. But when we change the system, there is a human involved, and humans do care. A poorly designed system is hard to change. Hard because it is hard to figure out where the changes are needed. If it is hard to figure out what to change, there is a strong chance that the program-mer will make a mistake and introduce bugs. 
+In this case we have a couple of changes that the users would like to make. 
+First they want a statement printed in HTML so that the statement can be Web enabled and more buzzword compliant. Consider the impact this change would have. As you look at the code you can see that it is impossible to reuse any of the behavior of the current statement method for an HTML statement. Your only recourse is to write a whole new method that duplicates much of the behavior of statement. Now, of course, this is not too onerous. You can just copy the state-ment method and make whatever changes you need. 
+But what happens when the charging rules change? You have to fix both 
+statement and html_statement and ensure the fixes are consistent. The problem with copying and pasting code comes when you have to change it later. If you are writing a program that you don’t expect to change, then cut and paste is fine. If the program is long lived and likely to change, then cut and paste is a menace.
+This brings me to a second change. The users want to make changes to the 
+way they classify movies, but they haven’t yet decided on the change they are going to make. They have a number of changes in mind. These changes will affect both the way renters are charged for movies and the way that frequent renter points are calculated. As an experienced developer you are sure that whatever scheme the users come up with, the only guarantee you’re going to have is that they will change it again within six months. 
+The statement method is where the changes have to be made to deal with 
+changes in classification and charging rules. If, however, we copy the statement to an HTML statement, we need to ensure that any changes are completely 
+     
+  
+Chapter 1  Refactoring, a First Example 6
+The First
+Step in
+Refactoringconsistent. Furthermore, as the rules grow in complexity it’s going to be harder 
+to figure out where to make the changes and harder to make them without mak-ing a mistake. 
+You may be tempted to make the fewest possible changes to the program; 
+after all, it works fine. Remember the old engineering adage: “if it ain’t broke, don’t fix it.” The program may not be broken, but it does hurt. It is making your life more difficult because you find it hard to make the changes your users want. This is where refactoring comes in. 
+Tip When you find you have to add a feature to a program, and 
+the program’s code is not structured in a convenient way to add the feature, first refactor the program to make it easy to add the feature, then add the feature. 
+The First Step in Refactoring 
+Whenever I do refactoring, the first step is always the same. I need to build a solid set of tests for that section of code. The tests are essential because even though I follow refactorings structured to avoid most of the opportunities for introducing bugs, I’m still human and still make mistakes. Thus I need solid tests.
+Because the statement result produces a string, I create a few customers, give 
+each customer a few rentals of various kinds of films, and generate the state-ment strings. I then do a string comparison between the new string and some reference strings that I have hand checked. I set up all of these tests so I can run them using Test::Unit. The tests take only a few seconds to run, and as you will see, I run them often. 
+An important part of the tests is the way they report their results. They either 
+print “X tests, X assertions, 0 failures, 0 errors” meaning that all the strings are identical to the reference strings, or they print a list of failures: lines that turned out differently. The tests are thus self-checking. It is vital to make tests self-checking. If you don’t, you end up spending time hand checking some numbers from the test against some numbers on a desk pad, and that slows you down. 
+When I wrote the original version of this book, testing like this was still a 
+rarity. Many people were first introduced to this style of testing through that 
+book. Since then, this kind of testing has spread widely through software devel-
+opment. We’re happy that this approach has become a core style to both the 
+     
+  
+Decomposing and Redistributing the Statement Method 7
+Decomposing and 
+Redist ributing the Statement MethodRuby and Rails communities. You’re not going to be taken seriously as a Ruby 
+developer unless you use Test::Unit or Rspec to write tests as you write code. 
+As we do the refactoring, we will lean on the tests. I’m going to rely on the 
+tests to tell me whether I introduce a bug. It is essential for refactoring that you have good tests. It’s worth spending the time to build the tests, because the tests give you the security you need to change the program later. This is such an important part of refactoring that I go into more detail on testing in Chapter 4,“Building Tests.” 
+Tip Before you start refactoring, check that you have a solid suite of 
+tests. These tests must be self-checking. 
+Decomposing and Redistributing the Statement Method 
+The obvious first target of my attention is the overly long statement method. When I look at a long method like that, I am looking to decompose the method into smaller pieces. Smaller pieces of code tend to make things more manage-able. They are easier to work with and move around. 
+The first phase of the refactorings in this chapter show how I split up the long 
+method and move the pieces to better classes. My aim is to make it easier to write an HTML statement method with much less duplication of code. 
+My first step is to find a logical clump of code and use Extract Method. An 
+obvious piece here is the case statement. This looks like it would make a good chunk to extract into its own method. 
+When I extract a method, as in any refactoring, I need to know what can go 
+wrong. If I do the extraction badly, I could introduce a bug into the program. So before I do the refactoring I need to figure out how to do it safely. I’ve done this refactoring a few times before, so I’ve written down the safe steps in the catalog. 
+First I need to look in the fragment for any variables that are local in scope 
+to the method we are looking at; the local variables and parameters. This seg-ment of code uses two:
+rental  and  this_amount . Of these, rental  is not modified by 
+the code, but this_amount  is modified. Any nonmodified variable I can pass in as a 
+parameter. Modified variables need more care. If there is only one, I can return it. The temp is initialized to 0 each time around the loop and is not altered until the case gets to it. So I can just assign the result. 
+The next two pages show the code before and after refactoring. The before 
+code is on the left, the resulting code on the right. The code I’m extracting from 
+     
+  
+Chapter 1  Refactoring, a First Example 8
+Decomposing and 
+Redist ributing 
+the Statement 
+Methodthe original and any changes in the new code that I don’t think are immediately 
+obvious are in boldface type. As I continue with this chapter, I’ll continue with this left-right convention. 
+ def statement
+    total_amount, frequent_renter_points = 0, 0    result = "Rental Record for #{@name}\n"    @rentals.each do |element|      this_amount = 0         # determine amounts for each line        case element.movie.price_code        when Movie::REGULAR          this_amount += 2          this_amount += (element.days_rented - 2) * 1.5 if element.days_rented >     2        when Movie::NEW_RELEASE          this_amount += element.days_rented * 3        when Movie::CHILDRENS          this_amount += 1.5          this_amount += (element.days_rented - 3) * 1.5 if element.days_rented >     3        end         # add frequent renter points      frequent_renter_points += 1      # add bonus for a two day new release rental      if element.movie.price_code == Movie.NEW_RELEASE &&             element.days_rented > 1
+        frequent_renter_points += 1
+    end        # show figures for this rental      result += "\t" + each.movie.title + "\t" + this_amount.to_s + "\n"      total_amount += this_amount    end    # add footer lines    result += "Amount owed is #{total_amount}\n"    result += "You earned #{frequent_renter_points} frequent renter points"    result  end
+     
+  
+Decomposing and Redistributing the Statement Method 9
+Decomposing and 
+Redist ributing the Statement Method  def statement
+    total_amount, frequent_renter_points = 0, 0    result = "Rental Record for #{@name}\n"    @rentals.each do |element|      this_amount = amount_for(element)        # add frequent renter points      frequent_renter_points += 1
+      # add bonus for a two day new release rental
+      if element.movie.price_code == Movie.NEW_RELEASE &&             element.days_rented > 1        frequent_renter_points += 1    end        # show figures for this rental      result += "\t" + each.movie.title + "\t" + this_amount.to_s + "\n"      total_amount += this_amount    end    # add footer lines    result += "Amount owed is #{total_amount}\n"    result += "You earned #{frequent_renter_points} frequent renter points"
+    result
+  end    def amount_for(element)     this_amount = 0     case element.movie.price_code    when Movie::REGULAR      this_amount += 2      this_amount += (element.days_rented - 2) * 1.5 if element.days_rented > 2    when Movie::NEW_RELEASE      this_amount += element.days_rented * 3    when Movie::CHILDRENS      this_amount += 1.5      this_amount += (element.days_rented - 3) * 1.5 if element.days_rented > 3
+    end
+  end  
+Whenever I make a change like this, I test. When I wrote the original version 
+of this book, I actually had the tests fail at this point. There I am, writing a book 
+on refactoring, and I screw up the very first refactoring I show in the book. It wasn’t my proudest moment. (The actual error isn’t something you can see in Ruby as it was a subtle type error that wasn’t caught by Java’s type checking 
+system.) While I felt bad at the time, it was actually a great illustration of why 
+frequent testing is vital as these kind of errors can be difficult to track down if 
+     
+  
+Chapter 1  Refactoring, a First Example 10
+Decomposing and 
+Redist ributing 
+the Statement 
+Methodyou make a lot of changes. But because I test after every tiny step, I don’t have 
+to look far to find where the error is. So whenever I give a (Java) talk on this I always replay that error to show the point. The key to testing is running tests after every small change so when you mess up you don’t have to look in many places to find the problem. Comparing the failing version of code to a previous working version (which I call Diff Debugging) is a useful technique, particularly so when the diffs are small. Because each change is so small, any errors are easy to find. You don’t spend a long time debugging, even if you are as careless as I am.
+Tip Refactoring changes the programs in small steps. If you make a 
+mistake, it is easy to find the bug. 
+Extract Method is a common refactoring task to do, it can also be a bit intri-
+cate since you have to look at these local variables. For programmers in many languages these days, this effort has been reduced to near-zero by automated refactoring tools. Such a tool can analyze the method, do the kind of analysis we see in the previous example, and leave the programmer with only having to choose the name of the new method. The first such refactoring tool was written for Smalltalk; these kinds of tools are now commonly used in Java and C#. As I write this Ruby tools are steadily becoming available. 
+Now that I’ve broken the original method down into chunks, I can work on 
+them separately. I don’t like some of the variable names in  
+amount_for , and this is 
+a good place to change them. 
+Here’s the original code: 
+ def amount_for(element)
+    this_amount = 0    case element.movie.price_code    when Movie::REGULAR      this_amount += 2      this_amount += (element.days_rented - 2) * 1.5 if element.days_rented > 2    when Movie::NEW_RELEASE      this_amount += element.days_rented * 3    when Movie::CHILDRENS      this_amount += 1.5      this_amount += (element.days_rented - 3) * 1.5 if element.days_rented > 3    end    this_amount  end  
+     
+  
+Decomposing and Redistributing the Statement Method 11
+Decomposing and 
+Redist ributing the Statement MethodHere is the renamed code: 
+ def amount_for( rental )
+     result = 0 
+    case  rental.movie.price_code 
+    when Movie::REGULAR       result  += 2
+       result  += ( rental .days_rented - 2) * 1.5 if  rental .days_rented > 2
+    when Movie::NEW_RELEASE       result  +=  rental .days_rented * 3
+    when Movie::CHILDRENS       result  += 1.5
+       result  += ( rental .days_rented - 3) * 1.5 if  rental .days_rented > 3
+    end     result 
+  end  
+Once I’ve done the renaming, I test to ensure I haven’t broken anything. 
+Is renaming worth the effort? Absolutely. Good code should communicate 
+what it is doing clearly, and variable names are a key to clear code. Never be afraid to change the names of things to improve clarity. With good find and replace tools, it is usually not difficult (and automated refactoring tools can make it even easier). Testing highlights anything you miss. Remember this tip: 
+Tip Any fool can write code that a computer can understand. Good 
+programmers write code that humans can understand. 
+Code that communicates its purpose is very important. I often refactor just 
+when I’m reading some code. That way as I gain understanding about the pro-gram, I embed that understanding into the code for later so I don’t forget what I learned. 
+     
+  
+Chapter 1  Refactoring, a First Example 12
+Decomposing and 
+Redist ributing 
+the Statement 
+MethodMoving the Amount Calculation 
+As I look at amount_for , I can see that it uses information from the rental, but does 
+not use information from the customer. 
+ class Customer
+    def amount_for(rental)      result = 0      case rental.movie.price_code      when Movie::REGULAR        result += 2        result += (rental.days_rented - 2) * 1.5 if rental.days_rented > 2      when Movie::NEW_RELEASE        result += rental.days_rented * 3      when Movie::CHILDRENS        result += 1.5        result += (rental.days_rented - 3) * 1.5 if rental.days_rented > 3      end      result    end  end  
+     
+  
+Decomposing and Redistributing the Statement Method 13
+Decomposing and 
+Redist ributing the Statement MethodThis immediately raises my suspicions that the method is on the wrong 
+object. In most cases a method should be on the object whose data it uses; thus 
+the method should be moved to the rental. To do this I use Move Method. With this you first copy the code over to rental and adjust it to fit in its new home, as follows: 
+ class Rental
+    def charge      result = 0      case movie.price_code      when Movie::REGULAR        result += 2        result += (days_rented - 2) * 1.5 if days_rented > 2      when Movie::NEW_RELEASE        result += days_rented * 3      when Movie::CHILDRENS        result += 1.5        result += (days_rented - 3) * 1.5 if days_rented > 3      end      result    end  end  
+In this case fitting into its new home means removing the parameter. I also 
+renamed the method as I did the move. 
+I can now test to see whether this method works. To do this I replace the 
+body of Customer.amount_for  to delegate to the new method. 
+ class Customer
+    def amount_for(rental)      rental.charge    end  end  
+I can now test to see whether I’ve broken anything. 
+     
+  
+Chapter 1  Refactoring, a First Example 14
+Decomposing and 
+Redist ributing 
+the Statement 
+MethodThe next step is to find every reference to the old method and adjust the ref-
+erence to use the new method, as follows: 
+ class Customer
+    def statement      total_amount, frequent_renter_points = 0, 0      result = "Rental Record for #{@name}\n"      @rentals.each do |element|        this_amount =  amount_for(element) 
+          # add frequent renter points        frequent_renter_points += 1        # add bonus for a two day new release rental        if element.movie.price_code == Movie.NEW_RELEASE &&               element.days_rented > 1          frequent_renter_points += 1      end          # show figures for this rental        result += "\t" + each.movie.title + "\t" + this_amount.to_s + "\n"        total_amount += this_amount      end      # add footer lines      result += "Amount owed is #{total_amount}\n"      result += "You earned #{frequent_renter_points} frequent renter points"      result    end
+  end  
+     
+  
+Decomposing and Redistributing the Statement Method 15
+Decomposing and 
+Redist ributing the Statement MethodIn this case this step is easy because we just created the method, and it is in 
+only one place. In general, however, you need to search across all the classes that 
+might be using that method: 
+ class Customer
+    def statement      total_amount, frequent_renter_points = 0, 0      result = "Rental Record for #{@name}\n"      @rentals.each do |element|        this_amount =  element.charge           # add frequent renter points        frequent_renter_points += 1        # add bonus for a two day new release rental        if element.movie.price_code == Movie.NEW_RELEASE &&               element.days_rented > 1          frequent_renter_points += 1      end          # show figures for this rental        result += "\t" + each.movie.title + "\t" + this_amount.to_s + "\n"        total_amount += this_amount      end      # add footer lines      result += "Amount owed is #{total_amount}\n"      result += "You earned #{frequent_renter_points} frequent renter points"      result    end  end  
+1
+ Movie
+price code*
+Customer
+statement()
+*
+Rental
+days rented
+charge()
+Figure 1.3 State of classes after moving the charge method .
+     
+  
+Chapter 1  Refactoring, a First Example 16
+Decomposing and 
+Redist ributing 
+the Statement 
+MethodWhen I’ve made the change (see Figure 1.3) the next thing is to remove the 
+old method. The tests should tell me whether I missed or broke anything. 
+Sometimes I leave the old method to delegate to the new method. This is use-
+ful if it is a public method and I don’t want to change the interface of the other 
+class.
+There is certainly some more I would like to do to Rental.charge  but I will leave 
+it for the moment and return to Customer.statement .
+ class Customer
+    def statement      total_amount, frequent_renter_points = 0, 0      result = "Rental Record for #{@name}\n"      @rentals.each do |element|        this_amount =  element.charge 
+          # add frequent renter points        frequent_renter_points += 1        # add bonus for a two day new release rental        if element.movie.price_code == Movie.NEW_RELEASE &&               element.days_rented > 1          frequent_renter_points += 1      end          # show figures for this rental        result += "\t" + each.movie.title + "\t" + this_amount.to_s + "\n"        total_amount += this_amount      end
+      # add footer lines
+      result += "Amount owed is #{total_amount}\n"      result += "You earned #{frequent_renter_points} frequent renter points"      result    end  end  
+     
+  
+Decomposing and Redistributing the Statement Method 17
+Decomposing and 
+Redist ributing the Statement MethodThe next thing that strikes me is that this_amount is now redundant. It is set 
+to the result of element.charge and not changed afterward. Thus I can eliminate 
+this_amount by using Replace Temp with Query: 
+ class Customer
+    def statement      total_amount, frequent_renter_points = 0, 0      result = "Rental Record for #{@name}\n"      @rentals.each do |element|          # add frequent renter points        frequent_renter_points += 1        # add bonus for a two day new release rental        if element.movie.price_code == Movie.NEW_RELEASE &&               element.days_rented > 1
+          frequent_renter_points += 1
+      end
+  
+        # show figures for this rental        result += "\t" + each.movie.title + "\t" +  element.charge .to_s + "\n"
+        total_amount +=  element.charge 
+      end      # add footer lines      result += "Amount owed is #{total_amount}\n"      result += "You earned #{frequent_renter_points} frequent renter points"      result    end  end  
+Once I’ve made that change I test to make sure I haven’t broken anything. 
+Whenever I’ve gone through this example in a talk, this refactoring leads to angst 
+from at least some people in the audience. The biggest source of angst is perfor-mance. By removing the temporary variable I’m calling the charge method twice instead of once. Some people would avoid making this change solely for that rea-son. However this kind of thinking about performance isn’t a good way to get good performance (see the section in Chapter 2 named “Refactoring and Performance”). While refactoring you should focus on clarity, and then later focus on performance as a separate activity. Almost all the time extra method calls won’t matter; in the rare cases they do, they can be dealt with later. Indeed by refactoring you often get opportunities to make better performance improvements. 
+The bigger danger area in this refactoring is that you have to be sure that the 
+charge  method is idempotent. Usually a method like this is a query method and 
+thus has no side effects. In this case you can call it as often as you like without changing anything. Good tests would expose this fault if it’s there. 
+     
+  
+Chapter 1  Refactoring, a First Example 18
+Decomposing and 
+Redist ributing 
+the Statement 
+MethodWhen breaking down large methods I find this refactoring useful. Temps are 
+often a problem in that they cause a lot of parameters to be passed around when 
+they don’t have to be. You can easily lose track of what they are there for. By getting rid of them you can focus more clearly on what the code’s trying to do rather than how to shuffle data around. 
+Extracting Frequent Renter Points 
+The next step is to do a similar thing for the frequent renter points. The rules vary with the kind of tape, although there is less variation than with charging. It seems reasonable to put the responsibility on the rental. First we need to use Extract Method on the frequent renter points part of the code (in boldface type): 
+ class Customer
+    def statement      total_amount, frequent_renter_points = 0, 0      result = "Rental Record for #{@name}\n"      @rentals.each do |element|           # add frequent renter points          frequent_renter_points += 1          # add bonus for a two day new release rental          if element.movie.price_code == Movie.NEW_RELEASE &&               element.days_rented > 1          frequent_renter_points += 1      end   
+        # show figures for this rental        result += "\t" + each.movie.title + "\t" + element.charge.to_s + "\n"        total_amount += element.charge      end      # add footer lines
+      result += "Amount owed is #{total_amount}\n"
+      result += "You earned #{frequent_renter_points} frequent renter points"      result    end  end  
+     
+  
+Decomposing and Redistributing the Statement Method 19
+Decomposing and 
+Redist ributing the Statement MethodAgain we look at the use of locally scoped variables. Again element is used 
+and can be passed in as a parameter. The other temp used is  frequent_renter_points .
+In this case frequent_renter_points  does have a value beforehand. The body of the 
+extracted method doesn’t read the value, however, so we don’t need to pass it in 
+as a parameter as long as we use an appending assignment. 
+I did the extraction and tested and then did a move and tested again. With 
+refactoring, small steps are the best; that way less tends to go wrong. 
+ class Customer
+    def statement      total_amount, frequent_renter_points = 0, 0      result = "Rental Record for #{@name}\n"      @rentals.each do |element|         frequent_renter_points += element.frequent_renter_points           # show figures for this rental        result += "\t" + each.movie.title + "\t" + element.charge.to_s + "\n"        total_amount += element.charge      end      # add footer lines      result += "Amount owed is #{total_amount}\n"      result += "You earned #{frequent_renter_points} frequent renter points"      result    end  end    class Rental
+    def frequent_renter_points
+      (movie.price_code == Movie.NEW_RELEASE && days_rented > 1) ? 2 : 1    end  end  
+     
+  
+Chapter 1  Refactoring, a First Example 20
+Decomposing and 
+Redist ributing 
+the Statement 
+MethodI’ll summarize the changes I just made with some before-and-after Unified 
+Modeling Language (UML) diagrams (see Figures 1.4 through  1.7). Again 
+the diagrams on the left are before the change; those on the right are after the change.
+1
+ Movie
+price code *
+Customer
+statement()
+*
+Rental
+days rented
+charge()
+Figure 1.4 Class diagram before extraction and movement of the frequent renter 
+points calculation .
+statement
+a customer
+ a rental
+ a movie
+* [for all rentals]
+charge
+price code
+days rented
+Figure 1.5 Sequence diagrams before extraction and movement of the frequent renter 
+points calculation .
+     
+  
+Decomposing and Redistributing the Statement Method 21
+Decomposing and 
+Redist ributing the Statement Method
+Movie
+price code *
+Customer
+statement()
+Rental
+days rented
+charge()
+frequent renter points()
+Figure 1.6 Class diagram after extraction and movement of the frequent renter points 
+calculation.
+statement
+a customer
+ a rental
+ a movie
+* [for all rentals]
+charge
+price code
+price codefrequent renter points
+p
+p
+Figure 1.7 Sequence diagram after extraction and movement of the frequent renter 
+points calculation .
+     
+  
+Chapter 1  Refactoring, a First Example 22
+Decomposing and 
+Redist ributing 
+the Statement 
+MethodRemoving Temps 
+As I suggested before, temporary variables can be a problem. They are useful 
+only within their own routine, and thus they encourage long, complex routines. In this case we have two temporary variables, both of which are being used to get a total from the rentals attached to the customer. Both the ASCII and HTML versions require these totals. I like to use Replace Temp with Query to replace 
+total_amount  and  frequent_renter_points  with query methods. Queries are accessible 
+to any method in the class and thus encourage a cleaner design without long, complex methods: 
+ class Customer
+    def statement      total_amount, frequent_renter_points = 0, 0      result = "Rental Record for #{@name}\n"      @rentals.each do |element|        frequent_renter_points += element.frequent_renter_points          # show figures for this rental        result += "\t" + each.movie.title + "\t" + element.charge.to_s + "\n"        total_amount += element.charge      end      # add footer lines      result += "Amount owed is #{total_amount}\n"      result += "You earned #{frequent_renter_points} frequent renter points"      result    end
+  end  
+     
+  
+Decomposing and Redistributing the Statement Method 23
+Decomposing and 
+Redist ributing the Statement MethodI began by replacing total_amount  with a total_charge  method on customer: 
+ class Customer
+    def statement      frequent_renter_points = 0      result = "Rental Record for #{@name}\n"      @rentals.each do |element|        frequent_renter_points += element.frequent_renter_points          # show figures for this rental        result += "\t" + each.movie.title + "\t" + element.charge.to_s + "\n"      end      # add footer lines      result += "Amount owed is #{ total_charge }\n"
+      result += "You earned #{frequent_renter_points} frequent renter points"      result    end      private      def total_charge      result = 0      @rentals.each do |element|        result += element.charge      end      result    end
+  end  
+This isn’t the simplest case of Replace Temp with Query since  total_amount
+was assigned to within the loop, so I have to copy the loop into the query 
+method.
+     
+  
+Chapter 1  Refactoring, a First Example 24
+Decomposing and 
+Redist ributing 
+the Statement 
+MethodThetotal_charge  method is short: 
+ Customer
+    def total_charge      result = 0      @rentals.each do |element|        result += element.charge      end      result    end  end  
+     
+  
+Decomposing and Redistributing the Statement Method 25
+Decomposing and 
+Redist ributing the Statement MethodHowever, it can be made even more concise by applying Collection Closure 
+Method and using inject. 
+ class Customer
+    def total_charge      @rentals.inject(0) { |sum, rental| sum + rental.charge }    end  end  
+     
+  
+Chapter 1  Refactoring, a First Example 26
+Decomposing and 
+Redist ributing 
+the Statement 
+MethodAfter testing that refactoring, I did the same for frequent_renter_points:
+ class Customer
+    def statement      frequent_renter_points = 0      result = "Rental Record for #{@name}\n"      @rentals.each do |element|        frequent_renter_points += element.frequent_renter_points          # show figures for this rental        result += "\t" + each.movie.title + "\t" + element.charge.to_s + "\n"      end      # add footer lines      result += "Amount owed is #{total_charge}\n"      result += "You earned #{frequent_renter_points} frequent renter points"      result    end  end   
+     
+  
+Decomposing and Redistributing the Statement Method 27
+Decomposing and 
+Redist ributing the Statement Method class Customer
+    def statement      result = "Rental Record for #{@name}\n"      @rentals.each do |element|        # show figures for this rental        result += "\t" + each.movie.title + "\t" + element.charge.to_s + "\n"      end      # add footer lines      result += "Amount owed is #{total_charge}\n"      result += "You earned #{ total_frequent_renter_points } frequent renter   points"      result    end      private      def total_frequent_renter_points      @rentals.inject(0) { |sum, rental| sum + rental.frequent_renter_points }    end  end  
+     
+  
+Chapter 1  Refactoring, a First Example 28
+Decomposing and 
+Redist ributing 
+the Statement 
+MethodFigures 1.8 through  1.11 show the change for these refactorings in the class 
+diagrams and the interaction diagram for the statement method. 
+1
+1
+Movie
+price code *
+Customer
+statement()
+*
+Rental
+days rented
+charge()
+frequent renter points()
+Figure 1.8 Class diagram before extraction of the totals .
+statement
+a customer a rental a movie
+* [for all rentals]
+charge
+price code
+price codefrequent renter points
+p
+p
+Figure 1.9 Sequence diagram before extraction of the totals .
+     
+  
+Decomposing and Redistributing the Statement Method 29
+Decomposing and 
+Redist ributing the Statement Method 1
+1 Movie
+price code *
+Customer
+statement()
+*
+Rental
+days rented
+charge()
+frequent renter points() charge()total frequent renter points()
+Figure 1.10 Class diagram after extraction of the totals .
+statement
+a customer
+ a rental
+ a movie
+total charge
+price code
+price codetotal frequent renter points
+* [for all rentals] charge
+* [for all rentals] frequent renter points
+Figure 1.11 Sequence diagram after extraction of the totals .
+As with Replace Temp With Query, this change can cause performance wor-
+ries to inexperienced programmers. The same advice applies; make the code 
+clean first and then use a profiler to deal with performance issues. 
+     
+  
+Chapter 1  Refactoring, a First Example 30
+Decomposing and 
+Redist ributing 
+the Statement 
+MethodThese queries are now available for any code written in the customer class. 
+They can easily be added to the public interface of the class should other parts 
+of the system need this information. Without queries like these, other methods have to deal with knowing about the rentals and building the enumerations. In a complex system, that leads to much more code to write and maintain. 
+You can see the difference immediately with the  
+html_statement . I am now at the 
+point where I take off my refactoring hat and put on my adding function hat. I can write
+html_statement  as follows and add appropriate tests: 
+ class Customer    def html_statement      result = "<h1>Rentals for <em>#{@name}</em></h1><p>\n"      @rentals.each do |element|        # show figures for this rental        result += "\t" + each.movie.title + ": " + element.charge.to_s +   "<br>\n"      end      # add footer lines      result += "<p>You owe <em>#{total_charge}</em><p>\n"      result += "On this rental you earned " +           "<em>#{total_frequent_renter_points}</em> " +           "frequent renter points<p>"      result    end  end  
+By extracting the calculations I can create the
+html_statement  method and reuse all 
+of the calculation code that was in the original statement  method. I didn’t copy and 
+paste, so if the calculation rules change I have only one place in the code to go to. Any other kind of statement will be really quick and easy to prepare. The refactor-ing did not take long. I spent most of the time figuring out what the code did, and I would have had to do that anyway. 
+     
+  
+Decomposing and Redistributing the Statement Method 31
+Decomposing and  
+Redist ributing the Statement MethodSome code is copied from the ASCII version, mainly due to setting up 
+the loop. Further refactoring could clean that up. Extracting methods for 
+header, footer, and detail line are one route I could take. You can see how to do this in the example for Form Template Method. Further work could lead to using string formatting statements instead of the concatenation, the Builder library to produce the HTML, or a templating system like ERB. 
+But now the users are clamoring again. They are getting ready to change the 
+classification of the movies in the store. It’s still not clear what changes they want to make, but it sounds like new classifications will be introduced, and the existing ones could well be changed. The charges and frequent renter point allo-cations for these classifications are to be decided. At the moment, making these kind of changes is awkward. I have to get into the charge and frequent renter point methods and alter the conditional code to make changes to film classifica-tions. Back on with the refactoring hat. 
+     
+  
+Chapter 1  Refactoring, a First Example 32
+Replacing the
+Conditional Logic
+on Price Code
+with PolymorphismReplacing the Conditional Logic on Price Code with 
+Polymorphism
+The first part of this problem is that case statement. It is a bad idea to do a case 
+based on an attribute of another object. If you must use a case statement, it should be on your own data, not on someone else’s. 
+ class Rental
+    def charge      result = 0      case movie.price_code      when Movie::REGULAR        result += 2        result += (days_rented - 2) * 1.5 if days_rented > 2      when Movie::NEW_RELEASE        result += days_rented * 3      when Movie::CHILDRENS        result += 1.5        result += (days_rented - 3) * 1.5 if days_rented > 3      end      result    end  end  
+     
+  
+Replacing the Conditional Logic on Price Code with Polymorphism 33
+Replacing the
+Conditional Logicon Price Codewith PolymorphismThis implies that the charge method should move onto movie: 
+ class Movie
+    def charge(days_rented)      result = 0      case price_code      when REGULAR        result += 2        result += (days_rented - 2) * 1.5 if days_rented > 2      when NEW_RELEASE        result += days_rented * 3      when CHILDRENS        result += 1.5        result += (days_rented - 3) * 1.5 if days_rented > 3      end      result    end  end  
+For this to work I had to pass in the length of the rental, which of course is 
+data from the rental. The method effectively uses two pieces of data, the length 
+of the rental and the type of the movie. Why do I prefer to pass the length of rental to the movie rather than the movie type to the rental? It’s because the pro-posed changes are all about adding new types. Type information generally tends to be more volatile. If I change the movie type, I want the least ripple effect, so I prefer to calculate the charge within the movie. 
+I added the method into movie and then changed the charge on rental to use 
+the new method (see Figures 1.12 and 1.13):
+ class Rental
+    def charge      movie.charge(days_rented)    end  end  
+     
+  
+Chapter 1  Refactoring, a First Example 34
+Replacing the
+Conditional Logic
+on Price Code
+with PolymorphismOnce I’ve moved the charge  method, I do the same with the frequent renter 
+point calculation. That keeps both things that vary with the type together on the 
+class that has the type: 
+ class Rental
+    def frequent_renter_points      (movie.price_code == Movie::NEW_RELEASE && days_rented > 1) ? 2 : 1
+    end  end 
+1
+Movie
+price code*
+Customer
+Rental
+days rented
+charge()
+frequent renter points()statement()html statement()total charge()total frequent renter points()
+Figure 1.12 Class diagram before moving methods to movie .
+     
+  
+Replacing the Conditional Logic on Price Code with Polymorphism 35
+Replacing the
+Conditional Logicon Price Codewith Polymorphism class Rental
+    def frequent_renter_points      movie.frequent_renter_points(days_rented)    end  end    class Movie    def frequent_renter_points(days_rented)      (price_code == NEW_RELEASE && days_rented > 1) ? 2 : 1    end  end  
+1
+Movie
+price code*
+Customer
+Rental
+days rented
+charge()
+frequent renter points()statement()html statement()total charge()total frequent renter points()
+charge(days rented)frequent renter points(days rented)
+Figure 1.13 Class diagram after moving methods to movie .
+     
+  
+At Last...Inheritance 
+We have several types of movie that have different ways of answering the same 
+question. This sounds like a job for subclasses. We can have three subclasses of movie, each of which can have its own version of charge (see Figure 1.14).
+Regular Movie
+charge
+Childrens Movie
+charge
+New Release Movie
+charge
+Movie
+Figure 1.14 Using inheritance on movie. 
+This allows me to replace the case statement by using polymorphism. Sadly 
+it has one slight flaw: It doesn’t work. A movie can change its classification dur-ing its lifetime. An object cannot change its class during its lifetime. All is not lost, however. We can remove the case statement with the state pattern [Gang of Four]. 
+With the state pattern the classes look like  Figure 1.15. By adding the indirec-
+tion we can change the price whenever we need to. 
+If you are familiar with the Gang of Four patterns, you may wonder, “Is this 
+a state, or is it a strategy?” Does the price class represent an algorithm for cal-culating the price (in which case I prefer to call it
+Pricer  or ), or does it represent 
+a state of the movie (Star Trek X is a new release)? At this stage the choice of pattern (and name) reflects how you want to think about the structure. At the moment I’m thinking about this as a state of movie. If I later decide a strategy communicates my intention better, I will refactor to do this by changing the names.Chapter 1  Refactoring, a First Example 36
+Replacing the
+Conditional Logic
+on Price Code
+with Polymorphism
+     
+  
+Movie
+Regular Movie
+chargechargeprice
+price
+Childrens Price
+charge
+New Release Movie
+charge1*
+price.charge
+charge<<protocol>>
+Figure 1.15 Using the state pattern on movie .*
+  *To show this in UML, I’ve made a «protocol» stereotype. This doesn’t correspond to a class, 
+or any explicit Ruby construct, but to the expectation the movie has of its price. UML does 
+not have an accepted way to handle dynamic typed polymorphism like this. Replacing the Conditional Logic on Price Code with Polymorphism 37
+Replacing the
+Conditional Logicon Price Codewith Polymorphism
+     
+  
+The refactoring I’m going to use here is Replace Type Code with State/Strategy. 
+The first step is to use Self Encapsulate Field on the type code to ensure that all uses of the type code go through getting and setting methods. Because most of the code came from other classes, most methods already use the getting method. However, the constructor does access the price code: 
+ class Movie
+    attr_accessor :price_code      def initialize(title, price_code)      @title, @price_code = title, price_code    end  end  Chapter 1  Refactoring, a First Example 38
+Replacing the
+Conditional Logic
+on Price Code
+with Polymorphism
+     
+  
+I introduce a custom setter method (because it’s going to do something more 
+interesting soon), and call it from the constructor. 
+ class Movie
+    attr_reader :price_code      def price_code=(value)      @price_code = value    end      def initialize(title, the_price_code)      @title, self.price_code = title, the_price_code    end  end  
+I test to make sure I didn’t break anything. Now I add the new classes that 
+add the type code behavior. 
+ class RegularPrice
+    end    class NewReleasePrice    end    class ChildrensPrice    end  Replacing the Conditional Logic on Price Code with Polymorphism 39
+Replacing the
+Conditional Logicon Price Codewith Polymorphism
+     
+  
+Now I do the interesting thing with the custom price code setter: 
+ class Movie...
+      def price_code=(value)      @price_code = value    end  Chapter 1  Refactoring, a First Example 40
+Replacing the
+Conditional Logic
+on Price Code
+with Polymorphism
+     
+  
+I set a new instance variable called price to an instance of the appropriate 
+type class. 
+ class Movie...
+      def price_code=(value)      @price_code = value      @price = case price_code        when REGULAR: RegularPrice.new        when NEW_RELEASE: NewReleasePrice.new        when CHILDRENS: ChildrensPrice.new      end    end  end  
+You may notice the irony here. I’m putting in polymorphism to get rid of 
+conditional logic, and the first thing I do is put a case in. The point is that once 
+I’m done this will be the only case left. Depending on what else is going on I may be able to eliminate this one too. Replacing the Conditional Logic on Price Code with Polymorphism 41
+Replacing the
+Conditional Logicon Price Codewith Polymorphism
+     
+  
+Next I choose one of the methods that needs to behave polymorphically. I 
+start with charge .
+ class Movie
+    def charge(days_rented)      result = 0      case price_code      when REGULAR        result += 2        result += (days_rented - 2) * 1.5 if days_rented > 2      when NEW_RELEASE        result += days_rented * 3      when CHILDRENS        result += 1.5        result += (days_rented - 3) * 1.5 if days_rented > 3      end      result    end  end  Chapter 1  Refactoring, a First Example 42
+Replacing the
+Conditional Logic
+on Price Code
+with Polymorphism
+     
+  
+I need to implement the charge  method on one of the new price objects. 
+ class RegularPrice
+    def charge(days_rented)      result = 2      result += (days_rented - 2) * 1.5 if days_rented > 2      result    end  end  
+I call the new method from Movie’s charge method. I need to pass in days_
+rented.
+ class Movie...
+   def charge(days_rented)     result = 0     case price_code     when REGULAR        return @price.charge(days_rented)      when NEW_RELEASE       result += days_rented * 3     when CHILDRENS       result += 1.5       result += (days_rented - 3) * 1.5 if days_rented > 3     end     result   end  Replacing the Conditional Logic on Price Code with Polymorphism 43
+Replacing the
+Conditional Logicon Price Codewith Polymorphism
+     
+  
+All going well, my tests should pass. I can then do the same for the other type 
+classes.
+ class Movie...
+   def charge(days_rented)     result = 0     case price_code     when REGULAR       return @price.charge(days_rented)     when NEW_RELEASE       result += days_rented * 3     when CHILDRENS       result += 1.5       result += (days_rented - 3) * 1.5 if days_rented > 3     end     result   end   Chapter 1  Refactoring, a First Example 44
+Replacing the
+Conditional Logic
+on Price Code
+with Polymorphism
+     
+  
+ class NewReleasePrice
+      def charge(days_rented)      days_rented * 3    end    end    class ChildrensPrice      def charge(days_rented)      result = 1.5      result += (days_rented - 3) * 1.5 if days_rented > 3      result    end  end  
+I turn Movie’s  charge method into a simple delegator when I’m done. 
+ class Movie      def charge(days_rented)      @price.charge(days_rented)    end  Replacing the Conditional Logic on Price Code with Polymorphism 45
+Replacing the
+Conditional Logicon Price Codewith Polymorphism
+     
+  
+The next method to tackle is frequent_renter_points .
+ class Movie
+    def frequent_renter_points(days_rented)      (price_code == NEW_RELEASE && days_rented > 1) ? 2 : 1    end  end  Chapter 1  Refactoring, a First Example 46
+Replacing the
+Conditional Logic
+on Price Code
+with Polymorphism
+     
+  
+We want  frequent_renter_points  to be the same for  ChildrensPrice  and  RegularPrice , but 
+be different for NewReleasePrice . I use Extract Module and include the module into 
+RegularPrice  and  ChildrensPrice . I then implement the special frequent_renter_points  on 
+NewReleasePrice .
+ module DefaultPrice
+    def frequent_renter_points(days_rented)      1    end  end    class RegularPrice...    include Price    end    class NewReleasePrice...      def frequent_renter_points(days_rented)      days_rented > 1 ? 2 : 1    end  end    class ChildrensPrice...    include Price    end  
+Like
+charge ,frequent_renter_points  onMovie now becomes a simple delegator. 
+ class Movie...      def frequent_renter_points(days_rented)      @price.frequent_renter_points(days_rented)    end  end  Replacing the Conditional Logic on Price Code with Polymorphism 47
+Replacing the
+Conditional Logicon Price Codewith Polymorphism
+     
+  
+As a final step, I can remove the case statement from the price_code  setter 
+method.
+ # calling code
+  movie = Movie.new("The Watchmen", Movie::NEW_RELEASE)  # and later...  movie.price_code = Movie::REGULAR    class Movie...      def price_code=(value)      @price_code = value      @price = case price_code        when REGULAR: RegularPrice.new        when NEW_RELEASE: NewReleasePrice.new        when CHILDRENS: ChildrensPrice.new      end    end  end  Chapter 1  Refactoring, a First Example 48
+Replacing the
+Conditional Logic
+on Price Code
+with Polymorphism
+     
+  
+I can make the callers pass in an instance of the type themselves. 
+ # calling code
+  movie = Movie.new("The Watchmen", NewReleasePrice.new)  # and later...  movie.price = RegularPrice.new    class Movie    attr_writer :price  
+Putting in the state pattern was quite an effort. Was it worth it? The gain is 
+that if I change any of price’s behavior, add new prices, or add extra price-dependent behavior, the change will be much easier to make. The rest of the application does not know about the use of the state pattern. For the tiny amount of behavior I currently have, it is not a big deal. In a more complex system with a dozen or so price-dependent methods, this would make a big dif-ference. All these changes were small steps. It seems slow to write it this way, but not once did I have to open the debugger, so the process actually flowed quite quickly. It took me much longer to write this section of the book than it did to change the code. 
+I’ve now completed the second major refactoring. It is going to be much 
+easier to change the classification structure of movies, and to alter the rules for charging and the frequent renter point system. Figures 1.16 and  1.17 show how the state pattern works with price information. 
+statement
+total charge
+total_frequent_renter_points
+* [for all rentals] charge
+a movie
+frequent_renter_points(days_rented)* [for all rentals] frequent_renter_pointscharge(days_rented)charge(days_rented)
+a price
+frequent_renter_points(days_rented)
+a rental
+ a customer
+Figure 1.16 Interactions using the state pattern .Replacing the Conditional Logic on Price Code with Polymorphism 49
+Replacing the
+Conditional Logicon Price Codewith Polymorphism
+     
+  
+price
+New Release Movie1
+1
+*
+charge(days_rented)charge(days_rented)
+frequent_renter_points(days_rented)
+<<module>>Default Price
+frequent_renter_points(days_rented)Regular Price
+charge(days_rented)Childrens Price
+charge(days_rented)frequent renter pointsRental
+days rented
+Customer
+name
+statement()
+html_statement()total_charge()total_frequent_renter_points()*
+<<protocol>>
+charge(days_rented)
+*
+Movie
+title
+charge(days_rented)
+frequent renter points(days rented)
+Figure 1.17 Class diagram after addition of the state pattern .
+Final Thoughts 
+This is a simple example, yet I hope it gives you the feeling of what refactoring 
+is like. I used several refactorings, including Extract Method, Move Method, and Replace Type Code with State/Strategy. All these lead to better-distributed responsibilities and code that is easier to maintain. It does look rather different from procedural style code, and that takes some getting used to. But once you are used to it, it is hard to go back to procedural programs. 
+The most important lesson from this example is the rhythm of refactoring: 
+test, small change, test, small change, test, small change. It is that rhythm that allows refactoring to move quickly and safely. 
+If you’re with me this far, you should now understand what refactoring is 
+all about. We can now move on to some background, principles, and theory (although not too much!) Chapter 1  Refactoring, a First Example 50
+Final 
+Thoughts
+     
+  
+51

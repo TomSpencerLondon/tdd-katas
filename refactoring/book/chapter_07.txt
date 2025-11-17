@@ -1,0 +1,458 @@
+Chapter 7 
+Moving Features Between 
+Objects
+One of the most fundamental, if not the fundamental, decision in object 
+design is deciding where to put responsibilities. I’ve been working with objects 
+for more than a decade, but I still never get it right the first time. That used to bother me, but now I realize that I can use refactoring to change my mind in these cases. 
+Often I can resolve these problems simply by using Move Method and Move 
+Field to move the behavior around. If I need to use both, I prefer to use Move Field first and then Move Method. 
+Often classes become bloated with too many responsibilities. In this case I 
+use Extract Class or Extract Module to separate some of these responsibilities. If a class becomes too irresponsible, I use Inline Class to merge it into another class. The same applies to modules. If another class is being used, it often is helpful to hide this fact with Hide Delegate. Sometimes hiding the delegate class results in constantly changing the owner’s interface, in which case you need to use Remove Middle Man. 
+Move Method 
+A method is, or will be, using or used by more features of another class than the class on which it is defined. 
+Create a new method with a similar body in the class it uses most. Either turn 
+the old method into a simple delegation, or remove it altogether.
+From the Library of Lee Bogdanoff
+  
+Chapter 7  Moving Features Between Objects 168
+Move
+Method
+Class 1
+a method()
+a method()
+Class 2 Class 2Class 1
+Motivation
+Moving methods is the bread and butter of refactoring. I move methods when 
+classes have too much behavior or when classes are collaborating too much and are too highly coupled. By moving methods around, I can make the classes simpler, and they end up being a more crisp implementation of a set of respon-sibilities.
+I usually look through the methods on a class to find a method that seems 
+to reference another object more than the object it lives on. A good time to do this is after I have moved some attributes. Once I see a likely method to move, I take a look at the methods that call it, the methods it calls, and any redefining methods in the hierarchy. I assess whether to go ahead on the basis of the object with which the method seems to have more interaction. 
+It’s not always an easy decision to make. If I am not sure whether to move a 
+method, I go on to look at other methods. Moving other methods often makes the decision easier. Sometimes the decision still is hard to make. Actually it is then no big deal. If it is difficult to make the decision, it probably does not mat-ter that much. Then I choose according to instinct; after all, I can always change it again later. 
+Mechanics
+1.Examine all features used by the source method that are defined on the source class. Consider whether they also should be moved. 
+If a feature is used only by the method you are about to move, 
+you might as well move it, too. If the feature is used by other methods, consider moving them as well. Sometimes it is easier to move a clutch of methods than to move them one at a time. 
+     
+  
+Move Method 169
+Move
+Method2.Check the sub- and superclasses of the source class for other definitions of 
+the method. 
+If there are any other definitions, you may not be able to make the 
+move, unless the polymorphism can also be expressed on the target. 
+3.Define the method in the target class. 
+You may choose to use a different name, one that makes more 
+sense in the target class .
+4.Copy the code from the source method to the target. Adjust the method to make it work in its new home. 
+If the method uses its source, you need to determine how to refer-
+ence the source object from the target method. If there is no mechanism in the target class, pass the source object reference to the new method as a parameter. 
+If the method includes exception handlers, decide which class 
+should logically handle the exception. If the source class should be responsible, leave the handlers behind. 
+5.Determine how to reference the correct target object from the source. 
+There may be an existing attribute or method that will give you 
+the target. If not, see whether you can easily create a method that will do so. Failing that, you need to create a new attribute in the source that can store the target. This may be a permanent change, but you can also make it temporarily until you have refactored enough to remove it. 
+6.Turn the source method into a delegating method. 
+7.Test. 
+8.Decide whether to remove the source method or retain it as a delegating method.
+Leaving the source as a delegating method is easier if you have 
+many references. 
+     
+  
+Chapter 7  Moving Features Between Objects 170
+Move
+Method9.If you remove the source method, replace all the references with refer-
+ences to the target method. 
+You can test after changing each reference, although it is usually 
+easier to change all references with one search and replace .
+10. Test. 
+Example
+An account class illustrates this refactoring: 
+ class Account...
+    def overdraft_charge      if @account_type.premium?        result = 10        result += (@days_overdrawn - 7) * 0.85 if @days_overdrawn > 7        result      else        @days_overdrawn * 1.75      end    end      def bank_charge        result = 4.5        result += overdraft_charge if @days_overdrawn > 0        result    end  
+Let’s imagine that there are going to be several new account types, each of which 
+has its own rule for calculating the overdraft charge. So I want to move the 
+overdraft_charge  method over to the account type. 
+The first step is to look at the features that the overdraft_charge  method uses and 
+consider whether it is worth moving a batch of methods together. In this case I need the
+@days_overdrawn  instance variable to remain on the account class, because 
+that will vary with individual accounts. 
+Next I copy the method body over to the account type and get it to fit. 
+ class AccountType...
+    def overdraft_charge(days_overdrawn)      if  premium? 
+        result = 10        result += ( days_overdrawn  - 7) * 0.85 if  days_overdrawn  > 7
+     
+  
+Move Method 171
+Move
+Method        result
+      else         days_overdrawn  * 1.75
+      end    end  
+In this case fitting means removing the
+@account_type  from uses of features of the 
+account type, and doing something about the features of account that I still 
+need. When I need to use a feature of the source class I can do one of four things: (1) move this feature to the target class as well, (2) create or use a refer-ence from the target class to the source, (3) pass the source object as a param-eter to the method, or (4) if the feature is a variable, pass it in as a parameter. 
+In this case I pass the variable as a parameter. Once the method fits in the target class, I can replace the source method body 
+with a simple delegation: 
+ class Account...
+    def overdraft_charge      @account_type.overdraft_charge(@days_overdrawn)    end  
+At this point I can test. 
+I can leave things like this, or I can remove the method in the source class. To 
+remove the method I need to find all callers of the method and redirect them to 
+call the method in account type: 
+ class Account...
+    def bank_charge      result = 4.5      if @days_overdrawn > 0       result +=  @account_type.overdraft_charge(@days_overdrawn)  
+      end      result    end  
+Once I’ve replaced all the callers, I can remove the method definition in account. 
+I can test after each removal, or do them in a batch. If the method isn’t private, I need to look for other classes that use this method. In a statically typed language like Java or C#, the compilation after removal of the source definition finds any-thing I missed. In an interpreted language such as Ruby, there’s no compilation to catch these mistakes. A comprehensive test suite is vitally important, even more-so in dynamic languages! 
+In this case the method referred only to a single instance variable, so I could 
+just pass this instance variable in as a variable. If the method called for another 
+     
+  
+Chapter 7  Moving Features Between Objects 172
+Move
+Fieldmethod on the account, I wouldn’t have been able to do that. In those cases I 
+need to pass in the source object: 
+ class AccountType...
+    def overdraft_charge(account)      if premium?        result = 10      if  (account.days_overdrawn > 7)          result += (account.days_overdrawn - 7) * 0.85        end        result      else        account.days_overdrawn * 1.75      end    end  
+I also pass in the source object if I need several features of the class, although if 
+there are too many, further refactoring is needed. Typically I need to decompose and move some pieces back. 
+Move Field 
+A field is, or will be, used by another class more than the class on which it is defined.
+Create a new attribute reader (and if necessary, a writer) in the target class, and 
+change all its users. 
+Class 1
+a field
+Class 2
+a field
+Class 2Class 1
+     
+  
+Move Field 173
+Move
+FieldMotivation
+Moving state and behavior between classes is the essence of refactoring. As 
+the system develops, you find the need for new classes and the need to shuffle responsibilities around. A design decision that is reasonable and correct one week can become incorrect in another. That is not a problem; the only problem is not to do something about it. 
+I consider moving a field if I see more methods on another class using the 
+information in the field than the class itself. I may choose to move the methods; this decision is based on interface. But if the methods seem sensible where they are, I move the field. 
+Another reason for field moving is when doing Extract Class. In that case the 
+fields go first and then the methods. 
+Mechanics
+1.If you are likely to be moving the methods that access the field frequently or if a lot of methods access the field, you may find it useful to use Self Encapsulate Field. 
+2.Test. 
+3.Create in the target class an attribute reader and, if necessary, a writer. 
+4.Determine how to reference the target object from the source. 
+An existing field or method may give you the target. If not, see 
+whether you can easily create a method that will do so. Failing that, you need to create a new field in the source that can store the target. This may be a permanent change, but you can also do it temporarily until you have refactored enough to remove it. 
+5.Replace all references to the source field with references to the appropri-ate method on the target. 
+For accesses to the variable, replace the reference with a call to the 
+target object’s reader; for assignments, replace the reference with a call to the writer. 
+Look in all the subclasses of the source for references to the field. 
+6.Test. 
+     
+  
+Chapter 7  Moving Features Between Objects 174
+Move
+FieldExample
+Here is part of an account class: 
+ class Account...
+      def interest_for_amount_days(amount, days)      @interest_rate * amount * days / 365;    end  
+I want to move the
+@interest_rate  field to the account type. There are several meth-
+ods with that reference, of which interest_for_amount_days  is one example. I next 
+create the attribute in the account type: 
+ class AccountType...
+    attr_accessor :interest_rate  
+Now I redirect the methods from the account class to use the account type and 
+remove the interest rate instance variable in the account. 
+ def interest_for_amount_days(amount, days)
+     @account_type.interest_rate *  amount * days / 365
+  end   
+Example: Using Self-Encapsulation 
+If a lot of methods use the interest rate instance variable, I might start by using 
+Self Encapsulate Field: 
+ class Account...
+    attr_accessor :interest_rate      def interest_for_amount_days(amount, days)       interest_rate  * amount * days / 365
+    end  
+That way I only need to do the redirection for the appropriate accessors: 
+ class Account...      attr_accessor :interest_rate
+          def interest_for_amount_and_days(amount, days)       interest_rate  * amount * days / 365
+    end
+     
+  
+Extract Class 175
+Extract
+Class  
+    def interest_rate       @account_type.interest_rate 
+    end  
+Or, I can extend Forwardable and declare delegating accessors like this: 
+  extend Forwardable 
+     def_delegator :@account_type, :interest_rate, :interest_rate=     def interest_for_amount_and_days(amount, days)    interest_rate * amount * days / 365  end  
+I can redirect the clients of the accessors to use the new object later if I want. 
+Using self-encapsulation allows me to take a smaller step. This is useful if I’m 
+doing a lot of things with the class. In particular, it simplifies use of Move Method to move methods to the target class. If they refer to the accessor, such references don’t need to change Self Encapsulate Field. 
+Extract Class 
+You have one class doing work that should be done by two. 
+Create a new class and move the relevant fields and methods from the old class 
+into the new class.
+name
+office_area_code
+office_number
+telephone_number()Person
+name
+telephone_number()Person
+area_code
+number
+telephone_number()Telephone Number
+office_telephone
+1
+Motivation
+You’ve probably heard that a class should be a crisp abstraction, handle a few 
+clear responsibilities, or some similar guideline. In practice, classes grow. You add some operations here, a bit of data there. You add a responsibility to a class feeling that it’s not worth a separate class, but as that responsibility grows and breeds, the class becomes too complicated. Soon your class is as crisp as a microwaved duck. 
+     
+  
+Chapter 7  Moving Features Between Objects 176
+Extract
+ClassSuch a class is one with many methods and a lot of data—a class that is too 
+big to understand easily. You need to consider where it can be split, and you 
+split it. A good sign is that a subset of the data and a subset of the methods seem to go together. Other good signs are subsets of data that usually change together or are particularly dependent on each other. A useful test is to ask yourself what would happen if you removed a piece of data or a method. What other fields and methods would become nonsense? 
+One sign that often crops up later in development is the way the class is 
+subtyped. You may find that subtyping affects only a few features or that some features need to be subtyped one way and other features a different way. 
+Mechanics
+1.Decide how to split the responsibilities of the class. 
+2.Create a new class to express the split-off responsibilities. 
+If the responsibilities of the old class no longer match its name, 
+rename the old class. 
+3.Make a link from the old to the new class. 
+You may need a two-way link. But don’t make the back link until 
+you find you need it. 
+4.Use Move Field on each field you want to move. 
+5.Test after each move. 
+6.Use Move Method to move methods over from old to new. Start with lower-level methods (called rather than calling) and build to the higher level.
+7.Test after each move. 
+8.Review and reduce the interfaces of each class. 
+If you did have a two-way link, examine to see whether it can be 
+made one-way. 
+     
+  
+Extract Class 177
+Extract
+Class9.Decide whether multiple clients will be able to access the class. If you do 
+allow access to multiple clients, decide whether to expose the new class as a reference object or as an immutable value object. 
+Example
+I start with a simple person class: 
+ class Person...
+    attr_reader :name    attr_accessor :office_area_code    attr_accessor :office_number    def telephone_number      '(' + @office_area_code + ') ' + @office_number    end  
+In this case I can separate the telephone number behavior into its own class. I 
+start by defining a telephone number class: 
+ class TelephoneNumber
+  end  
+That was easy! I next make a link from the person to the telephone number: 
+ class Person...    def initialize      @office_telephone = TelephoneNumber.new    end  
+Now I use Move Field on one of the fields: 
+ class TelephoneNumber
+    attr_accessor :area_code  end    class Person...      def telephone_number      '(' +  office_area_code  + ') ' + @office_number
+    end      def office_area_code      @office_telephone.area_code    end
+  
+     
+  
+Chapter 7  Moving Features Between Objects 178
+Extract
+Class    def office_area_code=(arg)
+      @office_telephone.area_code = arg    end  
+I can then move the other field and use Move Method on the telephone number: 
+ class Person...
+    attr_reader :name      def initialize      @office_telephone = TelephoneNumber.new    end      def telephone_number      @office_telephone.telephone_number    end      def office_telephone      @office_telephone    end    class TelephoneNumber...    attr_accessor :area_code, :number      def telephone_number      '(' + area_code + ') ' + number    end  
+The decision then is how much to expose the new class to my clients. I can 
+completely hide it by providing delegating methods for its interface, or I can expose it. 
+If I choose to expose the class, I need to consider the dangers of aliasing. If I 
+expose the telephone number and a client changes the area code in that object, how do I feel about it? It may not be a direct client that makes this change. It might be the client of a client of a client. 
+I have the following options: 
+• I accept that any object may change any part of the telephone number. 
+This makes the telephone number a reference object, and I should consider 
+Change Value to Reference. In this case the person would be the access point for the telephone number. 
+• I don’t want anybody to change the value of the telephone number without 
+going through the person. I should make the telephone number immutable. 
+     
+  
+Inline Class 179
+Inline
+Class• A third option that reduces that confusion is to clone and then freeze the 
+telephone number before passing it out. 
+Extract Class is a common technique for improving the liveness of a concur-
+rent program because it allows you to have separate locks on the two resulting 
+classes. If you don’t need to lock both objects you don’t have to. For more on this see Brian Goetz’s book Java Concurrency in Practice [Goetz]. 
+However, there is a danger there. If you need to ensure that both objects are 
+locked together, you get into the area of transactions and other kinds of shared locks. This is complex territory and requires heavier machinery than it is typi-cally worth. Transactions are useful when you use them, but writing transaction managers is more than most programmers should attempt. 
+Inline Class 
+A class isn’t doing very much. 
+Move all its features into another class and delete it.
+1
+name
+telephone number()Person
+name
+area codenumber
+telephone number()Person
+area code
+number
+telephone number()Telephone Number
+office telephone
+Motivation
+Inline Class is the reverse of Extract Class. I use Inline Class if a class is no lon-
+ger pulling its weight and shouldn’t be around any more. Often this is the result of refactoring that moves other responsibilities out of the class so there are little left. Then I want to fold this class into another class, picking one that seems to use the runt class the most. 
+     
+  
+Chapter 7  Moving Features Between Objects 180
+Mechanics
+1.Declare the public protocol of the source class onto the absorbing class. 
+Delegate all these methods to the source class. 
+2.Change all references from the source class to the absorbing class .
+3.Test .
+4.Use Move Method and Move Field to move features from the source class to the absorbing class until there is nothing left .
+5.Hold a short, simple funeral service .
+Example
+Let’s assume that the  TelephoneNumber  class we extracted in the Extract Class exam-
+ple isn’t pulling its weight. I now inline it back into  Person . I start with separate 
+classes:
+ class Person...
+    attr_reader :name      def initialize      @office_telephone = TelephoneNumber.new    end      def telephone_number      @office_telephone.telephone_number    end      def office_telephone      @office_telephone    end    class TelephoneNumber...    attr_accessor :area_code, :number      def telephone_number
+Inline
+Class
+     
+  
+Hide Delegate 181
+Hide
+Delegate      '(' + area_code + ') ' + number
+    end  
+I begin by declaring all the visible methods on telephone number on person: 
+ class Person...
+      def area_code      @office_telephone.area_code    end      def area_code=(arg)      @office_telephone.area_code = arg    end      def number      @office_telephone.number    end      def number=(arg)      @office_telephone.number = arg    end  
+Now I find clients of telephone number and switch them to use the person’s 
+interface. So :
+ martin = Person.new
+  martin.office_telephone.area_code = "781”  
+becomes
+ martin = Person.new  martin.area_code = "781”  
+Now I can use Move Method and Move Field until the telephone class is no 
+more.
+Hide Delegate 
+A client is calling a delegate class of an object. 
+Create methods on the server to hide the delegate.
+     
+  
+Chapter 7  Moving Features Between Objects 182
+Hide
+Delegate
+department()Person
+manager()Department
+ manager()PersonClient Class
+ Client Class
+Department
+Motivation
+One of the keys, if not the key, to objects is encapsulation. Encapsulation means 
+that objects need to know less about other parts of the system. Then when things change, fewer objects need to be told about the change—which makes the change easier to make. 
+Anyone involved in objects knows that you should hide your fields. As you 
+become more sophisticated, you realize there is more you can encapsulate. 
+If a client calls a method defined on one of the fields of the server object, 
+the client needs to know about this delegate object. If the delegate changes, the client also may have to change. You can remove this dependency by placing a simple delegating method on the server, which hides the delegate (see  Figure
+7.1). Changes become limited to the server and don’t propagate to the client. 
+method()Server
+method()Delegate
+Client
+delegate.method()
+Figure 7.1 Simple delegation .
+     
+  
+Hide Delegate 183
+Hide
+DelegateYou may find it is worthwhile to use Hide Delegate for some clients of the 
+server or all clients. If you hide from all clients, you can remove all mention of 
+the delegate from the interface of the server. 
+Mechanics
+1.For each method on the delegate, create a simple delegating method on the server. 
+2.Adjust the client to call the server. 
+3.Test after adjusting each method. 
+4.If no client needs to access the delegate anymore, remove the server’s accessor for the delegate. 
+5.Test. 
+Example
+I start with a person and a department: 
+ class Person
+    attr_accessor :department  end    class Department    attr_reader :manager      def initialize(manager)      @manager = manager    end      ...  
+If a client wants to know a person’s manager, it needs to get the department first: 
+ manager = john.department.manager  
+This reveals to the client how the department class works and that the depart-
+ment is responsible for tracking the manager. I can reduce this coupling by 
+     
+  
+Chapter 7  Moving Features Between Objects 184
+Hide
+Delegatehiding the department class from the client. I do this by creating a simple del-
+egating method on person: 
+   def manager    @department.manager
+  end  
+Or, extend Forwardable and declare the delegating method: 
+ class Person    extend Forwardable      def_delegator :@department, :manager    ...  
+Forwardable is a module included within the Ruby Standard Library. 
+From the documentation: 
+The Forwardable module provides delegation of specified methods to 
+a designated object, using the methods #def_delegator and #def_del-egators. For example, say you have a class RecordCollection which contains an array +@records+. You could provide the lookup method #record_number(), which simply calls #[] on the +@records+ array, like this: 
+ class RecordCollection
+      extend Forwardable      def_delegator :@records, :[], :record_number  end  
+Further, if you wish to provide the methods #size, #<<, and #map, all 
+of which delegate to @records, this is how you can do it: 
+ class RecordCollection
+      # extend Forwardable, but we did that above      def_delegators :@records, :size, :<<, :map  end   
+I now need to change all clients of person to use this new method: 
+ manager = john.manager  
+Once I’ve made the change for all methods of department and for all the cli-
+ents of person, I can remove the
+department  reader on person. 
+     
+  
+Remove Middle Man 185
+Remove
+Middle
+ManRemove Middle Man 
+A class is doing too much simple delegation. 
+Get the client to call the delegate directly.
+Client Class
+Department
+Client Class
+department()Person
+manager()Person
+manager()Department
+Motivation
+In the motivation for Hide Delegate, I talked about the advantages of encapsu-
+lating the use of a delegated object. There is a price for this. The price is that every time the client wants to use a new feature of the delegate, you have to add a simple delegating method to the server. After adding features for a while, it becomes painful. The server class is just a middle man, and perhaps it’s time for the client to call the delegate directly. 
+It’s hard to figure out what the right amount of hiding is. Fortunately, with 
+Hide Delegate and Remove Middle Man it does not matter so much. You can adjust your system as time goes on. As the system changes, the basis for how much you hide also changes. A good encapsulation six months ago may be awk-ward now. Refactoring means you never have to say you’re sorry: You just fix it. 
+Mechanics    
+1.Create an accessor for the delegate. 
+2.For each client use of a delegate method, remove the method from the server and replace the call in the client to call the method on the delegate. 
+3.Test after each method. 
+     
+  
+Chapter 7  Moving Features Between Objects 186
+Remove
+Middle
+ManExample
+For an example I use person and department flipped the other way. I start with 
+person hiding the department: 
+   class Person...    def initialize(department)
+      @department = department    end      def manager      @department.manager    end    class Department    attr_reader :manager      def initialize(manager)      @manager = manager    end    ...  
+To find a person’s manager, clients ask: 
+ manager = john.manager  
+This is simple to use and encapsulates the department. However, if a lot of 
+methods are doing this, I end up with too many of these simple delegations on 
+the person. That’s when it is good to remove the middle man. First I make an accessor for the delegate: 
+   class Person...    attr_reader :department  
+Then I take each method at a time. I find clients that use the method on person 
+and change it to first get the delegate. Then I use it: 
+ manager = john.department.manager  
+I can then remove the delegating manager method from person. A test run 
+shows whether I missed anything. 
+I may want to keep some of these delegations for convenience. I also may 
+want to hide the delegate from some clients but show it to others. That also will 
+leave some of the simple delegations in place. 
+     
+  
+187

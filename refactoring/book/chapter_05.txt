@@ -1,0 +1,57 @@
+Chapter 5 
+Toward a Catalog of 
+Refactorings
+Chapters 5 to  12 form an initial catalog of refactorings. They’ve grown from 
+the notes I’ve made in refactoring over the last few years. This catalog is by no 
+means comprehensive or watertight, but it should provide a solid starting point for your own refactoring work. 
+Format of the Refactorings 
+As I describe the refactorings in this and other chapters, I use a standard format. Each refactoring has five parts, as follows: 
+• I begin with a name. The name is important to building a vocabulary of 
+refactorings. This is the name I use elsewhere in the book. 
+• I follow the name with a short summary of the situation in which you need 
+the refactoring and a summary of what the refactoring does. This helps you find a refactoring more quickly. 
+• The
+ motivation describes why the refactoring should be done and describes 
+circumstances in which it shouldn’t be done. 
+• The  mechanics are a concise, step-by-step description of how to carry out 
+the refactoring. 
+• The  examples show a simple use of the refactoring to illustrate how it 
+works.
+The summary includes a short statement of the problem that the refactoring 
+helps you with, a short description of what you do, and a sketch that shows you a simple before and after example. Sometimes I use code for the sketch and 
+     
+  
+Chapter 5  Toward a Catalog of Refactorings 98
+Format 
+of the 
+Refactoringssometimes Unified Modeling Language (UML), depending on which seems to 
+best convey the essence of the refactoring. (All UML diagrams in this book are drawn from the implementation perspective [Fowler, UML].) If you’ve seen the refactoring before, the sketch should give you a good idea what the refactoring is about. If not you’ll probably need to work through the example to get a bet-ter idea. 
+The mechanics come from my own notes to remember how to do the refac-
+toring when I haven’t done it for a while. As such they are somewhat terse, usually without explanations of why the steps are done that way. I give more expansive explanations in the example. This way the mechanics are short notes you can refer to easily when you know the refactoring but need to look up the steps (at least this is how I use them). You’ll probably need to read the example when you first do the refactoring. 
+I’ve written the mechanics in such a way that each step of each refactoring is 
+as small as possible. I emphasize the safe way of doing the refactoring, which is to take small steps and test after every one. At work I usually take larger steps than some of the baby steps described, but if I run into a bug, I back out the step and take the smaller steps. The steps include a number of references to special cases. The steps thus also function as a checklist; I often forget these things myself.
+The examples are of the laughably simple textbook kind. My aim with the 
+example is to help explain the basic refactoring with minimal distractions, so I hope you’ll forgive the simplicity. (They are certainly not examples of good busi-ness object design.) I’m sure you’ll be able to apply them to your rather more complex situations. Some simple refactorings don’t have examples because I didn’t think an example would add much. 
+In particular, remember that the examples are included only to illustrate the 
+one refactoring under discussion. In most cases, there are still problems with the code at the end, but fixing these problems requires other refactorings. In a few cases in which refactorings often go together, I carry examples from one refac-toring to another. In most cases I leave the code as it is after the single refactor-ing. I do this to make each refactoring self-contained, because the primary role of the catalog is as a reference. 
+Don’t take any of these examples as suggestions for how to design employee 
+or order objects. These examples are there only to illustrate the refactorings, nothing more. 
+I use boldface code to highlight changed code where it is buried among code 
+that has not been changed and may be difficult to spot. I do not use boldface type for all changed code, because too much defeats the purpose. 
+     
+  
+Finding References 99
+Finding
+ReferencesFinding References 
+Many of the refactorings call for you to find all references to a method, an 
+instance variable, or a class. When you do this, enlist the computer to help you. By using the computer you reduce your chances of missing a reference and can usually do the search much more quickly than you would if you were simply to eyeball the code. 
+Most languages treat computer programs as text files. Your best help here 
+is a suitable text search. Many programming environments allow you to text search a single file or a group of files. The access control of the feature you are looking for will tell you the range of files you need to look for. 
+Don’t just search and replace blindly. Inspect each reference to ensure it really 
+refers to the thing you are replacing. You can be clever with your search pattern, but I always check mentally to ensure I am making the right replacement. If you can use the same method name on different classes or methods of different signatures on the same class, there are too many chances you will get it wrong. 
+     
+  
+This page intentionally left blank 
+     
+  
+101

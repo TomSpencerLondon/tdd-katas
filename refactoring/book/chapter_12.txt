@@ -1,0 +1,477 @@
+Chapter 12 
+Big Refactorings 
+The preceding chapters present the individual “moves” of refactoring. What 
+is missing is a sense of the whole “game.” You are refactoring to some purpose, 
+not just to avoid making progress (at least usually you are refactoring to some purpose). What does the whole game look like? 
+The Nature of the Game 
+One thing you’ll surely notice in what follows is that the steps aren’t nearly as carefully spelled out as in the previous refactorings. That’s because the situa-tions change so much in the big refactorings. We can’t tell you exactly what to do, because we don’t know exactly what you’ll be seeing when you do it. When you are adding a parameter to a method, the mechanics are clear because the scope is clear. When you are untangling an inheritance mess, every mess is dif-ferent.
+Another thing to realize about these refactorings is that they take time. All 
+the refactorings in Chapters 6 through  11 can be accomplished in a few minutes or an hour at most. We have worked at some of the big refactorings for months or years on running systems. When you have a system and it’s in production and you need to add functionality, you’ll have a hard time persuading managers that they should stop progress for a couple of months while you tidy up. Instead, you have to make like Hansel and Gretel and nibble around the edges, a little today, a little more tomorrow. 
+As you do this, you should be guided by your need to do something else. Do 
+the refactorings as you need to add function and fix bugs. You don’t have to 
+complete the refactoring when you begin. Do as much as you need to achieve 
+your real task. You can always come back tomorrow. 
+This philosophy is reflected in the examples. To show you each of the refac-
+torings in this book it would easily take a hundred pages each. We know this, because Martin tried it. So we’ve compressed the examples into a few sketchy diagrams.
+     
+  
+Chapter 12  Big Refactorings 398
+Four Big
+RefactoringsBecause they can take such a long time, the big refactorings also don’t have 
+the instant gratification of the refactorings in the other chapters. You will have 
+to have faith that you are making the world a little safer for your program each day. 
+The big refactorings require a degree of agreement among the entire pro-
+gramming team that isn’t needed with the smaller refactorings. The big refactor-ings set the direction for many, many changes. The whole team has to recognize that one of the big refactorings is “in play” and make their moves accordingly. You don’t want to get in the situation of the two guys whose car stops near the top of a hill. They get out to push, one on each end of the car. After a fruitless half-hour the guy in front says, “I never thought pushing a car downhill would be so hard.” To which the other guy replies, “What do you mean ‘downhill’?” 
+Why Big Refactorings Are Important 
+If the big refactorings lack so many of the qualities that make the little refactor-ings valuable (predictability, visible progress, instant satisfaction), why are they important enough that we wanted to put them in this book? Because without them you run the risk of investing time and effort into learning to refactor and then actually refactoring and not getting the benefit. That would reflect badly on us. We can’t stand that. 
+Seriously, you refactor not because it is fun but because there are things you 
+expect to be able to do with your programs if you refactor that you just can’t do if you don’t refactor. 
+Accumulation of half-understood design decisions eventually chokes a pro-
+gram as a water weed chokes a canal. By refactoring you can ensure that your full understanding of how the program should be designed is always reflected in the program. As a water weed quickly spreads its tendrils, partially understood design decisions quickly spread their effects throughout your program. No one or two or even ten individual actions will be enough to eradicate the problem. 
+Four Big Refactorings 
+In this chapter we describe four examples of big refactorings. These are exam-ples of the kind of things that you might face, rather than an attempt to cover the whole ground. 
+Tease Apart Inheritance deals with a tangled inheritance hierarchy that seems 
+to combine several variations in a confusing way. Convert Procedural Design 
+     
+  
+Tease Apart Inheritance 399
+Tease Apart
+Inheritanceto Objects helps solve the classic problem of what to do with procedural code. 
+A lot of programmers use Object-Oriented languages without really knowing about objects, so this is a refactoring you often have to do. If you see code writ-ten with the classic two-tier approach to user interfaces and databases, you’ll find you need Separate Domain from Presentation when you want to isolate business logic from user interface code. Experienced Object-Oriented develop-ers have learned that this separation is vital to a long-lived and prosperous sys-tem. Extract Hierarchy simplifies an overly complex class by turning it into a group of subclasses. 
+Tease Apart Inheritance 
+You have an inheritance hierarchy that is doing two jobs at once. 
+Create two hierarchies and use delegation to invoke one from the other.
+Deal
+Active Deal
+ Passive Deal
+Passive Deal
+ Active Deal
+ Deal
+Tabular Passive
+Deal
+Tabular Active
+Deal
+Tabular
+Presentation
+Style
+<<module>>
+Presentation
+Style
+ Single
+Presentation
+Style
+<<protocol>>1
+     
+  
+Chapter 12  Big Refactorings 400
+Tease Apart
+InheritanceMotivation
+Inheritance is great. It helps you write dramatically “compressed” code in sub-
+classes. A single method can take on importance out of proportion with its size because of where it sits in the hierarchy. 
+Not surprisingly for such a powerful mechanism, it is easy to misuse inheri-
+tance. And the misuse can easily creep up on you. One day you are adding one little subclass to do a little job. The next day you are adding other subclasses to do the same job in other parts of the hierarchy. A week (or month or year) later you are swimming in spaghetti. Without a paddle. 
+Tangled inheritance is a problem because it leads to code duplication, the 
+bane of the programmer’s existence. It makes changes more difficult, because the strategies for solving a certain kind of problem are spread around. Finally, the resulting code is hard to understand. You can’t just say, “This hierarchy here, it computes results.” You have to say, “Well, it computes results, and there are subclasses for the tabular versions, and each of those has subclasses for each of the countries.” 
+You can easily spot a single inheritance hierarchy that is doing two jobs. If 
+every class at a certain level in the hierarchy has subclasses that begin with the same adjective, you probably are doing two jobs with one hierarchy. 
+Mechanics
+1.Identify the different jobs being done by the hierarchy. Create a two-dimensional grid (or three- or four-dimensional, if your hierarchy is a real mess and you have some really cool graph paper) and label the axes with the different jobs. We assume two or more dimensions require repeated applications of this refactoring (one at a time, of course). 
+2.Decide which job is more important and which is to be retained in the current hierarchy and which is to be moved to another hierarchy. 
+3.Use Extract Class (see Chapter 6, “Composing Methods”) at the common superclass to create an object for each of the subclasses in the original hierarchy. 
+4.Add an instance variable on the superclass to hold the new object. Initial-ize the instance variable to the appropriate new class. 
+     
+  
+Tease Apart Inheritance 401
+Tease Apart
+Inheritance5.Extract a module to house the common code that will be shared between 
+the new classes. Include this module in the new classes. 
+6.Use Move Method (see Chapter 7, “Moving Features Between Objects”) 
+on each of the subclasses to move the behavior in the subclass to the rel-evant extracted object. 
+7.When the subclass has no more code, eliminate it. 
+8.Continue until all the subsidiary subclasses are gone. Look at the new hierarchy for possible further refactorings such as Pull Up Method (see Chapter 11, “Dealing with Generalization”). 
+Examples
+Let’s take the example of a tangled hierarchy (see  Figure 12.1).
+This hierarchy got the way it did because Deal was originally being used only 
+to display a single deal. Then someone got the bright idea of displaying a table of deals. A little experiment with the quick subclass Active Deal  shows you can indeed display a table with little work. Oh, you want tables of passive deals, too? No problem, another little subclass and away we go. 
+Two months later the table code has become complicated but there is no 
+simple place to put it, time is pressing, the usual story. Now adding a new kind of deal is hard, because the deal logic is tangled with the presentation logic. 
+Following the recipe, the first step is to identify the jobs being done by the 
+hierarchy. One job is capturing variation according to type of deal. Another job is capturing variation according to presentation style. So here’s our grid: 
+Deal Active Deal Passive Deal
+Tabular Deal
+The next step tells us to decide which job is more important. The dealness 
+of the object is far more important than the presentation style, so we leave Deal
+alone and extract the presentation style to its own hierarchy. Practically speak-ing, we should probably leave alone the job that has the most code associated with it, so there is less code to move. 
+The next step tells us to use Extract Class to create a presentation style for 
+each of the subclasses (see Figure 12.2).
+     
+  
+Chapter 12  Big Refactorings 402
+Tease Apart
+Inheritance
+Figure 12.1 A tangled hierarchy. 
+Passive Deal
+ Active Deal
+ Deal
+Tabular Passive
+Deal
+Tabular Active
+Deal
+Tabular Active
+Presentation
+Style
+Tabular Possive
+Presentation
+Style
+Single Active
+Presentation
+Style
+Single Passive
+Presentation
+Style
+<<protocol>>1
+Figure 12.2 Adding a presentation style. 
+     
+  
+Tease Apart Inheritance 403
+Tease Apart
+InheritanceWe’ll then use Extract Module to house the common behavior shared 
+between our new objects (see Figure 12.3) and initialize the instance variable to 
+the appropriate new class: 
+ class ActiveDeal
+      def initialize      ...      @presentation = SingleActivePresentationStyle.new...  
+Passive Deal
+ Active Deal
+ Deal
+Tabular Passive
+Deal
+Tabular Active
+Deal
+Tabular Active
+Presentation
+Style
+Tabular Passive
+Presentation
+Style
+Single Active
+Presentation
+Style
+Single Passive
+Presentation
+Style
+<<protocol>>1
+<<module>>
+Presentation
+Style
+Figure 12.3 Adding subclasses of presentation style .
+You may well be saying, “Don’t we have more classes now than we did 
+before? How is this supposed to make my life better?” It is true that sometimes 
+you have to take a step backward before you can take two steps forward. In cases such as this tangled hierarchy, the hierarchy of the extracted object can almost always be dramatically simplified once the object has been extracted. However, it is safer to take the refactoring one step at a time than to jump ten steps ahead to the already simplified design. 
+Now we use Move Method and Move Field to move the presentation-related 
+methods and variables of the deal subclasses to the presentation style classes. We don’t have a good way of simulating this with the example as drawn, so we ask you to imagine it happening. When we’re done, though, there should be no code left in the classes
+Tabular Active Deal  and  Tabular Passive Dea l, so we remove them 
+(see Figure 12.4).
+     
+  
+Chapter 12  Big Refactorings 404
+Tease Apart
+Inheritance
+Passive Deal
+ Active Deal
+ Deal
+Tabular Active
+Presentation
+Style
+Tabular Passive
+Presentation
+Style
+Single Active
+Presentation
+Style
+Single Passive
+Presentation
+Style
+<<protocol>>
+<<module>>
+Presentation
+Style
+Figure 12.4 The tabular subclasses of Deal have been removed. 
+Now that we’ve separated the two jobs, we can work to simplify each sepa-
+rately. When we’ve done this refactoring, we’ve always been able to dramati-
+cally simplify the extracted classes and often further simplify the original object. The next move will get rid of the active-passive distinction in the presentation style in Figure 12.5.
+Passive Deal
+ Active Deal
+ Deal
+Tabular 
+Presentation
+Style
+Single
+Presentation
+Style
+<<protocol>>
+<<module>>
+Presentation
+Style1
+Figure 12.5 The hierarchies are now separated. 
+Even the distinction between single and tabular can be captured by the values 
+of a few variables. You don’t need the module hierarchy at all (see  Figure 12.6).
+Passive Deal
+ Active Deal
+ Deal1
+Presentation
+Style
+Figure 12.6 Presentation differences can be handled with a couple of variables. 
+     
+  
+Convert Procedural Design to Objects 405
+Convert
+ProceduralDesign toObjectsConvert Procedural Design to Objects 
+You have code written in a procedural style. 
+Turn the data records into objects, break up the behavior, and move the behav-
+ior to the objects.
+Order
+Order LineOrder Calculator
+determine price(order)
+determine taxes(order)
+Order
+price()taxes()
+Order Line
+price()taxes()
+Motivation
+A client of ours once started a project with two absolute principles the develop-
+ers had to follow: (1) You must use Java; (2) you must not use objects. 
+We may laugh, but although Java, like Ruby, is an Object-Oriented language, 
+there is more to using objects than calling an initializer. Using objects well takes time to learn. Often you’re faced with the problem of procedurelike code that has to be more Object-Oriented. The typical situation is long procedural meth-ods on a class with little data and dumb data objects with nothing more than accessors. If you are converting from a purely procedural program, you may not even have this, but it’s a good place to start. 
+We are not saying that you should never have objects with behavior and little 
+or no data. We often use small strategy objects when we need to vary behavior. However, such procedural objects usually are small and are used when we have a particular need for flexibility. 
+     
+  
+Chapter 12  Big Refactorings 406
+Separate
+Domain from
+PresentationMechanics
+1.Take each record type and turn it into a dumb data object with accessors. 
+If you have a relational database, take each table and turn it into a 
+dumb data object .
+2.Take all the procedural code and put it into a single class. 
+You can make the methods class methods. 
+3.Take each long procedure and apply Extract Method and the related 
+refactorings to break it down. As you break down the procedures, use Move Method to move each one to the appropriate dumb data class. 
+4.Continue until you’ve removed all the behavior away from the original class. If the original class was a purely procedural class, it’s very gratifying to delete it. 
+Example
+Chapter 1, “Refactoring, a First Example,” illustrates the need for Convert Procedural Design to Objects, particularly the first stage, in which the
+statement  
+method is broken up and distributed. When you’re finished, you can work on now-intelligent data objects with other refactorings. 
+Separate Domain from Presentation 
+You have views and controller classes that contain domain logic. 
+Move the domain logic into the model.
+Motivation
+Whenever you hear people talking about objects, you hear about model-view-
+controller (MVC). This idea underpinned the relationship between the graphical user interface (GUI) and domain objects in Smalltalk-80. 
+The gold at the heart of MVC is the separation of the user interface code (the 
+view) and the domain logic (the model). The views contain only the logic needed 
+     
+  
+Separate Domain from Presentation 407
+Separate
+Domain from
+Presentationto deal with the user interface. Domain objects contain no visual code but all 
+the business logic. This separates two complicated parts of the program into pieces that are easier to modify. It also allows multiple presentations of the same business logic. Those experienced in working with objects use this separation instinctively, and it has proven its worth. 
+Unfortunately, many programming environments with client-server GUIs use 
+a logical two-tier design: The data sits in the database and the logic sits in the view. The environment often forces you toward this style of design, making it hard for you to put the logic anywhere else. 
+The designers of the Ruby on Rails framework, in contrast, believed funda-
+mentally in an MVC-style architecture; they even defined a file structure that has places to house models, views, and controllers, and an object-relational mapper. As such, Rails naturally leads programmers to separate code into the model-view-controller hierarchy. But that doesn’t mean that this separation is always performed correctly. I often find that domain logic begins to creep into the controller, and even the view. When the same logic is needed in other parts of the system, it is often duplicated in another controller or view, leading to inconsistencies and bugs. Controllers should only be responsible for accepting user requests, organizing for the model to do its work, and triggering the appro-priate view to be displayed. 
+Mechanics
+1.Identify functionality in the controllers that does not have anything to do with accepting user requests, organizing for the model to do its work, or triggering the appropriate views to be displayed. 
+2.Examine this code to determine a domain object on which it could be put. 
+Add a new domain object if necessary. 
+Use of Extract Method may be required prior to moving the 
+offending code. The shortcuts that lead to domain logic landing in views and controllers also often mix up presentation and domain logic within the methods. 
+3.Use Move Method to move it to the domain object. 
+4.Test. 
+5.Identify code in the views that is not concerned with display logic. 
+     
+  
+Chapter 12  Big Refactorings 408
+Separate
+Domain from
+Presentation6.Examine this code to determine a domain object on which it could be put. 
+Add a new domain object if necessary. 
+Again, use of Extract Method may be required prior to moving the 
+offending code. 
+7.Use Move Method to move it to the domain object. 
+8.Test. 
+9.When you are finished, you will have views that handle the GUI, control-
+lers that handle request marshaling, and domain objects that contain all the business logic. The domain objects may be well factored, but further refactorings will deal with that. 
+Example
+In this example, we have a program that allows users to enter and view orders. The GUI for entering orders looks like Figure 12.7. The views and controllers interact with models that are backed by a relational database laid out like Fig-ure 12.8.
+Order detailsCreate an Order
+Product QuantityNumber: 123456
+Place order2
+3 hattowelJoe Bloggs
+Figure 12.7 The user interface for creating an order .
+     
+  
+Separate Domain from Presentation 409
+Separate
+Domain fromPresentation
+Products
+id
+nameprice
+Customers
+idnamecodes
+Order Lines
+order idproduct idquantityamount
+Orders
+idcustomer id1
+1 1
+**
+*
+Figure 12.8 The database for the order program .
+There is a minimum order of $100, so the create action in the controller 
+calculates the total for the order and determines whether the order meets the 
+minimum limit: 
+ class OrdersController < ApplicationController...
+      MINIMUM_ORDER_AMOUNT = 100      def create      @order_lines = []      params[:order_line].each_value do |order_line_params|        unless all_values_blank?(order_line_params)          amount = Product.find(order_line_params[:product_id]).price          @order_lines << OrderLine.new(          order_line_params.merge(:amount =>  amount)        )        end      end        @order = Order.new(params[:order])         if total_amount_for_order_lines(@order_lines) >= MINIMUM_ORDER_AMOUNT 
+        begin          Order.transaction do            @order.order_lines = @order_lines            @order.save!          end        rescue ActiveRecord::ActiveRecordError
+     
+  
+Chapter 12  Big Refactorings 410
+Separate
+Domain from
+Presentation          render_new
+          return        end      else         flash[:error] = "An order must be at least $#{MINIMUM_ORDER_AMOUNT} " 
+        render_new        return      end      redirect_to :action => 'index'    end    private      def render_new      @order_lines = [OrderLine.new] * 5 if @order_lines.empty?      render :action => 'new'    end       def total_amount_for_order_lines(order_lines)        order_lines.inject(0) do |total, order_line|          total + (order_line.amount * order_line.quantity)        end      end   
+The index view displays a list of orders. It also calculates the total for each order 
+in the table: 
+ <h3>Orders</h3>
+  <p><%= link_to 'Add a new Order', new_order_url %></p>  <table>    <tr>      <th>Number</th>      <th>Customer</th>      <th>Amount</th>
+      <th>&nbsp;</th>
+    </tr>    <% @orders.each do |order| %>      <%         total = order.order_lines.inject(0) do |total, order_line|            total + (order_line.amount * order_line.quantity)          end       %>      <tr>        <td><%=order.number%></td>
+     
+  
+Separate Domain from Presentation 411
+Separate
+Domain from
+Presentation        <td><%=order.customer%></td>
+        <td><%=total%></td>        <td><%= link_to 'Show', order_url(order) %></td>      </tr>    <% end %>  </table>  
+The duplication of the calculation logic for the total charge of an order is 
+one problem. It could be solved by using Move Method to place the
+total_amount_
+for_order_lines  method in a place accessible to both the view and the controller 
+(perhaps in a helper that is included by the controller). But the choice of where 
+to place that method is also important. An order is never valid if it is less than $100, so the logic to perform this validation should go in the model: 
+ class Order < ActiveRecord::Base...
+      MINIMUM_ORDER_AMOUNT = 100      def validate      if total < MINIMUM_ORDER_AMOUNT        errors.add_to_base("An order must be at least $#{MINIMUM_ORDER_AMOUNT}")      end    end      def total      order_lines.inject(0) do |total, order_line|        total + (order_line.amount * order_line.quantity)      end    end  
+We can then make use of this method in the controller. By making the validation 
+an
+ActiveRecord  validation, the logic in the controller becomes simpler: 
+ def create
+    @order_lines = []    params[:order_line].each_value do |order_line_params|      unless all_values_blank?(order_line_params)        amount = Product.find(order_line_params[:product_id]).price         @order_lines << OrderLine.new(        order_line_params.merge(:amount =>  amount)      )      end    end      @order = Order.new(params[:order])    begin      Order.transaction do
+     
+  
+Chapter 12  Big Refactorings 412
+Extract
+Hierarchy        @order.order_lines = @order_lines
+        @order.save!      end    rescue ActiveRecord::ActiveRecordError      @order_lines = [OrderLine.new] * 5 if @order_lines.empty?      render :action => 'new'      return    end    redirect_to :action => 'index'  end  
+And the duplicated code is removed from the view: 
+ <h3>Orders</h3>  <p><%= link_to 'Add a new Order', new_order_url %></p>  <table>    <tr>      <th>Number</th>      <th>Customer</th>      <th>Amount</th>      <th>&nbsp;</th>    </tr>    <% @orders.each do |order| %>      <tr>        <td><%=order.number%></td>        <td><%=order.customer%></td>           <td><%=order.total%></td>         <td><%= link_to 'Show', order_url(order) %></td>      </tr>    <% end %>  </table>  
+As you do this refactoring you have to pay attention to where your risk is. If 
+the intermingling of presentation and domain logic is the biggest risk, get them 
+completely separated before you do much else. If other things are more impor-tant, such as pricing strategies for the products, get the logic for the important part out of the view and controller and refactor around that logic to create a suitable structure for the area of high risk. 
+Extract Hierarchy 
+You have a class that is doing too much work, at least in part through many conditional statements. 
+Create a hierarchy of classes in which each subclass represents a special case.
+     
+  
+Extract Hierarchy 413
+Extract
+HierarchyBilling
+Scheme
+Business Billing
+Scheme
+Disability Billing
+Scheme
+Residential Billing
+SchemeBilling
+Scheme
+Motivation
+In evolutionary design, it is common to think of a class as implementing one 
+idea and come to realize later that it is really implementing two or three or ten. You create the class simply at first. A few days or weeks later you see that if only you add a flag and a couple of tests, you can use it in a new case. A month later you have another such opportunity. A year later you have a real mess: flags and conditional expressions all over the place. 
+When you encounter a Swiss-Army-knife class that has grown to open cans, 
+cut down small trees, shine a laser point at reluctant presentation bullet items, and, oh yes, I suppose cut things, you need a strategy for teasing apart the various strands. The strategy here works only if your conditional logic remains static during the life of the object. If not, you may have to use Extract Class before you can begin separating the cases from each other. 
+Don’t be discouraged if Extract Hierarchy is a refactoring that you can’t fin-
+ish in a day. It can take weeks or months to untangle a design that has become snarled. Do the steps that are easy and obvious and then take a break. Do some visibly productive work for a few days. When you’ve learned something, come back and do a few more easy and obvious steps. 
+Mechanics
+We’ve put in two sets of mechanics. In the first case you aren’t sure what the 
+variations should be. In this case you want to take one step at a time, as follows: 
+     
+  
+Chapter 12  Big Refactorings 414
+Extract
+Hierarchy1.Identify a variation. 
+If the variations can change during the life of the object, use 
+Extract Class to pull that aspect into a separate class. 
+2.Create a subclass for that special case and use Replace Constructor with 
+Factory Method on the original. Alter the factory method to return an instance of the subclass where appropriate. 
+3.One at a time, copy methods that contain conditional logic to the sub-class, and then simplify the methods given what you can say for certain about instances of the subclass that you can’t say about instances of the superclass.
+Use Extract Method in the superclass if necessary to isolate the 
+conditional parts of methods from the unconditional parts. 
+4.Continue isolating special cases until all superclass methods have subclass implementations.
+5.Delete the methods in the superclass that are overridden in all subclasses. 
+6.If the superclass is no longer instantiated directly, use Replace Abstract Superclass with Module. 
+When the variations are clear from the outset, you can use a different strat-
+egy, as follows: If the superclass is no longer instantiated directly, use Replace Abstract Superclass with Module. 
+Example
+The example is a nonobvious case. You can follow the refactorings for Replace Type Code with Polymorphism, Replace Type Code with Module Extension, and Replace Type Code with State/Strategy to see how the obvious case works. 
+We start with a program that calculates an electricity bill. The initial objects 
+look like Figure 12.9.
+The billing scheme contains a lot of conditional logic for billing in different 
+circumstances. Different charges are used for summer and winter, and different billing plans are used for residential, small business, customers receiving Social Security (lifeline), and those with a disability. The resulting complex logic makes the
+ Billing Scheme  class complex. 
+     
+  
+Extract Hierarchy 415
+Extract
+HierarchyOur first step is to pick a variant aspect that keeps cropping up in the con-
+ditional logic. This might be various conditions that depend on whether the 
+customer is on a disability plan. This can be a flag in Customer , Billing Scheme , or 
+somewhere else. 
+We create a subclass for the variation. To use the subclass we need to make 
+sure it is created and used. So we look at the constructor for  Billing Scheme . First 
+we use Replace Constructor with Factory Method. Then we look at the factory 
+method and see how the logic depends on disability. We then create a clause that returns a disability billing scheme when appropriate. 
+We look at the various methods on 
+ Billing Scheme  and look for those that con-
+tain conditional logic that varies on the basis of disability.  create_bill  is one of 
+those methods, so we copy it to the subclass (see Figure 12.10).
+1
+Customer
+create bill(customer)Billing Scheme
+Figure 12.9 Customer and billing scheme .
+1
+Customer
+create bill(customer)Disability
+Billing Scheme
+create bill(customer)Billing Scheme
+Figure 12.10 Adding a subclass for disability .
+Now we examine the subclass copy of create_bill  and simplify it on 
+the basis that we know it is now within the context of a disability scheme. 
+So code that says :
+ do_something if disability_scheme  
+can be replaced with 
+   do_something  
+     
+  
+Chapter 12  Big Refactorings 416
+Extract
+HierarchyIf disabilities are exclusive of the business scheme we can eliminate any code 
+that is conditional on the business scheme. 
+As we do this, we like to ensure that varying code is separated from code 
+that stays the same. We use Extract Method and Decompose Conditional to 
+do that. We continue doing this for various methods of Billing Scheme until we feel we’ve dealt with most of the disability conditionals. Then we pick another variation, say lifeline, and do the same for that. 
+As we do the second variation, however, we look at how the variations for 
+lifeline compare with those for disability. We want to identify cases in which we can have methods that have the same intention but carry it out differently in the two separate cases. We might have variation in the calculation of taxes for the two cases. We want to ensure that we have two methods on the subclasses that have the same signature. This may mean altering disability so we can line up the subclasses. Usually we find that as we do more variations, the pattern of similar and varying methods tends to stabilize, making additional variations easier. 
+     
+  
+417

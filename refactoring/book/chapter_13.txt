@@ -1,0 +1,1699 @@
+Chapter 13 
+Putting It All Together 
+Now you have all the pieces of the puzzle. You’ve learned the refactorings. 
+You’ve studied the catalog. You’ve practiced all of the checklists. You’ve gotten 
+good at testing, so you aren’t afraid. Now you may think you know how to refactor. Not yet. 
+The list of techniques is only the beginning. It is the gate you must pass 
+through. Without the techniques, you can’t manipulate the design of running programs. With them, you still can’t, but at least you can start. 
+Why are all these wonderful techniques really only the beginning? Because 
+you don’t yet know when to use them and when not to, when to start and when to stop, when to go and when to wait. It is the rhythm that makes for refactor-ing, not the individual notes. 
+How will you know when you are really getting it? You’ll know when you 
+start to calm down. When you feel absolute confidence that no matter how screwed up someone left it, you can make the code better, enough better to keep making progress. 
+Mostly, though, you’ll know you’re getting it when you can stop with confi-
+dence. Stopping is the strongest move in the refactorer’s repertoire. You see a big goal—a host of subclasses can be eliminated. You begin to move toward that goal, each step small and sure, each step backed up by keeping all the tests run-ning. You’re getting close. You only have two methods to unify in each of the subclasses, and then they can go away. 
+That’s when it happens. You run out of gas. Maybe it’s getting late and you 
+are becoming fatigued. Maybe you were wrong in the first place and you can’t really get rid of all of those subclasses. Maybe you don’t have the tests to back you up. Whatever the cause, your confidence is gone. You can’t make the next step with certainty. You don’t think you will screw anything up, but you’re not sure.
+That’s when you stop. If the code is already better, integrate and release what 
+you’ve done. If it isn’t better, walk away. Flush it. Glad to have learned a lesson, pity it didn’t work out. What’s on for tomorrow? 
+     
+  
+Chapter 13  Putting It All Together 418
+Tomorrow or the next day or the next month or maybe even next year (my 
+personal record is nine years waiting for the second half of a refactoring), the 
+insight comes. Either you understand why you were wrong, or you understand why you were right. In any case, the next step is clear. You take the step with the confidence you had when you started. Maybe you’re even a little abashed at how stupid you could have been not to have seen it all along. Don’t be. It hap-pens to everyone. 
+It’s a little like walking along a narrow trail above a 1,000-foot drop. As long 
+as the light holds, you can step forward cautiously but with confidence. As soon as the sun sets, though, you’d better stop. You bed down for the night, sure the sun will rise again in the morning. 
+This may sound mystical and vague. In a sense it is, because it is a new kind 
+of relationship with your program. When you really understand refactoring, the design of the system is as fluid and plastic and moldable to you as the individual characters in a source code file. You can feel the whole design at once. You can see how it might flex and change—a little this way and this is possible; a little that way and that is possible. 
+In another sense, though, it is not at all mystical or vague. Refactoring is a 
+learnable skill, the components of which you have read about in this book and begun to learn about. You get those little skills together and polished. Then you begin to see development in a new light. 
+I said this was a learnable skill. How do you learn it? Get used to picking a goal. Somewhere your code smells bad. Resolve to get 
+rid of the problem. Then march toward that goal. You aren’t refactoring to pursue truth and beauty (at least that’s not all there is to it). You are trying to make your world easier to understand, to regain control of a program that is flapping loose. 
+Stop when you are unsure. As you move toward your goal, a time may come 
+when you can’t exactly prove to yourself and others that what you are doing will preserve the semantics of your program. Stop. If the code is already better, go ahead and release your progress. If it isn’t, throw away your changes. 
+Backtrack. The discipline of refactoring is hard to learn and easy to lose sight 
+of, even if only for a moment. I still lose sight more often than I care to admit. I’ll do two or three or four refactorings in a row without rerunning the test cases. Of course I can get away with it. I’m confident. I’ve practiced. Boom! A test fails, and I can’t see which of my changes caused the problem. 
+At this moment you will be mightily tempted to just debug your way out of 
+trouble. After all, you got those tests to run in the first place. How hard could it be to get them running again? Stop. You are out of control, and you have no idea what it will take to get back in control by going forward. Go back to your 
+     
+  
+Putting It All Together 419
+last known good configuration. Replay your changes one by one. Run the tests 
+after each one. 
+This may sound obvious here in the comfort of your recliner. When you are 
+hacking and you can smell a big simplification centimeters away, it is the hard-est thing to do to stop and back up. But think about it now, while your head is clear. If you have refactored for an hour, it will take only about ten minutes to replay what you did. So you can be guaranteed to be back on track in ten minutes. If, however, you try to move forward, you might be debugging for five seconds or for two hours. 
+It is easy for me to tell you what to do now. It is brutally hard to actually 
+do it. I think my personal record for failing to follow my own advice is four hours and three separate tries. I got out of control, backtracked, moved forward slowly at first, got out of control again, and again, for four painful hours. It is no fun. That’s why you need help. 
+Duets. For goodness’ sake, refactor with someone. There are many advan-
+tages to working in pairs for all kinds of development. The advantages work in spades for refactoring. In refactoring there is a premium on working carefully and methodically. Your partner is there to keep you moving step by step, and you are there for him or her. In refactoring there is a premium on seeing possibly far-ranging consequences. Your partner is there to see things you don’t see and know things you don’t know. In refactoring, there is a premium on knowing when to quit. When your partner doesn’t understand what you are doing, it is a sure sign that you don’t either. Above all, in refactoring there is an absolute pre-mium on quiet confidence. Your partner is there to gently encourage you when you might otherwise stop. 
+Another aspect of working with a partner is talking. You want to talk about 
+what you think is about to happen, so the two of you are pointed in the same direction. You want to talk about what you think is happening, so you can 
+spot trouble as soon as possible. You want to talk about what just happened, 
+so you’ll know better next time. All that talking cements in your mind exactly where the individual refactorings fit into the rhythm of refactoring. 
+You are likely to see new possibilities in your code, even if you have worked 
+with it for years, once you know about the smells and the refactorings that can sterilize them. You may even want to jump in and clean up every problem in sight. Don’t. No manager wants to hear the team say it has to stop for three months to clean up the mess it has created. And, well, they shouldn’t. A big refactoring is a recipe for disaster. 
+As ugly as the mess looks now, discipline yourself to nibble away at the prob-
+lem. When you are going to add some new functionality to an area, take a few minutes to clean it up first. If you have to add some tests before you can clean 
+     
+  
+Chapter 13  Putting It All Together 420
+up with confidence, add them. You’ll be glad you did. Refactoring first is less 
+dangerous than adding new code. Touching the code will remind you how it works. You’ll get done faster, and you’ll have the satisfaction of knowing that the next time you pass this way, the code will look better than it did this time. 
+When you decide to undertake a large refactoring, try to pick off pieces that 
+can be integrated back into the main development branch as quickly as pos-sible. There’s nothing worse than completing some great work on an alternative branch and finding that the main development branch has shifted so far from you that you can no longer integrate it. When contemplating a large refactor-ing it’s tempting to say, “I can’t improve that code without adopting a big-bang approach that will take 3 days.” Rarely do I find this to actually be the case. My first idea for the refactoring might prescribe a large design change as the first step, but usually I can attack the problem at a different angle. I find a piece to slice off to get me started. Then I slice off another piece. And then another, inte-grating each piece back to the main development branch as I go. I might need to write some extra code to help the new design integrate with the old design; code that will eventually be thrown away. But the extra time spent writing this throw-away adaptive code is worth the benefit of continual integration with the development branch. 
+The final thought I’ll leave you with is this: Never forget the two hats: The 
+refactoring hat, and the new functionality hat. Only wear one hat at a time. When you refactor, you will inevitably discover code that doesn’t work correctly. You’ll find bugs, test cases to add or change, and other unrelated refactorings. Some of these might even be more important than the refactoring you’re cur-rently working on. Resist temptation to mix an unfinished refactoring with one of these newfound tasks. If the newfound task truly is an immediate priority, abandon your refactoring. Revert the code and start a fresh. But if you decide to wear the refactoring hat, your goal is to leave the code computing exactly the same answers that it was when you found it; nothing more, nothing less. Once you develop the discipline and rhythm to juggle the two hats, you’ll find refac-toring to be a rewarding and productive experience. Happy coding! 
+     
+  
+421References
+[Auer] Ken. Auer “Reusability through Self-Encapsulation.” In Pattern Lan-
+guages of Program Design 1, Coplien J.O. Schmidt.D.C. Reading, Mass.: Addi-son-Wesley, 1995. Patterns paper on the concept of self-encapsulation. 
+[Bäumer and Riehle] Bäumer, Riehle and Riehle. Dirk “Product Trader.” In 
+Pattern Languages of Program Design 3, R. MartinF. BuschmannD. Riehle. Reading, Mass.: Addison-Wesley, 1998. A pattern for flexibly creating objects without knowing in what class they should be. 
+[Beck] Kent. Beck Smalltalk Best Practice Patterns. Upper Saddle River, N.J.: 
+Prentice Hall, 1997a. An essential book for any Smalltalker, and a damn useful book for any object-oriented developer.  
+[Beck, XP] Kent. Beck eXtreme Programming eXplained: Embrace Change. 
+Reading, Mass.: Addison-Wesley, 2000. 
+[Fowler, UML] Fowler M. Scott. K. UML Distilled, Second Edition: A Brief 
+Guide to the Standard Object Modeling Language. Reading, Mass.: Addison-Wesley, 2000. A concise guide to the Unified Modeling Language used for vari-ous diagrams in this book. 
+[Gang of Four] E. Gamma, R. Helm, R. Johnsonand J. Vlissides. Design Pat-
+terns: Elements of Reusable Object Oriented Software. Reading, Mass.: Addi-son-Wesley, 1995. Probably the single most valuable book on object-oriented design. It’s now impossible to look as if you know anything about objects if you can’t talk intelligently about strategy, singleton, and chain of responsibility. 
+[Goetz] Goetz, Brian, Java Concurrency in Practice, Addison-Wesley Profes-
+sional, 2006. The compiler should stop anyone implementing Runnable who hasn’t read this book. 
+[Lea] Doug. Lea, Concurrent Programming in Java: Design Principles and Pat-
+terns, Reading, Mass.: Addison-Wesley, 1997.  
+     
+  
+References 422
+[McConnell] Steve. McConnell, Code Complete: A Practical Handbook of Soft-
+ware Construction. Redmond, Wash.: Microsoft Press, 1993. An excellent guide to programming style and software construction.
+[Meyer] Bertrand. Meyer, Object Oriented Software Construction. 2 ed. Upper 
+Saddle River, N.J.: Prentice Hall, 1997. A very good, if very large, book on object-oriented design. Includes a thorough discussion of design by contract. 
+[Sadalage] Pramodkumar. J. Sadalage, Refactoring Databases: Evolutionary 
+Database Design (Addison-Wesley Signature Series) (Hardcover) 
+[Woolf] Bobby. Woolf, “Null Object.” In Pattern Languages of Program Design 
+3, Martin, R. Riehle. D. Buschmann F. Reading, Mass.: Addison-Wesley, 1998. A discussion on the null object pattern. 
+     
+  
+Symbols
+||= operator, 257
+A
+Account class, 129
+Introduce Parameter Object 
+refactoring, 322-324
+Move Field refactoring, 
+174-175
+Move Method refactoring, 
+170-172
+Remove Setting Method 
+refactoring, 325-326
+Replace Error Code with 
+Exception refactoring, 
+334-335
+AccountNumberCapture module, 
+360-362
+ActiveDeal class, 403add_charge method, 322-323add_course method, 223add_customer method, 213add_front_suspension method, 247add_option method, 117add_order method, 213Add Parameter
+overview, 300step-by-step description, 
+301-302
+when to use, 300-301
+add_rear_suspension method, 247adjusted_capital method, 278-279advantages of refactoring
+easier-to-understand software, 
+55-56
+faster programming, 56-57improved software design, 
+54-55
+why refactoring works, 60-61
+algorithms, substituting
+goals, 132overview, 131-132step-by-step description, 132
+alternative classes with difference 
+interfaces, 83
+Ambler, Scott, 65a_method method, 125amount calculation (video store 
+program), moving, 12-18
+amount_for method, moving, 12-18APIs, disjointed, 86apply method, 388
+423Index
+     
+  
+assert_equal method, 89
+assertions, adding
+example, 294-295goals, 293overview, 292step-by-step description, 
+293-294
+AssertValidKeys module, 146-147attributes, 255-259
+B
+base_charge method, 309base_price method, 111Beck, Kent, 51, 54, 56, 69, 73behavior, moving into classes, 
+223-224
+benefits of refactoring
+easier-to-understand software, 
+55-56
+faster programming, 56-57improved software design, 
+54-55
+why refactoring works, 60-61
+Bid class, Extract Module 
+refactoring, 360-361
+bidirectional association, changing 
+to unidirectional
+example, 215-217goals, 214
+overview, 213
+step-by-step description, 
+214-215
+bidirectional association, changing 
+unidirectional association to
+example, 211-213goals, 210-211overview, 210step-by-step description, 211Billing Scheme class, 414-416Books class, 145-146bugs
+finding by refactoring, 56refactoring when fixing bugs, 58
+C
+calculate_outstanding method, 107case statement, 80
+replacing with polymorphism 
+(video store program exam-ple), 32-49
+chains, replacing temps with
+example, 115-117goals, 115overview, 114step-by-step description, 115
+Change Bidirectional Association to 
+Unidirectional refactoring, 83
+example, 215-217overview, 213step-by-step description, 
+214-215
+when to use, 214
+Change Reference to 
+Value refactoring
+example, 199-201overview, 198step-by-step description, 199when to use, 198-199
+Change Unidirectional Association 
+to Bidirectional refactoring
+example, 211-213overview, 210step-by-step description, 211when to use, 210-211Index 424
+     
+  
+Change Value to 
+Reference refactoring
+example, 196-198
+overview, 194step-by-step description, 195when to use, 195
+changing
+bidirectional association to uni-
+directional
+example, 215-217goals, 214overview, 213step-by-step description, 
+214-215
+divergent change, 77interfaces, 63-64reference objects to value 
+objects
+example, 199-201goals, 198-199overview, 198step-by-step
+description, 199
+unidirectional association to 
+bidirectional
+example, 211-213goals, 210-211overview, 210
+step-by-step
+description, 211
+value objects to reference 
+objects
+example, 196-198
+goals, 195overview, 194step-by-step
+description, 195
+Charge class, 322charge method, 33-34, 45, 135check_security method, 
+271-273, 305
+Chrysler Comprehensive 
+Compensation case study, 69-72
+class annotations, adding
+examples, 141-142goals, 140overview, 139-140step-by-step description, 
+140-141
+classes. See also specific classes
+alternative classes with 
+difference interfaces, 83
+data classes, 84delegate classes
+calling directly with Remove 
+Middle Man, 185-186
+hiding with Hide Delegate, 
+181-184
+extracting. See extracting
+inappropriate intimacy, 83incomplete library classes, 84large classes, eliminating, 76lazy classes, 81merging hierarchy, 371-372merging modules into, 362moving behavior into, 223-224moving into another class with 
+Inline Class
+example, 180-181overview, 179step-by-step
+description, 180
+when to use, 179
+order, 128replacing records with, 224replacing with modules
+example, 393-395overview, 392Index 425
+     
+  
+Index 426
+Collapse Hierarchy, 81
+overview, 371
+step-by-step description, 372when to use, 371
+collection closure methods, 
+replacing loops with
+example, 133-135goals, 133step-by-step description, 133
+collections, encapsulating
+example, 220-223goals, 219overview, 219step-by-step description, 
+219-220
+CommandCenter class, 163comments, 85communication, telling managers 
+about refactoring, 61
+Company class
+Expression Builder, adding, 
+348-352
+Introduce Gateway refactoring, 
+343-346
+compute method, 130-131Concurrent Programming in Java
+(Lea), 297
+conditional expressions
+assertions
+example, 294-295goals, 293overview, 292step-by-step description, 
+293-294
+consolidating
+examples, 266-267goals, 265-266overview, 265step-by-step
+description, 266step-by-step
+description, 393
+when to use, 392
+special case classes, 292
+Code Complete: A Practical 
+Handbook of Software Construction (McConnel), 71
+code reviews, refactoring with, 
+58-59
+code smells
+alternative classes with 
+difference interfaces, 83
+case statements, 80comments, 85data classes, 84data clumps, 79disjointed APIs, 86divergent change, 77duplicated code, 74feature envy, 78-79inappropriate intimacy, 83incomplete library classes, 84large classes, 76lazy classes, 81long methods, 74-76long parameter lists, 76-77message chains, 82metaprogrammming, 86
+middle man, 83
+overview, 73-74parallel inheritance 
+hierarchies, 81
+primitives, 79-80refused bequests, 84-85repetitive boilerplate, 86shotgun surgery, 78speculative generality, 81temporary fields, 82
+     
+  
+Index 427
+consolidating duplicate 
+conditional fragments
+example, 269
+goals, 268overview, 268step-by-step description, 
+268-269
+control flags, removing
+examples, 271-274goals, 269-270overview, 269step-by-step description, 
+270-271
+decomposing
+example, 263goals, 262overview, 261step-by-step
+description, 262
+nested conditionals, replacing 
+with guard clauses
+examples, 276-279goals, 275-276overview, 274-275step-by-step
+description, 276
+null objects, adding
+examples, 288-291
+goals, 285-287
+overview, 284special cases, 292step-by-step description, 
+287-288
+recomposing
+examples, 264-265goals, 264overview, 264
+replacing with polymorphism
+example, 282-284goals, 280-281overview, 279step-by-step
+description, 281
+conditional logic, removing, 
+225-226
+Consolidate Conditional 
+Expression refactoring
+examples, 266-267overview, 265step-by-step description, 266when to use, 265-266
+Consolidate Duplicate Conditional 
+Fragments refactoring
+example, 269overview, 268step-by-step description, 
+268-269
+when to use, 268
+consolidating
+conditional expressions
+examples, 266-267goals, 265-266overview, 265step-by-step
+description, 266
+duplicate conditional fragments
+example, 269goals, 268
+overview, 268
+step-by-step description, 
+268-269
+constants, replacing magic 
+numbers with
+goals, 218overview, 217step-by-step description, 218
+constructors, replacing with factory 
+methods
+example, 330-332goals, 329
+     
+  
+Index 428
+D
+databases, problems with 
+refactoring, 64-65
+data classes, 84
+data clumps, eliminating, 79data organization
+changing bidirectional 
+association to unidirectional
+example, 215-217goals, 214overview, 213step-by-step description, 
+214-215
+changing reference objects into 
+value objects
+example, 199-201goals, 198-199overview, 198step-by-step
+description, 199
+changing unidirectional 
+association to bidirectional
+example, 211-213goals, 210-211
+overview, 210
+step-by-step
+description, 211
+changing value objects into ref-
+erence objects
+example, 196-198goals, 195overview, 194step-by-step
+description, 195
+eagerly initialized attributes, 
+257-259
+encapsulating collections
+example, 220-223goals, 219overview, 328-329step-by-step description, 329
+control flags, removing
+examples, 271-274goals, 269-270overview, 269step-by-step description, 
+270-271
+controller classes, separating domain 
+logic from
+example, 408-412goal of, 406-407overview, 406step-by-step description, 
+407-408
+converting procedural design to 
+objects
+example, 406goal of, 405overview, 405step-by-step description, 406
+Convert Procedural Design to 
+Objects
+example, 406overview, 405step-by-step description, 406when to use, 405
+count_descendants_matching
+method, 138-139
+Course class, 220create_bill method, 355, 415Cunningham, Ward, 51Currency class, 199Customer class, 3, 196-198, 212, 
+215-216, 375
+CustomInitializers module, 141, 144
+     
+  
+Index 429
+step-by-step description, 
+252-253
+replacing type code with 
+module extensions
+example, 234-238
+goals, 233overview, 232step-by-step
+description, 233
+replacing type code 
+with polymorphism
+example, 227-232goals, 225overview, 225removing conditional logic, 
+225-226
+step-by-step description, 
+226-227
+replacing type code with 
+state/strategy
+example, 240-251goals, 239overview, 239step-by-step description, 
+239-240
+self-encapsulating fields
+example, 189-191goals, 188-189
+overview, 188
+step-by-step
+description, 189
+data values, replacing with objects
+example, 192-194goals, 191overview, 191step-by-step description, 192
+@days_overdrawn instance 
+variable, 170overview, 219step-by-step description, 
+219-220
+lazily initialized attributes, 
+255-257
+moving behavior into classes, 
+223-224
+overview, 187-188replacing arrays with objects
+example, 202-206goals, 201overview, 201step-by-step
+description, 202
+replacing data values 
+with objects
+example, 192-194goals, 191overview, 191step-by-step
+description, 192
+replacing hashes with objects
+example, 207-209goals, 206overview, 206step-by-step
+description, 207
+replacing magic numbers with 
+symbolic constants
+goals, 218overview, 217step-by-step
+description, 218
+replacing records with data 
+classes, 224
+replacing subclasses with fields
+example, 253-255
+goals, 252overview, 251
+     
+  
+Index 430
+overview, 389
+step-by-step
+description, 390
+deprecation, refactoring 
+with, 205-206
+design
+design changes that are difficult 
+to refactor, 65-66
+improving with refactoring, 
+54-55
+relationship with refactoring, 
+67-68
+developer tests, 91-92development of refactoring, 51-52disability_amount method, 265-266discount_factor method, 114discount method, 124-125disjointed APIs, 86distance_traveled method, 123divergent change, 77domain logic, separating from view
+example, 408-412goal of, 406-407overview, 406step-by-step description, 
+407-408
+duplicated code, 74duplicate methods, eliminating with 
+Extract Surrounding Method
+example, 137-139overview, 135-136step-by-step description, 
+136-137
+when to use, 136
+Dynamic Method 
+Definition refactoring
+examples, 153-157overview, 152step-by-step description, 153when to use, 153Deal class, Tease Apart Inheritance 
+refactoring, 401-404
+Decompose Conditional refactoring
+example, 263overview, 261step-by-step description, 262when to use, 262
+decomposing conditional 
+expressions
+example, 263goals, 262overview, 261step-by-step description, 262
+Decorator class, 159def_each method, 154-155definition of refactoring, 52-54delegate classes
+calling directly with Remove 
+Middle Man
+example, 186overview, 185step-by-step
+description, 185
+when to use, 185
+hiding with Hide Delegate
+example, 183-184overview, 181step-by-step
+description, 183
+when to use, 182-183
+delegation
+replacing inheritance with
+example, 387-389goals of, 386overview, 386step-by-step description, 
+386-387
+replacing with hierarchy
+example, 390-392goals, 390
+     
+  
+Index 431
+overview, 219
+step-by-step description, 
+219-220
+eql? method, 200error codes, replacing 
+with exceptions
+examples, 334-33goals, 333overview, 332step-by-step description, 333-334
+eval, moving from runtime to parse 
+time, 165-166
+exceptions
+replacing error codes with
+examples, 334-337goals, 333overview, 332step-by-step description, 
+333-334
+replacing with tests
+example, 338-341goals, 338overview, 337step-by-step
+description, 338
+expense_limit method, 292explaining variables, adding
+examples, 119-121goals, 118overview, 117-118step-by-step description, 119
+Expression Builders, adding
+example, 348-352goals, 347overview, 346step-by-step description, 347
+expressions. See
+conditional expressionsdynamic method definitions
+examples, 153-157goals, 153overview, 152replacing dynamic 
+receptors with
+examples, 158-160goals, 158overview, 158step-by-step
+description, 158
+step-by-step description, 153
+dynamic receptors
+isolating, 160
+example, 162-165goals, 161step-by-step
+description, 162
+replacing with dynamic method 
+definitions, 158-160
+E
+Eagerly Initialized Attribute 
+refactoring, 257-259
+Employee class
+assertions, 294-295Replace Delegation with 
+Hierarchy refactoring, 390-391
+Encapsulate Collection 
+refactoring, 84
+example, 220-223overview, 219step-by-step description, 
+219-220
+when to use, 219
+encapsulating collections
+example, 220-223goals, 219
+     
+  
+Index 432
+methods with no local 
+variables, 104-105
+overview, 102
+reassigning local variables, 
+106-108
+step-by-step
+description, 103
+modules
+example, 360-362goals, 358-359overview, 357-358step-by-step
+description, 359
+subclasses
+example, 364-367goals, 363overview, 363step-by-step description, 
+363-364
+surrounding methods
+example, 137-139overview, 135-136step-by-step description, 
+136-137
+when to use, 136
+Extract Method refactoring
+eliminating duplicated code, 74methods with local variables, 
+105-106
+methods with no local variables, 
+104-105
+overview, 102reassigning local variables, 
+106-108
+removing duplication, 86shortening long methods, 75step-by-step description, 103video store program 
+example, 10
+when to use, 102Extract Class refactoring
+changing data clumps into 
+objects, 79
+eliminating large classes, 76example, 177-179organizing orphan variables, 82overview, 175step-by-step description, 
+176-177
+when to use, 175-176
+Extract Hierarchy refactoring
+example, 414-416overview, 412step-by-step description, 
+413-414
+when to use, 413
+extracting
+classes
+changing data clumps into 
+objects, 79
+eliminating large classes, 76example, 177-179organizing orphan 
+variables, 82
+overview, 175step-by-step description, 
+176-177
+when to use, 175-176
+frequent renter points (video 
+store program), 18-21
+hierarchy of classes
+example, 414-416goals, 413overview, 412step-by-step description, 
+413-414
+methods
+goals, 102methods with local 
+variables, 105-106
+     
+  
+Index 433
+replacing subclasses with
+goals, 252
+overview, 251step-by-step description, 
+252-255
+temporary fields, 82
+File class, writing tests for, 89-91FileTest class, 89finding references, 99Foo class, 205format of refactorings, 97-98Form Template Method refactoring
+elmininating duplicated code, 74overview, 372step-by-step description, 374template method with 
+extension of modules (example), 380-385
+template method with 
+inheritance (example), 374-379
+when to use, 373
+found_friends method, 131-132found_miscreant method, 273-274, 
+305-306
+found_person method, 305Fowler, Martin, 69frequent_renter_points method, 47
+frequent_renter_points temporary 
+variable, 19, 22
+frequent renter points (video store 
+program), extracting, 18-21
+FrontSuspensionMountainBike
+class, 228-231, 236-237, 
+245, 369-371
+FullSuspensionMountainBike class, 
+228-231, 237, 284Extract Module refactoring
+example, 360-362overview, 357-358step-by-step description, 359when to use, 358-359
+Extract Subclass refactoring
+example, 364-367overview, 363step-by-step description, 
+363-364
+when to use, 363
+Extract Surrounding 
+Method refactoring
+eliminating duplicated code, 74example, 137-139overview, 135-136step-by-step description, 
+136-137
+when to use, 136
+eXtreme Programming eXplained
+(Beck), 51
+F
+failure method, 152-153feature envy, 78-79fields
+encapsulating fields
+example, 189-191goals, 188-189overview, 188step-by-step
+description, 189
+moving with Move Field
+example, 174-175overview, 172step-by-step
+description, 173
+when to use, 173
+     
+  
+Index 434
+Introduce Inheritance
+example, 369-371
+overview, 368step-by-step
+description, 369
+when to use, 368
+Pull Down Method
+overview, 356step-by-step
+description, 357
+when to use, 357
+Pull Up Method
+example, 355-356overview, 353step-by-step
+description, 355
+when to use, 354
+Replace Abstract Superclass 
+with Module
+example, 393-395overview, 392step-by-step
+description, 393
+when to use, 392
+Replace Delegation 
+with Hierarchy
+example, 390-392overview, 389
+step-by-step
+description, 390
+when to use, 390
+Replace Inheritance 
+with Delegation
+example, 387-389
+overview, 386step-by-step description, 
+386-387
+when to use, 386
+goals, setting, 418G
+Gamma class, 130Gateways, adding
+example, 342-346goals, 341-342overview, 341step-by-step description, 342
+GemStone, 71generalization refactorings
+Collapse Hierarchy
+overview, 371step-by-step
+description, 372
+when to use, 371
+Extract Module
+example, 360-362overview, 357-358step-by-step
+description, 359
+when to use, 358-359
+Extract Subclass
+example, 364-367overview, 363step-by-step description, 
+363-364
+when to use, 363
+Form Template Method
+overview, 372step-by-step
+description, 374
+template method with 
+extension of modules (example), 380-385
+template method with 
+inheritance (example), 374-379
+when to use, 373
+Inline Module, 362
+     
+  
+Index 435
+HtmlStatement class, 376-378, 
+381-382
+html_statement method, 30, 375
+I
+immutable objects, 199
+importance of big refactorings, 398ImportedItem class, 190inappropriate intimacy, 83incomplete library classes, 84indirection and refactoring, 61-63inheritance, 374-379
+adding to code
+example, 369-371goals, 368overview, 368step-by-step
+description, 369
+refactoring
+examples, 401-404goal of, 400overview, 399step-by-step description, 
+400-401
+parallel inheritance 
+hierarchies, 81
+replacing with delegation
+example, 387-389
+goals of, 386overview, 386step-by-step description, 
+386-387
+video store program 
+example, 36-49
+initialize_courses method, 222
+initialize method, 130, 190, 254initializing attributes, 255-259H
+Hash class, 157Haungs, Jim, 71HeatingPlan class, 315-317Hide Delegate refactoring, 82
+example, 183-184overview, 181step-by-step description, 183when to use, 182-183
+Hide Method refactoring
+overview, 327step-by-step description, 328when to use, 327
+hiding
+delegates
+example, 183-184overview, 181step-by-step
+description, 183
+when to use, 182-183
+methods
+goals, 327overview, 327step-by-step
+description, 328
+hierarchy
+hierarchy of classes, creating
+example, 414-416goals, 413overview, 412step-by-step description, 
+413-414
+replacing delegation with
+example, 390-392goals, 390overview, 389step-by-step
+description, 390
+history of refactoring, 51-52
+     
+  
+Index 436
+Introduce Explaining 
+Variable refactoring
+examples, 119-121
+overview, 117-118step-by-step description, 119when to use, 118
+Introduce Expression Builder 
+refactoring, 86
+example, 348-352overview, 346step-by-step description, 347when to use, 347
+Introduce Gateway refactoring, 86
+example, 342-346overview, 341step-by-step description, 342when to use, 341-342
+Introduce Inheritance refactoring
+example, 369-371overview, 368step-by-step description, 369when to use, 368
+Introduce Named 
+Parameter refactoring
+examples, 143-147overview, 142shortening long parameter 
+lists, 77
+step-by-step description, 143when to use, 142-143
+Introduce Null Object 
+refactoring, 82
+examples, 288-291overview, 284special cases, 292step-by-step description, 
+287-288
+when to use, 285-287Inline Class refactoring, 81
+example, 180-181organizing changes 
+into single class, 78
+overview, 179removing unnecessary 
+delegation, 81
+step-by-step description, 180when to use, 179
+Inline Method refactoring
+overview, 108-109step-by-step description, 
+109-110
+when to use, 109
+inline methods
+goals, 109overview, 108-109step-by-step description, 
+109-110
+Inline Module refactoring, 81, 362Inline Temp refactoring, 110inline temps, 110instance_variable_defined?
+method, 257
+@interest_rate field, moving, 174interfaces, changing, 63-64Introduce Assertion refactoring, 85
+example, 294-295overview, 292step-by-step description, 
+293-294
+when to use, 293
+Introduce Class Annotation 
+refactoring, 86
+examples, 141-142overview, 139-140step-by-step description, 
+140-141
+when to use, 140
+     
+  
+Index 437
+libraries, incomplete library 
+classes, 84
+local variables
+example, 105-106
+reassigning, 106-108
+long methods, shortening, 74-76long parameter lists, shortening, 
+76-77
+loops, replacing with collection 
+closure methods, 133-135
+M
+magic numbers, replacing with 
+symbolic constants
+goals, 218overview, 217step-by-step description, 218
+managers, telling about 
+refactoring, 61
+measuring performance, Chrysler 
+Comprehensive Compensation case study, 69-72
+merging
+class hierarchy, 371-372modules into including 
+class, 362
+message chains, 82MessageCollector class, 164metaprogramming, 86method_missing method, 156, 160methods
+add_charge, 322-323add_course, 223add_customer, 213add_front_suspension, 247add_option, 117add_order, 213add_rear_suspension, 247Introduce Parameter 
+Object refactoring
+example, 321-324reducing parameter lists, 79shortening long parameter 
+lists, 77
+step-by-step description, 321when to use, 320
+Isolate Dynamic 
+Receptor refactoring
+example, 162-165overview, 160step-by-step description, 162when to use, 161
+Item class, 189-190
+J-K
+Jeffries, Ron, 69, 285JobItem class, extracting LaborItem 
+subclass from, 364-367
+Johnson, Ralph, 51Join class, 394joins_for_table method, 394Knuth, Donald, 166
+L
+LaborItem class, extracting from 
+JobItem class, 364-367
+Laptop class, 346-352large classes, eliminating, 76large refactorings, tips for, 420Lazily Initialized Attributes, 
+255-257
+lazy classes, 81Lea, Doug, 297learning refactoring, 418-419Ledger class, 126
+     
+  
+Index 438
+def_each, 154-155
+defining dynamically
+examples, 153-157goals, 153overview, 152replacing dynamic 
+receptors with dynamic method definition, 158-160
+step-by-step
+description, 153
+disability_amount, 265-266discount, 124-125discount_factor, 114distance_traveled, 123duplicate methods, eliminating, 
+135-139
+eql?, 200expense_limit, 292Expression Builders, adding
+example, 348-352goals, 347overview, 346step-by-step
+description, 347
+extracting
+goals, 102methods with local 
+variables, 105-106
+methods with no local 
+variables, 104-105
+overview, 102reassigning local variables, 
+106-108
+step-by-step
+description, 103
+failure, 152-153found_friends, 131-132adjusted_capital, 278-279a_method, 125amount_for, 12-18apply, 388assert_equal, 89base_charge, 309base_price, 111calculate_outstanding, 107charge, 33-34, 45, 135check_security, 271-273, 305class annotations, adding
+examples, 141-142goals, 140overview, 139-140step-by-step description, 
+140-141
+collection closure methods, 
+replacing loops with
+example, 133-135goals, 133step-by-step
+description, 133
+compute, 130-131constructors, replacing with 
+factory methods, 328-332
+count_descendants_matching,
+138-139
+create_bill, 355, 415creating
+goals, 373overview, 372step-by-step
+description, 374
+template method with 
+extension of modules (example), 380-385
+template method with 
+inheritance (example), 374-379
+     
+  
+Index 439
+goals, 354
+overview, 353step-by-step
+description, 355
+moving with Move Method
+example, 170-172overview, 167step-by-step description, 
+168-170
+when to use, 168
+not_summer, 263number_of_descendants_named,
+138-139
+number_of_living_descendants,
+138-139
+office_telephone_number, 300off_road_ability, 228, 244overdraft_charge, 170-171parameters
+adding, 300-302named parameters, 142-147named parameters, remov-
+ing, 147-150
+parameterized methods, 
+creating, 307-310
+parameter objects, creating, 
+320-324
+removing, 302-303
+removing assignments to, 
+124-127
+replacing with explicit 
+methods, 310-313
+replacing with methods, 
+317-320
+unused default parameters, 
+removing, 150-152
+pay_amount, 275-277
+price, 112-121, 228, 247, 
+319-320found_miscreant, 273-274, 
+305-306
+found_person, 305frequent_renter_points, 47Gateways, adding
+example, 342-346goals, 341-342overview, 341step-by-step
+description, 342
+hiding
+goals, 327overview, 327step-by-step
+description, 328
+html_statement, 30, 375initialize, 130, 190, 254initialize_courses, 222inline methods
+goals, 109overview, 108-109step-by-step description, 
+109-110
+instance_variable_defined?, 257isolating dynamic receptors, 160
+example, 162-165goals, 161step-by-step
+description, 162
+joins_for_table, 394long methods, shortening, 74-76method_missing, 156, 160MountainBike, 250moving to subclasses
+goals of, 357overview, 356step-by-step
+description, 357
+moving up to superclass
+example, 355-356
+     
+  
+Index 440
+initial code listing, 3-4
+moving amount 
+calculation, 12-18
+removing temporary 
+variables, 22-31
+renaming variables, 10-11
+substituting algorithms
+goals, 132overview, 131-132step-by-step
+description, 132
+summer_charge, 263telephone_number,
+renaming, 299
+temporary variables
+explaining variables, 
+117-121
+inline temps, 110replacing with chains, 
+114-117
+replacing with queries, 
+111-114
+splitting, 121-124
+total_amount_for_order_lines,
+411
+total_charge, 23-25triple, 126usage_in_range, 309
+value, 379, 383
+winter_charge, 263withdraw, 336
+middle man classes, removing, 
+83, 185-186
+MissingCustomer class, 289Module class, 205module extensions, replacing type 
+code with
+example, 234-238goals, 233price_code, 48print_owing, 104-108product_count_items, 150-151remove_customer, 213remove_order, 213removing
+example, 325-327goals, 325overview, 324step-by-step
+description, 325
+renaming, 298
+example, 299-300goals, 298-299step-by-step
+description, 299
+replacing with method objects
+example, 129-131goals, 128overview, 127step-by-step
+description, 129
+resource, 339-341reward_points, 264RigidMountainBike, 250send_alert_if_miscreant_in, 306separating query from modifier
+concurrency issues, 307
+example, 305-307
+goals, 304overview, 303step-by-step description, 
+304-305
+statement, 374, 380
+code listing after 
+refactoring, 9
+code listing before 
+refactoring, 7-8
+extracting frequent renter 
+points, 18-21
+     
+  
+Index 441
+moving behaviors into data 
+classes, 84
+organizing changes into single 
+class, 78
+overview, 167
+reducing inappropriate 
+intimacy, 83
+step-by-step description, 
+168-170
+when to use, 168
+Movie class, 2moving
+amount calculation (video store 
+program), 12-18
+behavior into classes, 223-224fields. See Move 
+Field refactoring
+methods. See Move 
+Method refactoring
+methods to subclasses
+goals of, 357overview, 356step-by-step
+description, 357
+methods up to superclass
+example, 355-356goals, 354overview, 353
+step-by-step
+description, 355
+N
+named parameters
+adding
+examples, 143-147
+goals, 142-143overview, 142step-by-step
+description, 143overview, 232step-by-step description, 233
+modules
+AccountNumberCapture,
+360-362
+AssertValidKeys, 146-147CustomInitializers, 141-144extracting
+example, 360-362goals, 358-359overview, 357-358step-by-step
+description, 359
+merging into including 
+class, 362
+Person, 391replacing superclasses with
+example, 393-395overview, 392step-by-step
+description, 393
+when to use, 392
+MonthlyStatement class, 385MountainBike class, 227-229, 
+234-236, 240-248, 280-283, 369
+MountainBike method, 250Move Eval from Runtime to Parse 
+Time refactoring, 165-166
+Move Field refactoring
+example, 174-175organizing changes into single 
+class, 78
+overview, 172reducing inappropriate 
+intimacy, 83
+step-by-step description, 173when to use, 173
+Move Method refactoring, 13
+example, 170-172
+     
+  
+Index 442
+special cases, 292
+step-by-step description, 
+287-288
+parameter objects, creating, 
+320-324
+preserving whole objects
+example, 315-317goals, 313-314overview, 313step-by-step description, 
+314-315
+reference objects
+changing into value objects, 
+198-201
+changing value objects into, 
+194-198
+replacing arrays with
+example, 202-205goals, 201overview, 201step-by-step
+description, 202
+replacing data values with
+example, 192-194goals, 191overview, 191step-by-step
+description, 192
+replacing hashes with
+example, 207-209goals, 206overview, 206step-by-step
+description, 207
+replacing with arrays, 206value objects
+changing reference objects 
+into, 198-201
+changing to reference 
+objects, 194-198removing
+example, 148-150goals, 148overview, 147step-by-step
+description, 148
+nature of refactoring, 397-398nested conditionals, replacing with 
+guard clauses
+examples, 276-279goals, 275-276overview, 274-275step-by-step description, 276
+NetworkResult class, 208-210not_summer method, 263NullCustomer class, 290-291null objects, adding
+examples, 288-291goals, 285-288overview, 284special cases, 292
+number_of_descendants_named
+method, 138-139
+number_of_living_descendants
+method, 138-139
+O
+objects
+converting procedural design to
+example, 406goal of, 405overview, 405step-by-step
+description, 406
+method objects, replacing 
+methods with, 127-131
+null objects, adding
+examples, 288-291goals, 285-287overview, 284
+     
+  
+Index 443
+step-by-step
+description, 125
+removing from methods
+goals, 302
+overview, 302step-by-step description, 
+302-303
+replacing with explicit methods
+example, 311-313goals, 310-311overview, 310step-by-step
+description, 311
+replacing with methods
+example, 318-320goals, 318overview, 317step-by-step
+description, 318
+unused default parameters, 
+removing
+example, 151-152goals, 151overview, 150step-by-step
+description, 151
+partners, value of, 419pay_amount method, 275-277
+performance
+effect of refactoring on, 70-71
+measuring, Chrysler 
+Comprehensive Compensation case study, 69-72
+Performance class, 203-204Person class, 165, 220-222, 253-254
+Expression Builder, adding, 
+348-352
+Extract Class refactoring, 
+177-179office_telephone_number
+method, 300
+off_road_ability method, 228, 244Opdyke, Bill, 52Order class, 128, 192-193, 196, 
+212-216, 411
+OrdersController class, 409-410organizing data. See
+data organization
+orphan variables, organizing, 82overdraft_charge method, 170-171
+P
+parallel inheritance hierarchies, 81parameterized methods, creating
+example, 308-310goals, 308overview, 307step-by-step description, 308
+Parameterize Method refactoring
+example, 308-310overview, 307step-by-step description, 308when to use, 308
+parameter lists, shortening, 76-77parameters
+adding to methods
+goals, 300-301overview, 300step-by-step description, 
+301-302
+named parameters
+adding, 142-147removing, 147-150
+parameter objects, creating, 
+320-324
+removing assignments to
+example, 125-127goals, 124-125
+     
+  
+Index 444
+print_owing method, 104-108
+problems with refactoring
+databases, 64-65design changes, 65-66interface changes, 63-64when not to refactor, 66-67
+procedural design, converting to 
+objects
+example, 406goal of, 405overview, 405step-by-step description, 406
+Product class, 127ProductController class, 330-332product_count_items method, 
+150-151
+programs. See video store program
+Pull Down Method refactoring
+overview, 356step-by-step description, 357when to use, 357
+Pull Up Method refactoring
+example, 355-356overview, 353step-by-step description, 355when to use, 354
+Push Down Method refactoring, 85
+Q
+QA (quality assurance) tests, 91-92queries
+replacing temps with
+example, 112-114goals, 111-112step-by-step
+description, 112
+separating from modifiers
+concurrency issues, 307example, 305-307Hide Delegate refactoring, 
+183-184
+Remove Middle Man 
+refactoring, 186
+Person module, 391Policy class, 387-389polymorphism
+replacing conditional logic with
+example, 282-284goals, 280-281overview, 279step-by-step
+description, 281
+video store program 
+example, 32-49
+replacing type code with
+example, 227-232goals, 225overview, 225removing conditional logic, 
+225-226
+step-by-step description, 
+226-227
+PostData class, 156The Pragmatic Programmer
+(Thomas), 87
+Preserve Whole Object refactoring
+example, 315-317overview, 313reducing parameter lists, 79shortening long parameter 
+lists, 77
+step-by-step description, 
+314-315
+when to use, 313-314
+price_code method, 48price method, 112-121, 228, 247, 
+319-320
+primitives, 79-80
+     
+  
+Index 445
+overview, 194
+step-by-step
+description, 195
+references, finding, 99refused bequests, 84-85Remove Assignments to Parameters 
+refactoring
+example, 125-127overview, 124step-by-step description, 125when to use, 124-125
+Remove Control Flag refactoring
+examples, 271-274overview, 269step-by-step description, 
+270-271
+when to use, 269-270
+remove_customer method, 213Remove Middle Man refactoring, 83
+example, 186overview, 185step-by-step description, 185when to use, 185
+Remove Named 
+Parameter refactoring
+example, 148-150overview, 147step-by-step description, 148
+when to use, 148
+remove_order method, 213
+Remove Parameter refactoring
+overview, 302step-by-step description, 
+302-303
+when to use, 302
+Remove Setting Method 
+refactoring, 84
+example, 325-327overview, 324goals, 304overview, 303step-by-step description, 
+304-305
+R
+reassigning local variables, 106-108Recompose Conditional refactoring
+examples, 264-265overview, 264when to use, 264
+recomposing conditional expressions
+examples, 264-265goals, 264overview, 264
+Recorder class, 162-164records, replacing with data 
+classes, 224
+Red/Green/Refactor movement, 
+87-88
+Refactoring Databases (Sadalage 
+and Ambler), 65
+refactorings. See
+specific refactorings
+refactoring tips
+learning refactoring, 418-419overview, 417-418tips for large refactorings, 420working with a partner, 419
+reference objects
+changing into value objects
+example, 199-201goals, 198-199overview, 198step-by-step
+description, 199
+changing value objects into
+example, 196-198goals, 195
+     
+  
+Index 446
+overview, 150
+step-by-step
+description, 151
+Rename Method refactoring
+example, 299-300step-by-step description, 299when to use, 298-299
+renaming
+methods
+example, 299-300goals, 298-299step-by-step
+description, 299
+variables, 10-11
+Rental class, 2-3repetitive boilerplate, removing, 86Replace Abstract Superclass with 
+Module refactoring
+example, 393-395overview, 392step-by-step description, 393when to use, 392
+Replace Array with 
+Object refactoring, 80
+example, 202-206overview, 201step-by-step description, 202when to use, 201
+Replace Conditional with 
+Polymorphism refactoring
+example, 282-284overview, 279step-by-step description, 281when to use, 280-281
+Replace Constructor with Factory 
+Method refactoring
+example, 330-332overview, 328-329step-by-step description, 325when to use, 325
+Remove Unused Default Parameter 
+refactoring
+example, 151-152overview, 150step-by-step description, 151when to use, 151
+removing
+assignments to parameters
+example, 125-127goals, 124-125step-by-step
+description, 125
+code smells. See code smellscontrol flags
+examples, 271-274goals, 269-270overview, 269step-by-step description, 
+270-271
+middle man, 83named parameters
+example, 148-150goals, 148overview, 147step-by-step
+description, 148
+repetitive boilerplate, 86setting methods
+example, 325-327goals, 325overview, 324step-by-step
+description, 325
+temporary variables, 22-31unused default parameters
+example, 151-152goals, 151
+     
+  
+Index 447
+step-by-step description, 207
+when to use, 206
+Replace Inheritance with Delegation 
+refactoring, 85
+example, 387-389overview, 386step-by-step description, 
+386-387
+when to use, 386
+Replace Loop with Collection 
+Closure Method refactoring
+example, 133-135overview, 133step-by-step description, 133when to use, 133
+Replace Magic Number with 
+Symbolic Constant refactoring
+overview, 217step-by-step description, 218when to use, 218
+Replace Method with Method 
+Object refactoring
+example, 129-131overview, 127shortening long methods, 75step-by-step description, 129when to use, 128
+Replace Nested Conditional with 
+Guard Clauses refactoring
+examples, 276-279overview, 274-275step-by-step description, 276when to use, 275-276
+Replace Parameter with Explicit 
+Methods refactoring, 80
+example, 311-313overview, 310step-by-step description, 311when to use, 310-311step-by-step description, 329when to use, 329
+Replace Data Value with Object 
+refactoring, 80
+example, 192-194overview, 191step-by-step description, 192when to use, 191
+Replace Delegation with Hierarchy 
+refactoring, 83
+example, 390-392overview, 389step-by-step description, 390when to use, 390
+Replace Dynamic Receptor with 
+Dynamic Method Definition refactoring, 86
+examples, 158-160overview, 158step-by-step description, 158when to use, 158
+Replace Error Code with 
+Exception refactoring
+examples, 334-337overview, 332step-by-step description, 
+333-334
+when to use, 333
+Replace Exception with 
+Test refactoring
+example, 338-341overview, 337step-by-step description, 338when to use, 338
+Replace Hash with 
+Object refactoring
+example, 207-209overview, 206
+     
+  
+Index 448
+removing conditional logic, 
+225-226
+step-by-step description, 
+226-227
+when to use, 225
+Replace Type Code with State/
+Strategy refactoring, 80
+example, 240-251
+overview, 239step-by-step description, 
+239-240
+video game program example, 
+38-45
+when to use, 239
+replacing
+algorithms
+goals, 132overview, 131-132step-by-step
+description, 132
+arrays with objects
+example, 202-206goals, 201overview, 201step-by-step
+description, 202
+conditional logic 
+with polymorphism
+example, 282-284goals, 280-281overview, 279step-by-step
+description, 281
+video store program 
+example, 32-49
+constructors with 
+factory methods
+example, 330-332Replace Parameter with Method 
+refactoring
+example, 318-320overview, 317shortening long parameter 
+lists, 77
+step-by-step description, 318when to use, 318
+Replace Record with Data Class 
+refactoring, 224
+Replace Subclass with 
+Fields refactoring
+example, 253-255overview, 251step-by-step description, 
+252-253
+when to use, 252
+Replace Temp with 
+Chain refactoring
+example, 115-117overview, 114when to use, 115
+Replace Temp with 
+Query refactoring
+example, 112-114overview, 111step-by-step description, 112when to use, 111-112
+Replace Type Code with Module 
+Extension refactoring, 80
+example, 234-238overview, 232step-by-step description, 233when to use, 233
+Replace Type Code with 
+Polymorphism refactoring, 80
+example, 227-232
+overview, 225
+     
+  
+Index 449
+description, 133
+magic numbers with symbolic 
+constants
+goals, 218
+overview, 217step-by-step
+description, 218
+methods with method objects
+example, 129-131goals, 128overview, 127step-by-step
+description, 129
+nested conditionals with 
+guard clauses
+examples, 276-279goals, 275-276overview, 274-275step-by-step
+description, 276
+parameters with methods
+example, 318-320goals, 318overview, 317step-by-step
+description, 318
+records with data classes, 224subclasses with fields
+example, 253-255goals, 252overview, 251step-by-step description, 
+252-253
+temps with chains
+example, 115-117goals, 115overview, 114step-by-step
+description, 115goals, 329overview, 328-329step-by-step
+description, 329
+data values with objects
+example, 192-194goals, 191overview, 191step-by-step
+description, 192
+delegation with hierarchy
+example, 390-392goals, 390overview, 389step-by-step description, 
+390
+dynamic receptors with dynamic 
+method definitions
+examples, 158-160goals, 158overview, 158step-by-step
+description, 158
+hashes with objects
+example, 207-209goals, 206overview, 206step-by-step
+description, 207
+inheritance with delegation
+example, 387-389goals of, 386overview, 386step-by-step description, 
+386-387
+loops with collection 
+closure methods
+example, 133-135goals, 133step-by-step
+     
+  
+Index 450
+Select class, 115-117
+Self-Delegation pattern, 78Self Encapsulate Field 
+refactoring, 174
+example, 189-191overview, 188step-by-step description, 189when to use, 188-189
+self-testing code, 87-88send_alert_if_miscreant_in
+method, 306
+Separate Domain from Presentation 
+refactoring
+example, 408-412overview, 406step-by-step description, 
+407-408
+when to use, 406-407
+Separate Query from 
+Modifier refactoring
+concurrency issues, 307example, 305-307overview, 303step-by-step description, 
+304-305
+when to use, 304
+separating domain logic from view
+example, 408-412
+goal of, 406-407
+overview, 406step-by-step description, 
+407-408
+shortening
+methods, 74-76parameter lists, 76-77
+shotgun surgery, 78Smalltalk, 51smells. See code smells
+software design, improving with 
+refactoring, 54-55temps with queries
+example, 112-114goals, 111-112step-by-step
+description, 112
+type code with 
+module extensions
+example, 234-238goals, 233overview, 232step-by-step
+description, 233
+type code with polymorphism
+example, 227-232goals, 225overview, 225removing conditional logic, 
+225-226
+step-by-step description, 
+226-227
+type code with state/strategy
+example, 240-251goals, 239overview, 239step-by-step description, 
+239-240
+resource method, 339-341ResourceStack class, 338-339
+reward_points method, 264
+RigidMountainBike class, 228-231, 
+243-244, 247, 282-283
+RigidMountainBike method, 250Roberts, Don, 51, 57Room class, 315Rule of Three, 57
+S
+Sadalage, Pramod, 65SearchCriteria class, 141-144
+     
+  
+Index 451
+moving methods into
+goals of, 357
+overview, 356step-by-step
+description, 357
+replacing with fields
+example, 253-255goals, 252overview, 251step-by-step description, 
+252-253
+Substitute Algorithm refactoring
+overview, 131-132step-by-step description, 132when to use, 132
+substituting algorithms
+goals, 132overview, 131-132step-by-step description, 132
+summer_charge method, 263superclasses, replacing with modules
+example, 393-395overview, 392step-by-step description, 393when to use, 392
+symbolic constants, replacing magic 
+numbers with
+goals, 218
+overview, 217
+step-by-step description, 218
+T
+tangled inheritance, refactoring
+examples, 401-404goal of, 400overview, 399step-by-step description, 
+400-401special case class, 292speculative generality, 81Split Temporary 
+Variable refactoring
+example, 122-124overview, 121-122step-by-step description, 122when to use, 122
+splitting temporary variables
+example, 122-124goals, 122overview, 121-122step-by-step description, 122
+Statement class, 379statement method, 374, 380
+code listing after refactoring, 9code listing before 
+refactoring, 7-8
+extracting frequent renter 
+points, 18-21
+initial code listing, 3-4moving amount calculation, 
+12-18
+removing temporary variables, 
+22-31
+renaming variables, 10-11
+state/strategy, replacing type 
+code with
+example, 240-251goals, 239overview, 239step-by-step description, 
+239-240
+subclasses
+extracting
+example, 364-367goals, 363overview, 363step-by-step description, 
+363-364
+     
+  
+Index 452
+replacing with queries
+example, 112-114
+goals, 111-112overview, 111step-by-step
+description, 112
+splitting
+example, 122-124goals, 122overview, 121-122step-by-step
+description, 122
+total_amount, 22-23
+TestCase class, 89Test::Unit testing framework, 88-91testing
+developer tests, 91-92importance of, 9-10QA (quality assurance) tests, 
+91-92
+self-testing code, 87-88Test::Unit testing framework, 
+88-91
+video store program, 6-7writing tests, 92-95
+tests, replacing exceptions with
+example, 338-341goals, 338
+overview, 337
+step-by-step description, 338
+TextStatement class, 376-377, 381Thomas, Dave, 87tips for refactoring
+learning refactoring, 418-419overview, 417-418tips for large refactorings, 420working with a partner, 419
+total_amount_for_order_lines
+method, 411Tease Apart Inheritance refactoring
+examples, 401-404overview, 399step-by-step description, 
+400-401
+when to use, 400
+TelephoneNumber class
+defining, 177-178Inline Class refactoring 
+example, 180-181
+telephone_number method, 
+renaming, 299
+telling managers about 
+refactoring, 61
+template methods, creating
+goals, 373overview, 372step-by-step description, 374template method with 
+extension of modules (example), 380-385
+template method with inheri-
+tance (example), 374-379
+temporary fields, 82temporary variables
+explaining variables, adding
+examples, 119-121goals, 118
+overview, 117-118
+step-by-step
+description, 119
+frequent_renter_points, 19, 22inline temps, 110removing, 22-23, 26-31replacing with chains
+example, 115-117goals, 115overview, 114step-by-step
+description, 115
+     
+  
+Index 453
+goals, 214
+overview, 213step-by-step description, 
+214-215
+changing to bidirectional
+example, 211-213goals, 210-211overview, 210step-by-step
+description, 211
+Unified Modeling Language (UML) 
+diagrams, 20-21
+unused default 
+parameters, removing
+example, 151-152goals, 151overview, 150step-by-step description, 151
+usage_in_range method, 309
+V
+value method, 379, 383value objects
+changing reference objects into, 
+198-201
+changing to reference objects, 
+194-198
+variables
+@days_overdrawn, 170local variables
+example, 105-106reassigning, 106-108
+orphan variables, organizing, 82renaming, 10-11temporary variables
+explaining variables, add-
+ing, 117-121
+frequent_renter_points,
+19, 22total_amount temporary variable, 
+22-23
+total_charge method, 23-25triple method, 126troubleshooting refactoring
+databases, 64-65design changes, 65-66interface changes, 63-64when not to refactor, 66-67
+two hat metaphor, 54type code
+replacing with 
+module extensions
+example, 234-238goals, 233overview, 232step-by-step
+description, 233
+replacing with polymorphism
+example, 227-232goals, 225overview, 225removing conditional logic, 
+225-226
+step-by-step description, 
+226-227
+replacing with state/strategy
+example, 240-251goals, 239overview, 239step-by-step description, 
+239-240
+U
+UML (Unified Modeling Language) 
+diagrams, 20-21
+unidirectional association
+changing bidirectional to
+example, 215-217
+     
+  
+Index 454
+views, separating domain logic from
+example, 408-412
+goal of, 406-407overview, 406step-by-step description, 
+407-408
+W-X-Y-Z
+when not to refactor, 66-67when to refactor
+for greater understanding, 59-60overview, 57Rule of Three, 57when adding function, 57-58when fixing bugs, 58with code reviews, 58-59
+why refactoring works, 60-61winter_charge method, 263withdraw method, 336writing tests, 92-95inline temps, 110removing, 22-31replacing with chains, 
+114-117
+replacing with queries, 
+111-114
+splitting, 121-124total_amount, 22-23
+video store program
+charge method, 33-34, 45Customer class, 3design issues, 5-6frequent_renter_points
+method, 47
+html_statement method, 30inheritance, 36-49Movie class, 2overview, 1-2price_code method, 48Rental class, 3replacing conditional logic with 
+polymorphism, 32-49
+statement method
+code listing after 
+refactoring, 9
+code listing before 
+refactoring, 7-8
+extracting frequent renter 
+points, 18-21
+initial code listing, 3-4moving amount calculation, 
+12-18
+removing temporary 
+variables, 22-31
+renaming variables, 10-11
+testing, 6-7total_charge method, 23-25Unified Modeling Language 
+(UML) diagrams, 20-21
+     
+  
+Register the Addison-Wesley, Exam
+Cram, Prentice Hall, Que, and
+Sams products you own to unlockgreat beneﬁts.
+To begin the registration process,
+simply go to informit.com/register
+to sign in or create an account.
+You will then be prompted to enter
+the 10- or 13-digit ISBN that appears
+on the back cover of your product.
+inform IT.com
+THE TRUSTED TECHNOLOGY LEARNING SOURCEAddison-Wesley |Cisco Press |Exam Cram
+IBM Press |Que |Prentice Hall |Sams
+SAFARI BOOKS ONLINEAbout InformIT — THE TRUSTED TECHNOLOGY LEARNING SOURCE
+INFORMIT IS HOME TO THE LEADING TECHNOLOGY PUBLISHING IMPRINTS
+Addison-Wesley Professional, Cisco Press, Exam Cram, IBM Press, Prentice Hall
+Professional, Que, and Sams. Here you will gain access to quality and trusted content and
+resources from the authors, creators, innovators, and leaders of technology. Whether you’relooking for a book on a new technology, a helpful article, timely newsletters, or access to
+the Safari Books Online digital library, InformIT has a solution for you.Registering your products can unlock
+the following beneﬁts:
+•  Access to supplemental content,
+including bonus chapters,
+source code, or project ﬁles.
+•  A coupon to be used on your
+next purchase.
+Registration beneﬁts vary by product. 
+Beneﬁts will be listed on your Account 
+page under Registered Products.
+informit.com/register
+THIS PRODUCT
+     
+  
+     
+  
+Try Safari Books Online FREE
+Get online access to 5,000+ Books and Videos
+Find trusted answers, fast
+Only Safari lets you search across thousands of best-selling books from the top 
+technology publishers, including Addison-Wesley Professional, Cisco Press, O’Reilly, Prentice Hall, Que, and Sams.
+Master the latest tools and techniques
+In addition to gaining access to an incredible inventory of technical books, Safari’s extensive collection of video tutorials lets you learn from the leading video training experts.
+WAIT, THERE’S MORE!
+Keep your competitive edge
+With Rough Cuts, get access to the developing manuscript and be among the ﬁ  rst 
+to learn the newest technologies.
+Stay current with emerging technologies
+Short Cuts and Quick Reference Sheets are short, concise, focused content created to get you up-to-speed quic kly on new and cutting-edge technologies.FREE TRIAL—GET STARTED TODAY! 
+www.informit.com/safaritrial
+     
+  
+Your purchase of Refactoring: Ruby Edition  includes access to a free online edition 
+for 45 days through the Safari Books Online subscription service. Nearly every 
+Addison-Wesley Professional book is available online through Safari Books Online, along with more than 5,000 other technical books and videos from publishers such as Cisco Press, Exam Cram, IBM Press, O’Reilly, Prentice Hall, Que, and Sams. 
+SAFARI BOOKS ONLINE  allows you to search for a speciﬁ  c answer, cut and paste 
+code, download chapters, and stay current with emerging technologies. 
+Activate your FREE Online Edition at 
+www.informit.com/safarifree
+STEP 1:   Enter the coupon code: TCJTPVH.
+STEP 2:   New Safari users, complete the brief registration form. 
+Safari subscribers, just log in.
+If you have difﬁ  culty registering on Safari or accessing the online edition, 
+please e-mail customer-service@safaribooksonline.comFREE Online 
+Edition
+     
+  
