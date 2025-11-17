@@ -8,7 +8,7 @@ This kata follows the video rental example from the book's opening chapter. You'
 
 ## Current Progress
 
-**Status**: ✅ Step 4 - Replace Temp with Query Complete (Commit: 153b7df)
+**Status**: ✅ Step 5 - Extract Frequent Renter Points Complete (Commit: [pending])
 
 | Step | Status | Refactoring | Git Commit |
 |------|--------|-------------|------------|
@@ -17,8 +17,8 @@ This kata follows the video rental example from the book's opening chapter. You'
 | 2 | ✅ | Rename Variables for clarity | d0ba6d0 |
 | 3 | ✅ | Move Method: `Rental#charge` | 27e8f3e |
 | 4 | ✅ | Replace Temp with Query: `this_amount` | 153b7df |
-| 5 | 🔄 | Extract/Move: Frequent Renter Points | - |
-| 6 | ⬜ | Replace Temps: `total_charge`, `total_frequent_renter_points` | - |
+| 5 | ✅ | Extract/Move: Frequent Renter Points | [pending] |
+| 6 | 🔄 | Replace Temps: `total_charge`, `total_frequent_renter_points` | - |
 | 7 | ⬜ | Move Methods to Movie | - |
 | 8 | ⬜ | Replace Type Code with State/Strategy | - |
 
@@ -435,6 +435,46 @@ Fowler addresses this directly (page 300):
 - One less variable to track in the statement method
 - Makes the code more direct and readable
 - Paves the way for further refactorings (extracting totals next!)
+
+### Step 5: Extract and Move Frequent Renter Points ✅
+
+**Book Reference**: Chapter 1, pages 313-334
+
+**What we did:**
+Extracted the frequent renter points calculation and moved it to Rental (same pattern as `charge`).
+
+**Why?**
+Apply Tell, Don't Ask again! The frequent renter points logic uses rental data (movie type, days rented), so it belongs on Rental.
+
+**Code Changes:**
+
+```ruby
+# NEW - Rental.rb:
+def frequent_renter_points
+  (movie.price_code == Movie::NEW_RELEASE && days_rented > 1) ? 2 : 1
+end
+
+# CHANGED - Customer.rb:
+# BEFORE:
+frequent_renter_points += 1
+# add bonus for a two day new release rental
+if element.movie.price_code == Movie::NEW_RELEASE && element.days_rented > 1
+  frequent_renter_points += 1
+end
+
+# AFTER:
+frequent_renter_points += element.frequent_renter_points
+```
+
+**Test Results:** ✅ 8 runs, 8 assertions, 0 failures
+
+**Impact:**
+- **Cleaner Customer**: Removed 5 lines of conditional logic
+- **Tell, Don't Ask**: Customer delegates points calculation to Rental
+- **Consistency**: Both `charge` and `frequent_renter_points` now on Rental
+- **Encapsulation**: Movie-specific rules stay with movie-related objects
+
+**See Figures 1.4-1.7** (book pages 353-391) for sequence diagrams showing this change.
 
 ---
 
