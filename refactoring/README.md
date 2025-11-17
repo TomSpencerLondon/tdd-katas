@@ -8,7 +8,7 @@ This kata follows the video rental example from the book's opening chapter. You'
 
 ## Current Progress
 
-**Status**: ✅ Step 6 - Replace Temps with Query Methods Complete (Commit: [pending])
+**Status**: ✅ Step 6 - Replace Temps with Query Methods Complete (Commit: a283d8a)
 
 | Step | Status | Refactoring | Git Commit |
 |------|--------|-------------|------------|
@@ -18,7 +18,7 @@ This kata follows the video rental example from the book's opening chapter. You'
 | 3 | ✅ | Move Method: `Rental#charge` | 27e8f3e |
 | 4 | ✅ | Replace Temp with Query: `this_amount` | 153b7df |
 | 5 | ✅ | Extract/Move: Frequent Renter Points | 2264cab |
-| 6 | ✅ | Replace Temps: `total_charge`, `total_frequent_renter_points` | [pending] |
+| 6 | ✅ | Replace Temps: `total_charge`, `total_frequent_renter_points` | a283d8a |
 | 7 | 🔄 | Move Methods to Movie | - |
 | 8 | ⬜ | Replace Type Code with State/Strategy | - |
 
