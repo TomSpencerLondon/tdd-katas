@@ -8,16 +8,16 @@ This kata follows the video rental example from the book's opening chapter. You'
 
 ## Current Progress
 
-**Status**: ✅ Step 3 - Move Method Complete (Commit: [pending])
+**Status**: ✅ Step 4 - Replace Temp with Query Complete (Commit: [pending])
 
 | Step | Status | Refactoring | Git Commit |
 |------|--------|-------------|------------|
 | 0 | ✅ | **Starting Point** - Initial code with tests | 7293cd8 |
 | 1 | ✅ | Extract Method: `amount_for` | dc8d2c7 |
 | 2 | ✅ | Rename Variables for clarity | d0ba6d0 |
-| 3 | ✅ | Move Method: `Rental#charge` | [pending] |
-| 4 | 🔄 | Replace Temp with Query: `this_amount` | - |
-| 5 | ⬜ | Extract/Move: Frequent Renter Points | - |
+| 3 | ✅ | Move Method: `Rental#charge` | 27e8f3e |
+| 4 | ✅ | Replace Temp with Query: `this_amount` | [pending] |
+| 5 | 🔄 | Extract/Move: Frequent Renter Points | - |
 | 6 | ⬜ | Replace Temps: `total_charge`, `total_frequent_renter_points` | - |
 | 7 | ⬜ | Move Methods to Movie | - |
 | 8 | ⬜ | Replace Type Code with State/Strategy | - |
@@ -383,15 +383,21 @@ this_amount = element.charge  # Rental knows how to charge itself!
 
 **Fowler's phrase** "In most cases a method should be on the object whose data it uses" **IS** the Tell, Don't Ask principle in action.
 
-### Step 4: Replace Temp with Query - `this_amount` 🔄
+### Step 4: Replace Temp with Query - `this_amount` ✅
 
 **Book Reference**: Chapter 1, pages 287-297
 
+**What we did:**
+Eliminated the `this_amount` temporary variable and called `element.charge` directly.
+
 **What "Replace Temp with Query" means:**
 
-Replace a temporary variable with a method call. Look at our current code:
+Replace a temporary variable with a method call. Here's what we changed:
+
+**Code Changes:**
 
 ```ruby
+# BEFORE:
 def statement
   @rentals.each do |element|
     this_amount = element.charge  # <-- Temporary variable!
@@ -400,11 +406,8 @@ def statement
     total_amount += this_amount
   end
 end
-```
 
-`this_amount` is just holding the result of `element.charge`. We can eliminate it:
-
-```ruby
+# AFTER:
 def statement
   @rentals.each do |element|
     # No temp variable - call element.charge directly!
@@ -413,6 +416,8 @@ def statement
   end
 end
 ```
+
+**Test Results:** ✅ 8 runs, 8 assertions, 0 failures
 
 **Why eliminate temps?**
 - **Temps encourage long methods**: You can only use them in their local scope
@@ -425,6 +430,11 @@ Fowler addresses this directly (page 300):
 > "Almost all the time extra method calls won't matter. In the rare cases they do, they can be dealt with later."
 
 **The refactoring mantra:** Focus on clarity first, optimize later with a profiler.
+
+**Impact:**
+- One less variable to track in the statement method
+- Makes the code more direct and readable
+- Paves the way for further refactorings (extracting totals next!)
 
 ---
 
