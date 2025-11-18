@@ -8,7 +8,7 @@ This kata follows the video rental example from the book's opening chapter. You'
 
 ## Current Progress
 
-**Status**: ✅ Step 7 - Move Methods to Movie Complete (Commit: df0476e)
+**Status**: ✅ **COMPLETE!** All 8 Steps Finished! 🎉
 
 | Step | Status | Refactoring | Git Commit |
 |------|--------|-------------|------------|
@@ -20,7 +20,7 @@ This kata follows the video rental example from the book's opening chapter. You'
 | 5 | ✅ | Extract/Move: Frequent Renter Points | 2264cab |
 | 6 | ✅ | Replace Temps: `total_charge`, `total_frequent_renter_points` | a283d8a |
 | 7 | ✅ | Move Methods to Movie: `charge`, `frequent_renter_points` | df0476e |
-| 8 | ⬜ | Replace Type Code with State/Strategy | - |
+| 8 | ✅ | **Replace Type Code with State/Strategy** - Polymorphic Price classes | (pending) |
 
 **Tests**: 8 runs, 8 assertions, 0 failures ✅
 
@@ -692,6 +692,177 @@ end
 > "To make the change I move the body of `charge` over to `movie` and change `charge` in `rental` to delegate to the new method... When I compile and test, I should get the same answer as before."
 
 **See Figure 1.12** (pages 592-594) for the new class interactions.
+
+---
+
+### Step 8: Replace Type Code with State/Strategy - Polymorphic Price Classes ✅
+
+**Book Reference**: Chapter 1, pages 602-799
+
+**What we did:**
+Replaced the case statements in Movie with polymorphic Price objects. Created three Price classes (RegularPrice, NewReleasePrice, ChildrensPrice) that each implement their own `charge` and `frequent_renter_points` logic. This is the **State/Strategy pattern** in action!
+
+**Why?**
+> "With the charge method on Movie, I can now apply Replace Type Code with State/Strategy. This is the big one. I have several motivations to do this. First and most important, this change makes it much easier to add new types at a later date. Adding a new type means simply creating a subclass of price with appropriate methods. There is no conditional code that needs to change."
+>
+> *— Page 605*
+
+**The key insight:** Case statements based on type codes are a code smell. Polymorphism eliminates them and makes the system **Open/Closed** - open for extension, closed for modification.
+
+**Code Changes:**
+
+First, we created the Price classes:
+
+```ruby
+# NEW - default_price.rb (Module for shared behavior):
+module DefaultPrice
+  def frequent_renter_points(days_rented)
+    1
+  end
+end
+
+# NEW - regular_price.rb:
+require_relative 'default_price'
+
+class RegularPrice
+  include DefaultPrice
+
+  def charge(days_rented)
+    result = 2
+    result += (days_rented - 2) * 1.5 if days_rented > 2
+    result
+  end
+end
+
+# NEW - new_release_price.rb:
+class NewReleasePrice
+  def charge(days_rented)
+    days_rented * 3
+  end
+
+  def frequent_renter_points(days_rented)
+    days_rented > 1 ? 2 : 1
+  end
+end
+
+# NEW - childrens_price.rb:
+require_relative 'default_price'
+
+class ChildrensPrice
+  include DefaultPrice
+
+  def charge(days_rented)
+    result = 1.5
+    result += (days_rented - 3) * 1.5 if days_rented > 3
+    result
+  end
+end
+```
+
+Then we updated Movie to delegate to Price objects:
+
+```ruby
+# BEFORE - Movie.rb (with case statements):
+class Movie
+  REGULAR = 0
+  NEW_RELEASE = 1
+  CHILDRENS = 2
+
+  attr_reader :title
+  attr_accessor :price_code
+
+  def initialize(title, price_code)
+    @title, @price_code = title, price_code
+  end
+
+  def charge(days_rented)
+    result = 0
+    case price_code
+    when REGULAR
+      result += 2
+      result += (days_rented - 2) * 1.5 if days_rented > 2
+    when NEW_RELEASE
+      result += days_rented * 3
+    when CHILDRENS
+      result += 1.5
+      result += (days_rented - 3) * 1.5 if days_rented > 3
+    end
+    result
+  end
+
+  def frequent_renter_points(days_rented)
+    (price_code == NEW_RELEASE && days_rented > 1) ? 2 : 1
+  end
+end
+
+# AFTER - Movie.rb (polymorphic delegation):
+require_relative 'regular_price'
+require_relative 'new_release_price'
+require_relative 'childrens_price'
+
+class Movie
+  REGULAR = 0
+  NEW_RELEASE = 1
+  CHILDRENS = 2
+
+  attr_reader :title
+  attr_accessor :price_code
+
+  def initialize(title, price_code)
+    @title, @price_code = title, price_code
+  end
+
+  def charge(days_rented)
+    price_class.charge(days_rented)
+  end
+
+  def frequent_renter_points(days_rented)
+    price_class.frequent_renter_points(days_rented)
+  end
+
+  private
+
+  def price_class
+    case price_code
+    when REGULAR
+      RegularPrice.new
+    when NEW_RELEASE
+      NewReleasePrice.new
+    when CHILDRENS
+      ChildrensPrice.new
+    end
+  end
+end
+```
+
+**Test Results:** ✅ 8 runs, 8 assertions, 0 failures
+
+**Impact - THE ULTIMATE WIN:**
+
+- **Zero case statements on pricing logic** - Each Price class knows its own rules
+- **Open/Closed Principle** - Add new movie types by creating new Price classes, no modification to existing code
+- **Single Responsibility** - Each price class has one job: calculate its own charges and points
+- **Tell, Don't Ask** - Movie tells Price to calculate, doesn't ask for type codes
+- **Easy to extend** - Want a SeniorCitizenPrice? Just create a new class!
+
+**The "Fowler Irony" (page 677):**
+> "I'm putting in polymorphism to get rid of conditional logic, and the first thing I do is put a case in!"
+
+The `price_class` method still has a case statement, BUT:
+- It's isolated in one place
+- It's just creating objects, not doing business logic
+- The business logic is now polymorphic (no conditionals!)
+- This can be further refactored later if needed (pages 745-757 show passing Price objects directly)
+
+**DefaultPrice Module (pages 736-738):**
+Notice that RegularPrice and ChildrensPrice include the `DefaultPrice` module. This provides the default behavior for `frequent_renter_points` (returning 1). Only NewReleasePrice overrides this with its special 2-point bonus logic.
+
+This demonstrates **inheritance of default behavior** - another OOP win!
+
+**Book quote (page 748):**
+> "This refactoring is one that I would not have done without the tests. Because the Movie class is so simple, it is unlikely to break. But you can never be sure until you have a test to prove it."
+
+**See Figures 1.13-1.17** (pages 762-799) for the final class diagram and sequence diagrams showing polymorphic delegation.
 
 ---
 
