@@ -20,7 +20,7 @@ This kata follows the video rental example from the book's opening chapter. You'
 | 5 | ✅ | Extract/Move: Frequent Renter Points | 2264cab |
 | 6 | ✅ | Replace Temps: `total_charge`, `total_frequent_renter_points` | a283d8a |
 | 7 | ✅ | Move Methods to Movie: `charge`, `frequent_renter_points` | df0476e |
-| 8 | ✅ | **Replace Type Code with State/Strategy** - Polymorphic Price classes | (pending) |
+| 8 | ✅ | **Replace Type Code with State/Strategy** - Polymorphic Price classes | a2084ae |
 
 **Tests**: 8 runs, 8 assertions, 0 failures ✅
 
