@@ -567,6 +567,134 @@ end
 
 ---
 
+### Step 7: Move Methods to Movie - `charge` and `frequent_renter_points` ✅
+
+**Book Reference**: Chapter 1, pages 540-596
+
+**What we did:**
+Moved both `charge` and `frequent_renter_points` methods from Rental to Movie. Now both methods take `days_rented` as a parameter, and Rental simply delegates to Movie.
+
+**Why?**
+> "When I'm working on code, I look at the `charge` method. I'm looking at where it uses information from the Rental class. It uses two pieces of information: the length of rental and the type of movie. Why does charge need the length of rental? It is needed to calculate the charge for the rental. And the type? That information is also used in the calculation. So why is this method on the rental at all? It uses movie information. I should move it to the movie."
+>
+> *— Page 540*
+
+**The key insight:** Pricing logic depends on the movie's type (price_code), not the rental. "Type information generally tends to be more volatile" — so it should be on Movie.
+
+**Code Changes:**
+
+```ruby
+# BEFORE - Rental.rb:
+class Rental
+  attr_reader :movie, :days_rented
+
+  def initialize(movie, days_rented)
+    @movie, @days_rented = movie, days_rented
+  end
+
+  def charge
+    result = 0
+    case movie.price_code
+    when Movie::REGULAR
+      result += 2
+      result += (days_rented - 2) * 1.5 if days_rented > 2
+    when Movie::NEW_RELEASE
+      result += days_rented * 3
+    when Movie::CHILDRENS
+      result += 1.5
+      result += (days_rented - 3) * 1.5 if days_rented > 3
+    end
+    result
+  end
+
+  def frequent_renter_points
+    (movie.price_code == Movie::NEW_RELEASE && days_rented > 1) ? 2 : 1
+  end
+end
+
+# BEFORE - Movie.rb (just data):
+class Movie
+  REGULAR = 0
+  NEW_RELEASE = 1
+  CHILDRENS = 2
+
+  attr_reader :title
+  attr_accessor :price_code
+
+  def initialize(title, price_code)
+    @title, @price_code = title, price_code
+  end
+end
+```
+
+```ruby
+# AFTER - Rental.rb (simple delegation):
+class Rental
+  attr_reader :movie, :days_rented
+
+  def initialize(movie, days_rented)
+    @movie, @days_rented = movie, days_rented
+  end
+
+  def charge
+    movie.charge(days_rented)
+  end
+
+  def frequent_renter_points
+    movie.frequent_renter_points(days_rented)
+  end
+end
+
+# AFTER - Movie.rb (has behavior!):
+class Movie
+  REGULAR = 0
+  NEW_RELEASE = 1
+  CHILDRENS = 2
+
+  attr_reader :title
+  attr_accessor :price_code
+
+  def initialize(title, price_code)
+    @title, @price_code = title, price_code
+  end
+
+  def charge(days_rented)
+    result = 0
+    case price_code
+    when REGULAR
+      result += 2
+      result += (days_rented - 2) * 1.5 if days_rented > 2
+    when NEW_RELEASE
+      result += days_rented * 3
+    when CHILDRENS
+      result += 1.5
+      result += (days_rented - 3) * 1.5 if days_rented > 3
+    end
+    result
+  end
+
+  def frequent_renter_points(days_rented)
+    (price_code == NEW_RELEASE && days_rented > 1) ? 2 : 1
+  end
+end
+```
+
+**Test Results:** ✅ 8 runs, 8 assertions, 0 failures
+
+**Impact:**
+
+- **Movie now has behavior** - it's no longer just a data holder
+- **Pricing logic is with the type information** - where it belongs
+- **Rental becomes a pure connector** - it just passes days_rented to Movie
+- **Sets up for Step 8** - Now we can replace the case statements with polymorphism (State/Strategy pattern)
+
+**Book quote (page 588):**
+> "To make the change I move the body of `charge` over to `movie` and change `charge` in `rental` to delegate to the new method... When I compile and test, I should get the same answer as before."
+
+**See Figure 1.12** (pages 592-594) for the new class interactions.
+
+---
+
 ## The First Step: Build Tests (Chapter 1, page 104-107)
 
 > "Whenever I do refactoring, the first step is always the same. I need to build a solid set of tests for that section of code."
